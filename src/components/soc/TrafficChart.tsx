@@ -13,57 +13,55 @@ export const TrafficChart = ({ data }: TrafficChartProps) => {
   }));
 
   return (
-    <div className="soc-panel h-full">
-      <div className="soc-panel-header">
-        Traffic & Attacks
-      </div>
+    <div>
+      <div className="soc-section-title">Traffic & Attacks</div>
       
       {chartData.length === 0 ? (
-        <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
-          No data available
+        <div className="flex items-center justify-center h-48 text-zinc-500 text-sm">
+          No data available.
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={220}>
           <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="trafficGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(199, 89%, 48%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(199, 89%, 48%)" stopOpacity={0} />
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.12} />
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 17%)" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
             <XAxis 
               dataKey="time" 
-              tick={{ fill: 'hsl(215, 20%, 65%)', fontSize: 10 }}
-              axisLine={{ stroke: 'hsl(217, 33%, 17%)' }}
+              tick={{ fill: '#d4d4d8', fontSize: 11 }}
+              axisLine={{ stroke: '#27272a' }}
               tickLine={false}
             />
             <YAxis 
-              tick={{ fill: 'hsl(215, 20%, 65%)', fontSize: 10 }}
+              tick={{ fill: '#d4d4d8', fontSize: 11 }}
               axisLine={false}
               tickLine={false}
             />
             <Tooltip 
               contentStyle={{
-                backgroundColor: 'hsl(222, 47%, 7%)',
-                border: '1px solid hsl(217, 33%, 17%)',
-                borderRadius: '8px',
-                color: 'hsl(210, 40%, 96%)'
+                backgroundColor: '#09090b',
+                border: '1px solid #27272a',
+                borderRadius: '4px',
+                color: '#e5e7eb',
+                fontSize: '12px'
               }}
-              labelStyle={{ color: 'hsl(215, 20%, 65%)' }}
             />
             <Area
               type="monotone"
               dataKey="total"
-              stroke="hsl(199, 89%, 48%)"
-              strokeWidth={2}
+              stroke="#3b82f6"
+              strokeWidth={1}
               fill="url(#trafficGradient)"
               name="Traffic"
             />
             <Line
               type="monotone"
               dataKey="alerts"
-              stroke="hsl(0, 84%, 60%)"
+              stroke="#ef4444"
               strokeWidth={2}
               dot={false}
               name="Alerts"
