@@ -799,7 +799,7 @@ const SOCDashboard = () => {
             onClick={() => setShowAIChat(!showAIChat)}
             className="h-7 px-4 text-[10px] font-medium bg-gradient-to-b from-[#1e3a5f] to-[#162d4d] text-[#93c5fd] border border-[#2563eb]/40 rounded-md hover:from-[#2563eb] hover:to-[#1e40af] hover:text-[#bfdbfe] transition-all shadow-sm"
           >
-            AI Chat
+            ASSISTANT
           </button>
           <div className="h-7 px-3 flex items-center text-[10px] text-[#71717a] font-mono bg-[#0a0a0a] border border-[#1f1f1f] rounded-md">
             {now}

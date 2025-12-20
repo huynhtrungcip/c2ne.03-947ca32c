@@ -54,16 +54,19 @@ export const TrafficChart = ({ data }: TrafficChartProps) => {
               type="monotone"
               dataKey="total"
               stroke="#3b82f6"
-              strokeWidth={1}
+              strokeWidth={2}
               fill="url(#trafficGradient)"
               name="Traffic"
+              dot={{ fill: '#3b82f6', strokeWidth: 0, r: 3 }}
+              activeDot={{ fill: '#3b82f6', strokeWidth: 2, stroke: '#fff', r: 5 }}
             />
             <Line
               type="monotone"
               dataKey="alerts"
               stroke="#ef4444"
               strokeWidth={2}
-              dot={false}
+              dot={{ fill: '#ef4444', strokeWidth: 0, r: 3 }}
+              activeDot={{ fill: '#ef4444', strokeWidth: 2, stroke: '#fff', r: 5 }}
               name="Alerts"
             />
           </ComposedChart>
