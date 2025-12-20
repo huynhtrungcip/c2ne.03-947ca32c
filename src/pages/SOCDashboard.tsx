@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSOCData } from '@/hooks/useSOCData';
 import { SOCEvent } from '@/types/soc';
-import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, Legend } from 'recharts';
+import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip } from 'recharts';
 
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
 
@@ -92,6 +92,11 @@ const SOCDashboard = () => {
     if (isLive) setSelectedEvent(null);
   }, [isLive]);
 
+  // Reset selected event when switching tabs
+  useEffect(() => {
+    setSelectedEvent(null);
+  }, [activeTab]);
+
   const handleEventClick = (event: SOCEvent) => {
     if (isLive) return;
     setSelectedEvent(selectedEvent?.id === event.id ? null : event);
@@ -131,53 +136,65 @@ const SOCDashboard = () => {
     { id: 'reports', label: 'Reports' },
   ];
 
-  const renderEventTable = (eventList: SOCEvent[], showFilters = true) => (
+  // Unified filter component - only show in Events tab
+  const renderFilters = () => (
+    <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3 mb-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="text-[10px] text-[#52525b] uppercase tracking-wider font-semibold">Filters</div>
+        <select 
+          value={verdictFocus} 
+          onChange={(e) => setVerdictFocus(e.target.value)}
+          className="h-7 px-2 text-[11px] bg-[#0a0a0a] border border-[#27272a] rounded text-[#a1a1aa]"
+        >
+          <option value="All">All Verdicts</option>
+          <option value="ALERT">ALERT</option>
+          <option value="SUSPICIOUS">SUSPICIOUS</option>
+          <option value="FALSE_POSITIVE">FALSE_POSITIVE</option>
+          <option value="BENIGN">BENIGN</option>
+        </select>
+        <input 
+          type="text"
+          placeholder="Filter by IP..."
+          value={ipFilter}
+          onChange={(e) => setIpFilter(e.target.value)}
+          className="h-7 px-3 text-[11px] bg-[#0a0a0a] border border-[#27272a] rounded text-[#a1a1aa] placeholder-[#3f3f46] w-36"
+        />
+        <input 
+          type="text"
+          placeholder="Filter by Signature..."
+          value={sigFilter}
+          onChange={(e) => setSigFilter(e.target.value)}
+          className="h-7 px-3 text-[11px] bg-[#0a0a0a] border border-[#27272a] rounded text-[#a1a1aa] placeholder-[#3f3f46] w-44"
+        />
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-[#52525b]">Min Confidence</span>
+          <input 
+            type="range" min="0" max="1" step="0.05"
+            value={minConfidence}
+            onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
+            className="w-20 h-1.5 bg-[#27272a] rounded appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-[#3b82f6] [&::-webkit-slider-thumb]:rounded-full"
+          />
+          <span className="text-[11px] text-[#71717a] font-mono w-8">{(minConfidence * 100).toFixed(0)}%</span>
+        </div>
+        {(verdictFocus !== 'All' || ipFilter || sigFilter || minConfidence > 0) && (
+          <button 
+            onClick={() => { setVerdictFocus('All'); setIpFilter(''); setSigFilter(''); setMinConfidence(0); }}
+            className="text-[10px] text-[#71717a] hover:text-[#a1a1aa] underline"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderEventTable = (eventList: SOCEvent[]) => (
     <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded">
       <div className="flex items-center justify-between p-3 border-b border-[#1f1f1f]">
-        <div className="text-[10px] text-[#52525b] uppercase tracking-wider">Event Stream</div>
-        {isLive && <span className="text-[9px] text-[#d97706]">⚠ Pause LIVE mode to inspect events</span>}
-        {!isLive && <span className="text-[9px] text-[#16a34a]">✓ Click any row to inspect</span>}
+        <div className="text-[10px] text-[#52525b] uppercase tracking-wider">Event Stream ({eventList.length} events)</div>
+        {isLive && <span className="text-[9px] text-[#d97706]">Pause LIVE mode to inspect events</span>}
+        {!isLive && <span className="text-[9px] text-[#16a34a]">Click any row to inspect</span>}
       </div>
-      
-      {showFilters && (
-        <div className="flex gap-2 p-2 border-b border-[#1f1f1f] bg-[#0a0a0a]">
-          <select 
-            value={verdictFocus} 
-            onChange={(e) => setVerdictFocus(e.target.value)}
-            className="h-6 px-2 text-[10px] bg-[#0f0f0f] border border-[#1f1f1f] rounded text-[#a1a1aa]"
-          >
-            <option value="All">All Verdicts</option>
-            <option value="ALERT">ALERT</option>
-            <option value="SUSPICIOUS">SUSPICIOUS</option>
-            <option value="FALSE_POSITIVE">FALSE_POSITIVE</option>
-            <option value="BENIGN">BENIGN</option>
-          </select>
-          <input 
-            type="text"
-            placeholder="IP Filter"
-            value={ipFilter}
-            onChange={(e) => setIpFilter(e.target.value)}
-            className="h-6 px-2 text-[10px] bg-[#0f0f0f] border border-[#1f1f1f] rounded text-[#a1a1aa] placeholder-[#3f3f46] w-32"
-          />
-          <input 
-            type="text"
-            placeholder="Signature"
-            value={sigFilter}
-            onChange={(e) => setSigFilter(e.target.value)}
-            className="h-6 px-2 text-[10px] bg-[#0f0f0f] border border-[#1f1f1f] rounded text-[#a1a1aa] placeholder-[#3f3f46] w-32"
-          />
-          <div className="flex items-center gap-1 ml-auto">
-            <span className="text-[9px] text-[#3f3f46]">Conf ≥</span>
-            <input 
-              type="range" min="0" max="1" step="0.05"
-              value={minConfidence}
-              onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
-              className="w-16 h-1 bg-[#27272a] rounded appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:bg-[#3b82f6] [&::-webkit-slider-thumb]:rounded-full"
-            />
-            <span className="text-[9px] text-[#52525b] font-mono w-6">{minConfidence.toFixed(2)}</span>
-          </div>
-        </div>
-      )}
 
       <div className="overflow-auto max-h-[400px]">
         <table className="w-full text-[10px]">
@@ -439,34 +456,96 @@ const SOCDashboard = () => {
     </>
   );
 
-  const renderEventsTab = () => (
-    <>
-      <div className="mb-4">
-        <h2 className="text-sm font-semibold text-[#e4e4e7] mb-1">Security Event Log</h2>
-        <p className="text-[10px] text-[#52525b]">Complete event stream with real-time filtering • {sortedEvents.length} events in selected range</p>
-      </div>
-      
-      {/* Event Statistics */}
-      <div className="grid grid-cols-6 gap-2 mb-4">
-        {[
-          { label: 'Total', value: sortedEvents.length, color: '#3b82f6' },
-          { label: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: '#dc2626' },
-          { label: 'Suspicious', value: sortedEvents.filter(e => e.verdict === 'SUSPICIOUS').length, color: '#d97706' },
-          { label: 'False Pos', value: sortedEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length, color: '#16a34a' },
-          { label: 'Benign', value: sortedEvents.filter(e => e.verdict === 'BENIGN').length, color: '#71717a' },
-          { label: 'High Conf', value: sortedEvents.filter(e => e.confidence > 0.8).length, color: '#8b5cf6' },
-        ].map((s, i) => (
-          <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] p-2 rounded text-center">
-            <div className="text-lg font-bold font-mono" style={{ color: s.color }}>{s.value}</div>
-            <div className="text-[9px] text-[#52525b] uppercase">{s.label}</div>
+  const renderEventsTab = () => {
+    const engineCounts = sortedEvents.reduce((acc, e) => {
+      acc[e.source_engine] = (acc[e.source_engine] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const topEngines = Object.entries(engineCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    
+    const recentAlerts = sortedEvents.filter(e => e.verdict === 'ALERT').slice(0, 5);
+    
+    return (
+      <>
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-[#e4e4e7] mb-1">Security Event Log</h2>
+          <p className="text-[10px] text-[#52525b]">Complete event stream with real-time filtering • {sortedEvents.length} events in selected range</p>
+        </div>
+        
+        {/* Unified Filters */}
+        {renderFilters()}
+        
+        <div className="grid grid-cols-12 gap-4">
+          {/* Main Event Table */}
+          <div className="col-span-9">
+            {/* Event Statistics */}
+            <div className="grid grid-cols-6 gap-2 mb-4">
+              {[
+                { label: 'Total', value: sortedEvents.length, color: '#3b82f6' },
+                { label: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: '#dc2626' },
+                { label: 'Suspicious', value: sortedEvents.filter(e => e.verdict === 'SUSPICIOUS').length, color: '#d97706' },
+                { label: 'False Pos', value: sortedEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length, color: '#16a34a' },
+                { label: 'Benign', value: sortedEvents.filter(e => e.verdict === 'BENIGN').length, color: '#71717a' },
+                { label: 'High Conf', value: sortedEvents.filter(e => e.confidence > 0.8).length, color: '#8b5cf6' },
+              ].map((s, i) => (
+                <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] p-2 rounded text-center">
+                  <div className="text-lg font-bold font-mono" style={{ color: s.color }}>{s.value}</div>
+                  <div className="text-[9px] text-[#52525b] uppercase">{s.label}</div>
+                </div>
+              ))}
+            </div>
+            
+            {renderEventTable(sortedEvents)}
           </div>
-        ))}
-      </div>
-      
-      {renderEventTable(sortedEvents)}
-      {renderInspector()}
-    </>
-  );
+          
+          {/* Sidebar */}
+          <div className="col-span-3 space-y-3">
+            {/* Detection Engines */}
+            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
+              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Detection Engines</div>
+              <div className="space-y-2">
+                {topEngines.map(([engine, count]) => (
+                  <div key={engine} className="flex items-center justify-between">
+                    <span className="text-[10px] text-[#71717a]">{engine}</span>
+                    <span className="text-[11px] font-mono text-[#a1a1aa]">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Recent Alerts */}
+            <div className="bg-[#0f0f0f] border border-[#dc2626]/20 rounded p-3">
+              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Recent Alerts</div>
+              <div className="space-y-2">
+                {recentAlerts.length === 0 ? (
+                  <div className="text-[10px] text-[#3f3f46]">No alerts</div>
+                ) : recentAlerts.map((alert) => (
+                  <div key={alert.id} className="text-[10px] border-b border-[#1f1f1f] pb-2 last:border-0">
+                    <div className="text-[#dc2626] font-medium truncate">{alert.attack_type}</div>
+                    <div className="text-[#52525b] font-mono">{alert.src_ip}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Time Distribution */}
+            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
+              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Event Timeline</div>
+              <div className="h-16">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData.slice(-12)} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <Area type="monotone" dataKey="Traffic" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} strokeWidth={1} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {renderInspector()}
+      </>
+    );
+  };
 
   const renderThreatsTab = () => {
     const criticalEvents = sortedEvents.filter(e => e.verdict === 'ALERT' || e.verdict === 'SUSPICIOUS');
@@ -474,61 +553,84 @@ const SOCDashboard = () => {
     const attackCounts = uniqueAttackTypes.map(type => ({
       type,
       count: criticalEvents.filter(e => e.attack_type === type).length,
+      alertCount: criticalEvents.filter(e => e.attack_type === type && e.verdict === 'ALERT').length,
       severity: criticalEvents.filter(e => e.attack_type === type && e.verdict === 'ALERT').length > 0 ? 'critical' : 'warning'
     })).sort((a, b) => b.count - a.count);
+
+    const uniqueSourceIPs = [...new Set(criticalEvents.map(e => e.src_ip))];
+    const topThreatSources = uniqueSourceIPs.map(ip => ({
+      ip,
+      count: criticalEvents.filter(e => e.src_ip === ip).length,
+      attacks: [...new Set(criticalEvents.filter(e => e.src_ip === ip).map(e => e.attack_type))]
+    })).sort((a, b) => b.count - a.count).slice(0, 10);
+
+    const highConfidenceThreats = criticalEvents.filter(e => e.confidence > 0.8);
 
     return (
       <>
         <div className="mb-4">
           <h2 className="text-sm font-semibold text-[#e4e4e7] mb-1">Threat Intelligence</h2>
-          <p className="text-[10px] text-[#52525b]">Active threats requiring attention • {criticalEvents.length} critical events detected</p>
+          <p className="text-[10px] text-[#52525b]">Active threats requiring attention • {criticalEvents.length} critical events from {uniqueSourceIPs.length} sources</p>
+        </div>
+        
+        {/* Threat Overview Cards */}
+        <div className="grid grid-cols-4 gap-3 mb-4">
+          {[
+            { label: 'Critical Alerts', value: alertEvents.length, color: '#dc2626', sub: 'Immediate action required' },
+            { label: 'Suspicious', value: criticalEvents.length - alertEvents.length, color: '#d97706', sub: 'Under investigation' },
+            { label: 'Attack Types', value: uniqueAttackTypes.length, color: '#8b5cf6', sub: 'Unique signatures' },
+            { label: 'High Confidence', value: highConfidenceThreats.length, color: '#3b82f6', sub: '>80% certainty' },
+          ].map((card, i) => (
+            <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3" style={{ borderLeftColor: card.color, borderLeftWidth: 3 }}>
+              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold">{card.label}</div>
+              <div className="text-2xl font-bold font-mono text-[#e4e4e7] my-1">{card.value}</div>
+              <div className="text-[9px] text-[#52525b]">{card.sub}</div>
+            </div>
+          ))}
         </div>
         
         <div className="grid grid-cols-12 gap-4">
-          {/* Threat Severity Matrix */}
+          {/* Left Panel - Threat Analysis */}
           <div className="col-span-4 space-y-3">
-            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
-              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Severity Distribution</div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#71717a]">Critical Alerts</span>
-                  <span className="text-xl font-bold text-[#dc2626]">{alertEvents.length}</span>
-                </div>
-                <div className="w-full h-2 bg-[#1f1f1f] rounded">
-                  <div className="h-full bg-[#dc2626] rounded" style={{ width: `${Math.min((alertEvents.length / Math.max(criticalEvents.length, 1)) * 100, 100)}%` }} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#71717a]">Suspicious Activity</span>
-                  <span className="text-xl font-bold text-[#d97706]">{criticalEvents.length - alertEvents.length}</span>
-                </div>
-                <div className="w-full h-2 bg-[#1f1f1f] rounded">
-                  <div className="h-full bg-[#d97706] rounded" style={{ width: `${Math.min(((criticalEvents.length - alertEvents.length) / Math.max(criticalEvents.length, 1)) * 100, 100)}%` }} />
-                </div>
-              </div>
-            </div>
-            
+            {/* Attack Type Breakdown */}
             <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
               <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Attack Signatures</div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {attackCounts.slice(0, 8).map((attack, i) => (
+              <div className="space-y-2 max-h-56 overflow-y-auto">
+                {attackCounts.map((attack, i) => (
                   <div key={attack.type} className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${attack.severity === 'critical' ? 'bg-[#dc2626]' : 'bg-[#d97706]'}`} />
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${attack.severity === 'critical' ? 'bg-[#dc2626]' : 'bg-[#d97706]'}`} />
                     <span className="text-[10px] text-[#a1a1aa] flex-1 truncate">{attack.type}</span>
                     <span className="text-[10px] font-mono text-[#71717a]">{attack.count}</span>
                   </div>
                 ))}
               </div>
             </div>
+            
+            {/* Top Threat Sources */}
+            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
+              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Top Threat Sources</div>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {topThreatSources.slice(0, 6).map((source, i) => (
+                  <div key={source.ip} className="border-b border-[#1f1f1f] pb-2 last:border-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-mono text-[#60a5fa]">{source.ip}</span>
+                      <span className="text-[10px] font-mono text-[#dc2626]">{source.count}</span>
+                    </div>
+                    <div className="text-[9px] text-[#52525b] truncate">{source.attacks.slice(0, 2).join(', ')}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           
-          {/* Threat Events */}
+          {/* Right Panel - Threat Events */}
           <div className="col-span-8">
             <div className="bg-[#0f0f0f] border border-[#dc2626]/30 rounded">
               <div className="p-3 border-b border-[#1f1f1f] flex items-center justify-between">
                 <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold">Active Threats</div>
                 <span className="text-[9px] text-[#dc2626]">{criticalEvents.length} threats detected</span>
               </div>
-              {renderEventTable(criticalEvents.slice(0, 50), false)}
+              {renderEventTable(criticalEvents.slice(0, 50))}
             </div>
           </div>
         </div>
@@ -545,6 +647,23 @@ const SOCDashboard = () => {
     }, {} as Record<string, number>);
     const topProtocols = Object.entries(protocolCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
     
+    const hourlyData = trafficData.reduce((acc, d) => {
+      const hour = d.timestamp.getHours();
+      if (!acc[hour]) acc[hour] = { traffic: 0, alerts: 0 };
+      acc[hour].traffic += d.total;
+      acc[hour].alerts += d.alerts;
+      return acc;
+    }, {} as Record<number, { traffic: number; alerts: number }>);
+    
+    const peakHour = Object.entries(hourlyData).sort((a, b) => b[1].traffic - a[1].traffic)[0];
+    
+    const verdictBreakdown = [
+      { name: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: '#dc2626' },
+      { name: 'Suspicious', value: sortedEvents.filter(e => e.verdict === 'SUSPICIOUS').length, color: '#d97706' },
+      { name: 'False Positive', value: sortedEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length, color: '#16a34a' },
+      { name: 'Benign', value: sortedEvents.filter(e => e.verdict === 'BENIGN').length, color: '#71717a' },
+    ];
+    
     return (
       <>
         <div className="mb-4">
@@ -553,24 +672,25 @@ const SOCDashboard = () => {
         </div>
         
         {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-5 gap-3 mb-4">
           {[
-            { label: 'Detection Rate', value: `${metrics.alertRate.toFixed(1)}%`, sub: 'Alerts / Total Events' },
-            { label: 'Avg Confidence', value: avgConfidence.toFixed(2), sub: 'Mean detection score' },
-            { label: 'Unique Sources', value: metrics.uniqueSources, sub: 'Distinct IPs detected' },
-            { label: 'Event Volume', value: metrics.totalEvents, sub: 'Total in time range' },
+            { label: 'Total Events', value: metrics.totalEvents, sub: 'In time range' },
+            { label: 'Detection Rate', value: `${metrics.alertRate.toFixed(1)}%`, sub: 'Alerts / Total' },
+            { label: 'Avg Confidence', value: avgConfidence.toFixed(2), sub: 'Mean score' },
+            { label: 'Unique Sources', value: metrics.uniqueSources, sub: 'Distinct IPs' },
+            { label: 'Peak Hour', value: peakHour ? `${peakHour[0]}:00` : '-', sub: peakHour ? `${peakHour[1].traffic} events` : '' },
           ].map((card, i) => (
-            <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
-              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-2">{card.label}</div>
-              <div className="text-2xl font-bold font-mono text-[#e4e4e7]">{card.value}</div>
-              <div className="text-[9px] text-[#52525b] mt-1">{card.sub}</div>
+            <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
+              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold">{card.label}</div>
+              <div className="text-xl font-bold font-mono text-[#e4e4e7] my-1">{card.value}</div>
+              <div className="text-[9px] text-[#52525b]">{card.sub}</div>
             </div>
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-12 gap-4 mb-4">
           {/* Traffic Trend */}
-          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
+          <div className="col-span-8 bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold">Traffic Trend</div>
               <div className="flex items-center gap-4 text-[10px]">
@@ -578,7 +698,7 @@ const SOCDashboard = () => {
                 <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-[#dc2626]"></span> Alerts</span>
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={200}>
               <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                 <defs>
                   <linearGradient id="trafficGrad2" x1="0" y1="0" x2="0" y2="1">
@@ -595,10 +715,30 @@ const SOCDashboard = () => {
             </ResponsiveContainer>
           </div>
           
+          {/* Verdict Breakdown */}
+          <div className="col-span-4 bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
+            <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Verdict Distribution</div>
+            <div className="space-y-3">
+              {verdictBreakdown.map((v) => (
+                <div key={v.name}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-[#71717a]">{v.name}</span>
+                    <span className="text-[11px] font-mono" style={{ color: v.color }}>{v.value}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-[#1f1f1f] rounded">
+                    <div className="h-full rounded" style={{ width: `${Math.min((v.value / Math.max(sortedEvents.length, 1)) * 100, 100)}%`, backgroundColor: v.color }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
           {/* Top Attack Sources */}
           <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
             <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Top Attack Sources</div>
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={160}>
               <BarChart data={barData.slice(0, 6)} layout="vertical" margin={{ top: 5, right: 30, left: 70, bottom: 5 }}>
                 <XAxis type="number" tick={{ fill: '#71717a', fontSize: 9 }} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="ip" tick={{ fill: '#a1a1aa', fontSize: 10 }} axisLine={false} tickLine={false} width={65} />
@@ -607,18 +747,18 @@ const SOCDashboard = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
 
-        {/* Protocol Distribution */}
-        <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
-          <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Protocol Distribution</div>
-          <div className="flex gap-3">
-            {topProtocols.map(([proto, count]) => (
-              <div key={proto} className="bg-[#0a0a0a] border border-[#27272a] rounded px-4 py-2 text-center">
-                <div className="text-lg font-bold font-mono text-[#e4e4e7]">{count}</div>
-                <div className="text-[10px] text-[#71717a] uppercase">{proto}</div>
-              </div>
-            ))}
+          {/* Protocol Distribution */}
+          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
+            <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Protocol Distribution</div>
+            <div className="flex gap-3 flex-wrap">
+              {topProtocols.map(([proto, count]) => (
+                <div key={proto} className="bg-[#0a0a0a] border border-[#27272a] rounded px-4 py-3 text-center min-w-[80px]">
+                  <div className="text-xl font-bold font-mono text-[#e4e4e7]">{count}</div>
+                  <div className="text-[10px] text-[#71717a] uppercase">{proto}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </>
