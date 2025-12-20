@@ -17,7 +17,6 @@ const AIChatPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
   const handleSend = () => {
     if (!message.trim()) return;
     setMessages(prev => [...prev, { role: 'user', content: message }]);
-    // Simulate AI response
     setTimeout(() => {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
@@ -30,10 +29,7 @@ const AIChatPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
   return (
     <div className="fixed right-4 bottom-4 w-96 bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg shadow-2xl z-50">
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f1f]">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🧠</span>
-          <span className="text-[11px] font-semibold text-[#e4e4e7] uppercase tracking-wider">AI Assistant</span>
-        </div>
+        <span className="text-[11px] font-semibold text-[#e4e4e7] uppercase tracking-wider">AI Assistant</span>
         <button onClick={onClose} className="text-[#71717a] hover:text-[#e4e4e7] text-sm">✕</button>
       </div>
       <div className="h-72 overflow-y-auto p-3 space-y-3">
@@ -246,10 +242,9 @@ const SOCDashboard = () => {
                                selectedEvent.verdict === 'SUSPICIOUS' ? '#d97706' : '#16a34a';
     
     return (
-      <div className="mt-4 bg-[#0f0f0f] border-2 rounded-lg shadow-xl" style={{ borderColor: verdictBorderColor }}>
-        <div className="p-4 border-b border-[#1f1f1f] flex items-center justify-between bg-[#0a0a0a] rounded-t-lg">
+      <div className="mt-4 bg-[#0a0a0a] border-2 rounded-lg shadow-xl" style={{ borderColor: verdictBorderColor }}>
+        <div className="p-4 border-b border-[#1f1f1f] flex items-center justify-between bg-[#0f0f0f] rounded-t-lg">
           <div className="flex items-center gap-3">
-            <span className="text-lg">🔍</span>
             <span className="text-xs font-bold text-[#e4e4e7] uppercase tracking-wider">Event Inspector</span>
             <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
               selectedEvent.verdict === 'ALERT' ? 'bg-[#450a0a] text-[#f87171]' :
@@ -268,30 +263,24 @@ const SOCDashboard = () => {
         
         <div className="p-5 grid grid-cols-4 gap-x-6 gap-y-4">
           {[
-            { label: 'Timestamp', value: selectedEvent.timestamp.toLocaleString(), icon: '🕐' },
-            { label: 'Signature', value: selectedEvent.attack_type, icon: '⚠️', className: 'font-semibold text-[#fbbf24]' },
-            { label: 'Engine', value: selectedEvent.source_engine, icon: '⚙️' },
-            { label: 'Confidence', value: `${(selectedEvent.confidence * 100).toFixed(0)}%`, icon: '📊' },
-            { label: 'Source IP', value: selectedEvent.src_ip, icon: '📤', className: 'text-[#60a5fa] font-mono' },
-            { label: 'Destination', value: `${selectedEvent.dst_ip}:${selectedEvent.dst_port || '-'}`, icon: '📥', className: 'font-mono' },
-            { label: 'Protocol', value: selectedEvent.protocol, icon: '🔗' },
-            { label: 'Community ID', value: selectedEvent.community_id, icon: '🆔', className: 'font-mono text-[10px]' },
+            { label: 'Timestamp', value: selectedEvent.timestamp.toLocaleString(), className: 'text-[#e4e4e7]' },
+            { label: 'Signature', value: selectedEvent.attack_type, className: 'font-semibold text-[#fbbf24]' },
+            { label: 'Engine', value: selectedEvent.source_engine, className: 'text-[#e4e4e7]' },
+            { label: 'Confidence', value: `${(selectedEvent.confidence * 100).toFixed(0)}%`, className: 'text-[#e4e4e7]' },
+            { label: 'Source IP', value: selectedEvent.src_ip, className: 'text-[#60a5fa] font-mono' },
+            { label: 'Destination', value: `${selectedEvent.dst_ip}:${selectedEvent.dst_port || '-'}`, className: 'font-mono text-[#e4e4e7]' },
+            { label: 'Protocol', value: selectedEvent.protocol, className: 'text-[#e4e4e7]' },
+            { label: 'Community ID', value: selectedEvent.community_id, className: 'font-mono text-[10px] text-[#e4e4e7]' },
           ].map((field, i) => (
             <div key={i}>
-              <div className="text-[9px] text-[#52525b] uppercase tracking-wider mb-1 flex items-center gap-1">
-                <span>{field.icon}</span> {field.label}
-              </div>
-              <div className={`text-[12px] ${field.className || 'text-[#e4e4e7]'}`}>
-                {field.value}
-              </div>
+              <div className="text-[10px] text-[#71717a] uppercase tracking-wider mb-1">{field.label}</div>
+              <div className={`text-[12px] ${field.className}`}>{field.value}</div>
             </div>
           ))}
         </div>
         
         <div className="px-5 pb-4">
-          <div className="text-[9px] text-[#52525b] uppercase tracking-wider mb-2 flex items-center gap-1">
-            <span>📄</span> Raw Payload
-          </div>
+          <div className="text-[10px] text-[#71717a] uppercase tracking-wider mb-2">Raw Payload</div>
           <pre className="text-[10px] font-mono text-[#a1a1aa] bg-[#000] p-3 rounded-lg border border-[#27272a] overflow-auto max-h-32">
             {selectedEvent.raw_log}
           </pre>
@@ -300,12 +289,12 @@ const SOCDashboard = () => {
         <div className="px-5 pb-5 flex gap-3">
           <button 
             onClick={() => setShowAIChat(true)}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] font-semibold bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded-lg hover:bg-[#1e40af]/50 transition-colors"
+            className="flex-1 px-4 py-2.5 text-[11px] font-semibold bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded-lg hover:bg-[#1e40af]/50 transition-colors"
           >
-            <span>🧠</span> Ask MegaLLM About This Flow
+            Ask MegaLLM About This Flow
           </button>
-          <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] font-semibold bg-[#450a0a] text-[#f87171] border border-[#7f1d1d] rounded-lg hover:bg-[#7f1d1d]/50 transition-colors">
-            <span>🚫</span> Block IP {selectedEvent.src_ip} on pfSense
+          <button className="flex-1 px-4 py-2.5 text-[11px] font-semibold bg-[#450a0a] text-[#f87171] border border-[#7f1d1d] rounded-lg hover:bg-[#7f1d1d]/50 transition-colors">
+            Block IP {selectedEvent.src_ip} on pfSense
           </button>
         </div>
       </div>
@@ -317,16 +306,16 @@ const SOCDashboard = () => {
       {/* Metrics Row */}
       <div className="grid grid-cols-5 gap-3 mb-4">
         {[
-          { label: 'Events', value: metrics.totalEvents, color: '#3b82f6' },
-          { label: 'Critical', value: metrics.criticalAlerts, delta: `${metrics.alertRate.toFixed(1)}%`, color: '#dc2626' },
-          { label: 'Suspicious', value: metrics.suspicious, color: '#d97706' },
-          { label: 'False Pos', value: metrics.falsePositives, color: '#16a34a' },
-          { label: 'Sources', value: metrics.uniqueSources, color: '#3b82f6' },
+          { label: 'EVENTS', value: metrics.totalEvents, color: '#3b82f6', valueColor: '#60a5fa' },
+          { label: 'CRITICAL', value: metrics.criticalAlerts, delta: `${metrics.alertRate.toFixed(1)}%`, color: '#dc2626', valueColor: '#f87171' },
+          { label: 'SUSPICIOUS', value: metrics.suspicious, color: '#d97706', valueColor: '#fbbf24' },
+          { label: 'FALSE POS', value: metrics.falsePositives, color: '#16a34a', valueColor: '#4ade80' },
+          { label: 'SOURCES', value: metrics.uniqueSources, color: '#8b5cf6', valueColor: '#a78bfa' },
         ].map((m, i) => (
-          <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] p-3 rounded" style={{ borderLeftColor: m.color, borderLeftWidth: 3 }}>
-            <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-1">{m.label}</div>
-            <div className="text-2xl font-bold font-mono text-[#fafafa]">{m.value.toLocaleString()}</div>
-            {m.delta && <div className="text-[11px] text-[#dc2626] font-medium">{m.delta}</div>}
+          <div key={i} className="bg-[#0a0a0a] border border-[#1f1f1f] p-4 rounded-lg" style={{ borderLeftColor: m.color, borderLeftWidth: 4 }}>
+            <div className="text-xs text-[#71717a] uppercase tracking-wider font-medium mb-2">{m.label}</div>
+            <div className="text-4xl font-bold font-mono" style={{ color: m.valueColor }}>{m.value.toLocaleString()}</div>
+            {m.delta && <div className="text-sm text-[#f87171] font-semibold mt-1">+{m.delta}</div>}
           </div>
         ))}
       </div>
@@ -334,27 +323,39 @@ const SOCDashboard = () => {
       {/* Main Grid */}
       <div className="grid grid-cols-12 gap-4">
         {/* Traffic Chart */}
-        <div className="col-span-8 bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
-          <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-3">Traffic & Alerts</div>
+        <div className="col-span-8 bg-[#0a0a0a] border border-[#1f1f1f] rounded-lg p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold">Traffic & Alerts</div>
+            <div className="flex items-center gap-6 text-[11px]">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-0.5 bg-[#3b82f6] rounded"></span>
+                <span className="text-[#71717a]">Network Traffic</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-0.5 bg-[#dc2626] rounded"></span>
+                <span className="text-[#71717a]">Security Alerts</span>
+              </div>
+            </div>
+          </div>
           {chartData.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-[#3f3f46] text-xs">No data</div>
+            <div className="h-44 flex items-center justify-center text-[#3f3f46] text-xs">No data available</div>
           ) : (
-            <ResponsiveContainer width="100%" height={160}>
-              <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={180}>
+              <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                 <defs>
                   <linearGradient id="trafficGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.15} />
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.25} />
                     <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="time" tick={{ fill: '#52525b', fontSize: 9 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#52525b', fontSize: 9 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="time" tick={{ fill: '#71717a', fontSize: 10 }} axisLine={{ stroke: '#27272a' }} tickLine={false} />
+                <YAxis tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: 4, fontSize: 10 }}
-                  labelStyle={{ color: '#a1a1aa' }}
+                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: 6, fontSize: 11 }}
+                  labelStyle={{ color: '#e4e4e7', fontWeight: 600 }}
                 />
-                <Area type="monotone" dataKey="Traffic" stroke="#3b82f6" strokeWidth={1} fill="url(#trafficGrad)" />
-                <Line type="monotone" dataKey="Alerts" stroke="#dc2626" strokeWidth={1.5} dot={false} />
+                <Area type="monotone" dataKey="Traffic" stroke="#3b82f6" strokeWidth={2} fill="url(#trafficGrad)" name="Network Traffic" />
+                <Line type="monotone" dataKey="Alerts" stroke="#dc2626" strokeWidth={2} dot={false} name="Security Alerts" />
               </ComposedChart>
             </ResponsiveContainer>
           )}
