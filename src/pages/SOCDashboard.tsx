@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSOCData } from '@/hooks/useSOCData';
 import { SOCEvent } from '@/types/soc';
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip } from 'recharts';
+import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, Legend } from 'recharts';
 
 const SOCDashboard = () => {
   const [isLive, setIsLive] = useState(true);
@@ -10,7 +10,6 @@ const SOCDashboard = () => {
   const [viewMode, setViewMode] = useState<'all' | 'alerts'>('all');
   const [selectedEvent, setSelectedEvent] = useState<SOCEvent | null>(null);
   
-  // Filters
   const [verdictFocus, setVerdictFocus] = useState('All');
   const [ipFilter, setIpFilter] = useState('');
   const [sigFilter, setSigFilter] = useState('');
@@ -34,193 +33,188 @@ const SOCDashboard = () => {
 
   const timeRangeLabel = timeRanges.find(r => r.value === timeRange)?.label || timeRange;
 
-  // Chart data
   const chartData = trafficData.map(d => ({
     time: d.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    total: d.total,
-    alerts: d.alerts
+    Traffic: d.total,
+    Alerts: d.alerts
   }));
 
   const pieData = attackTypeData.map(d => ({ name: d.type, value: d.count }));
-  const COLORS = ['#3b82f6', '#06b6d4', '#a855f7', '#f97316', '#22c55e', '#eab308'];
+  const COLORS = ['#2563eb', '#0891b2', '#7c3aed', '#ea580c', '#16a34a', '#ca8a04'];
 
   const barData = topSources.map(d => ({ ip: d.ip, count: d.count }));
-
   const sortedEvents = [...events].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 200);
 
+  const getVerdictClass = (verdict: string) => {
+    const v = verdict.toUpperCase();
+    if (v === 'ALERT') return 'text-[#dc2626]';
+    if (v === 'SUSPICIOUS') return 'text-[#d97706]';
+    return 'text-[#16a34a]';
+  };
+
   return (
-    <div className="min-h-screen bg-black p-4 lg:p-6" style={{ fontFamily: "'Segoe UI', Helvetica, Arial, sans-serif" }}>
-      <div className="max-w-[1920px] mx-auto">
-        
-        {/* Header */}
-        <div className="soc-header">
-          <div className="soc-header-row">
-            <div className="soc-title">Security Operations Center</div>
-            <span className={isLive ? 'live-badge-on' : 'live-badge-off'}>
-              {isLive ? 'SYSTEM ONLINE' : 'LIVE VIEW PAUSED'}
-            </span>
-          </div>
-          <div className="soc-header-row mt-1.5">
-            <div className="soc-subtitle">
-              C1NE.03 Hybrid NIDS Engine — Zeek / Suricata / AI Correlation Pipeline
-            </div>
-            <div className="soc-meta">
-              Local Time: {now} | Range: {timeRangeLabel}
-            </div>
+    <div className="min-h-screen bg-[#0a0a0a] text-[#e4e4e7] font-['Inter',system-ui,sans-serif]">
+      {/* Top Bar */}
+      <header className="h-10 bg-[#0f0f0f] border-b border-[#1f1f1f] flex items-center justify-between px-4">
+        <div className="flex items-center gap-6">
+          <span className="text-[11px] font-semibold tracking-[0.2em] text-[#a1a1aa] uppercase">
+            Security Operations Center
+          </span>
+          <nav className="flex gap-1">
+            {['Overview', 'Events', 'Threats', 'Reports'].map((tab, i) => (
+              <button 
+                key={tab}
+                className={`px-3 py-1.5 text-[11px] font-medium tracking-wide ${
+                  i === 0 ? 'text-[#e4e4e7] bg-[#1a1a1a]' : 'text-[#71717a] hover:text-[#a1a1aa]'
+                } rounded transition-colors`}
+              >
+                {tab}
+              </button>
+            ))}
+          </nav>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-[10px] text-[#52525b] font-mono">{now}</span>
+          <div className={`px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase rounded ${
+            isLive ? 'bg-[#166534]/30 text-[#4ade80] border border-[#166534]' : 'bg-[#27272a] text-[#71717a]'
+          }`}>
+            {isLive ? '● LIVE' : 'PAUSED'}
           </div>
         </div>
+      </header>
 
-        {/* Controls Row */}
-        <div className="flex flex-wrap items-center gap-4 mb-5">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <span className="control-label">LIVE</span>
-            <input 
-              type="checkbox" 
-              checked={isLive} 
-              onChange={(e) => setIsLive(e.target.checked)}
-              className="w-9 h-5 bg-zinc-800 rounded-full appearance-none cursor-pointer relative
-                checked:bg-green-600 transition-colors
-                before:content-[''] before:absolute before:w-4 before:h-4 before:bg-white before:rounded-full
-                before:top-0.5 before:left-0.5 before:transition-transform
-                checked:before:translate-x-4"
-            />
-          </label>
+      <div className="p-4">
+        {/* Controls */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0f0f0f] border border-[#1f1f1f] rounded">
+            <span className="text-[10px] text-[#52525b] uppercase tracking-wider">Live</span>
+            <button 
+              onClick={() => setIsLive(!isLive)}
+              className={`w-8 h-4 rounded-full transition-colors relative ${isLive ? 'bg-[#16a34a]' : 'bg-[#27272a]'}`}
+            >
+              <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform ${isLive ? 'left-4' : 'left-0.5'}`} />
+            </button>
+          </div>
 
-          <label className="flex items-center gap-2 cursor-pointer">
-            <span className="control-label">AUTO BLOCK</span>
-            <input 
-              type="checkbox" 
-              checked={autoBlock} 
-              onChange={(e) => setAutoBlock(e.target.checked)}
-              className="w-9 h-5 bg-zinc-800 rounded-full appearance-none cursor-pointer relative
-                checked:bg-red-600 transition-colors
-                before:content-[''] before:absolute before:w-4 before:h-4 before:bg-white before:rounded-full
-                before:top-0.5 before:left-0.5 before:transition-transform
-                checked:before:translate-x-4"
-            />
-          </label>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0f0f0f] border border-[#1f1f1f] rounded">
+            <span className="text-[10px] text-[#52525b] uppercase tracking-wider">Auto Block</span>
+            <button 
+              onClick={() => setAutoBlock(!autoBlock)}
+              className={`w-8 h-4 rounded-full transition-colors relative ${autoBlock ? 'bg-[#dc2626]' : 'bg-[#27272a]'}`}
+            >
+              <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform ${autoBlock ? 'left-4' : 'left-0.5'}`} />
+            </button>
+          </div>
 
           <select 
             value={timeRange} 
             onChange={(e) => setTimeRange(e.target.value)}
-            className="filter-input"
+            className="h-7 px-2 text-[11px] bg-[#0f0f0f] border border-[#1f1f1f] rounded text-[#a1a1aa] focus:outline-none focus:border-[#3b82f6]"
           >
-            {timeRanges.map(r => (
-              <option key={r.value} value={r.value}>{r.label}</option>
-            ))}
+            {timeRanges.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
 
           <select 
             value={viewMode} 
             onChange={(e) => setViewMode(e.target.value as 'all' | 'alerts')}
-            className="filter-input"
+            className="h-7 px-2 text-[11px] bg-[#0f0f0f] border border-[#1f1f1f] rounded text-[#a1a1aa] focus:outline-none focus:border-[#3b82f6]"
           >
-            <option value="all">Show All Events</option>
-            <option value="alerts">Show ALERTS Only</option>
+            <option value="all">All Events</option>
+            <option value="alerts">Alerts Only</option>
           </select>
+
+          <div className="flex-1" />
+          <span className="text-[10px] text-[#3f3f46]">Range: {timeRangeLabel}</span>
         </div>
 
-        {/* Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
-          <div className="metric-container">
-            <div className="metric-label">Events Buffered</div>
-            <div className="metric-value">{metrics.totalEvents.toLocaleString()}</div>
-          </div>
-          <div className="metric-container alert">
-            <div className="metric-label">Critical Alerts</div>
-            <div className="metric-value">{metrics.criticalAlerts}</div>
-            <div className="metric-delta">{metrics.alertRate.toFixed(1)}%</div>
-          </div>
-          <div className="metric-container warning">
-            <div className="metric-label">Suspicious Flows</div>
-            <div className="metric-value">{metrics.suspicious}</div>
-          </div>
-          <div className="metric-container success">
-            <div className="metric-label">False Positives</div>
-            <div className="metric-value">{metrics.falsePositives}</div>
-          </div>
-          <div className="metric-container">
-            <div className="metric-label">Unique Sources</div>
-            <div className="metric-value">{metrics.uniqueSources.toLocaleString()}</div>
-          </div>
+        {/* Metrics Row */}
+        <div className="grid grid-cols-5 gap-3 mb-4">
+          {[
+            { label: 'Events', value: metrics.totalEvents, color: '#3b82f6' },
+            { label: 'Critical', value: metrics.criticalAlerts, delta: `${metrics.alertRate.toFixed(1)}%`, color: '#dc2626' },
+            { label: 'Suspicious', value: metrics.suspicious, color: '#d97706' },
+            { label: 'False Pos', value: metrics.falsePositives, color: '#16a34a' },
+            { label: 'Sources', value: metrics.uniqueSources, color: '#3b82f6' },
+          ].map((m, i) => (
+            <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] p-3 rounded" style={{ borderLeftColor: m.color, borderLeftWidth: 3 }}>
+              <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-1">{m.label}</div>
+              <div className="text-2xl font-bold font-mono text-[#fafafa]">{m.value.toLocaleString()}</div>
+              {m.delta && <div className="text-[11px] text-[#dc2626] font-medium">{m.delta}</div>}
+            </div>
+          ))}
         </div>
 
-        {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+        {/* Main Grid */}
+        <div className="grid grid-cols-12 gap-4">
           {/* Traffic Chart */}
-          <div className="lg:col-span-2">
-            <div className="soc-section-title">Traffic & Attacks</div>
+          <div className="col-span-8 bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
+            <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-3">Traffic & Alerts</div>
             {chartData.length === 0 ? (
-              <div className="text-zinc-500 text-sm py-8 text-center">No data available.</div>
+              <div className="h-40 flex items-center justify-center text-[#3f3f46] text-xs">No data</div>
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <ResponsiveContainer width="100%" height={160}>
+                <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="trafficFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.12} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    <linearGradient id="trafficGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.15} />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
-                  <XAxis dataKey="time" tick={{ fill: '#d4d4d8', fontSize: 11 }} axisLine={{ stroke: '#27272a' }} tickLine={false} />
-                  <YAxis tick={{ fill: '#d4d4d8', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: 4, color: '#e5e7eb', fontSize: 11 }} />
-                  <Area type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={1} fill="url(#trafficFill)" name="Traffic" />
-                  <Line type="monotone" dataKey="alerts" stroke="#ef4444" strokeWidth={2} dot={false} name="Alerts" />
+                  <XAxis dataKey="time" tick={{ fill: '#52525b', fontSize: 9 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: '#52525b', fontSize: 9 }} axisLine={false} tickLine={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: 4, fontSize: 10 }}
+                    labelStyle={{ color: '#a1a1aa' }}
+                  />
+                  <Area type="monotone" dataKey="Traffic" stroke="#3b82f6" strokeWidth={1} fill="url(#trafficGrad)" />
+                  <Line type="monotone" dataKey="Alerts" stroke="#dc2626" strokeWidth={1.5} dot={false} />
                 </ComposedChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          {/* Attack Types Pie */}
-          <div>
-            <div className="soc-section-title">Attack Types</div>
+          {/* Attack Types */}
+          <div className="col-span-4 bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
+            <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-3">Attack Distribution</div>
             {pieData.length === 0 ? (
-              <div className="text-green-500 text-sm py-8 text-center">
-                System is Safe. No active attacks.
-              </div>
+              <div className="h-40 flex items-center justify-center text-[#16a34a] text-xs">No threats detected</div>
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={2} dataKey="value">
-                    {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: 4, color: '#e5e7eb', fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-            {pieData.length > 0 && (
-              <div className="flex flex-wrap gap-2 justify-center text-xs mt-2">
-                {pieData.map((d, i) => (
-                  <span key={d.name} className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-                    <span className="text-zinc-300">{d.name}</span>
-                  </span>
-                ))}
+              <div className="flex items-center gap-4">
+                <ResponsiveContainer width={120} height={120}>
+                  <PieChart>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={30} outerRadius={50} paddingAngle={1} dataKey="value" stroke="none">
+                      {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex-1 space-y-1">
+                  {pieData.slice(0, 5).map((d, i) => (
+                    <div key={d.name} className="flex items-center gap-2 text-[10px]">
+                      <span className="w-2 h-2 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
+                      <span className="text-[#a1a1aa] truncate flex-1">{d.name}</span>
+                      <span className="text-[#52525b] font-mono">{d.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Table + Top Sources */}
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-5">
-          {/* Event Stream */}
-          <div className="xl:col-span-3">
-            <div className="soc-section-title">Security Event Stream</div>
-            {isLive && (
-              <p className="text-xs text-zinc-500 mb-2">
-                LIVE đang bật - bảng sẽ auto refresh. Để inspect & block IP, hãy tắt LIVE.
-              </p>
-            )}
-
+          {/* Event Table */}
+          <div className="col-span-9 bg-[#0f0f0f] border border-[#1f1f1f] rounded">
+            <div className="flex items-center justify-between p-3 border-b border-[#1f1f1f]">
+              <div className="text-[10px] text-[#52525b] uppercase tracking-wider">Event Stream</div>
+              {isLive && <span className="text-[9px] text-[#52525b]">Auto-refreshing • Click row to inspect when paused</span>}
+            </div>
+            
             {/* Filters */}
-            <div className="grid grid-cols-4 gap-3 mb-3">
+            <div className="flex gap-2 p-2 border-b border-[#1f1f1f] bg-[#0a0a0a]">
               <select 
                 value={verdictFocus} 
                 onChange={(e) => setVerdictFocus(e.target.value)}
-                className="filter-input text-xs"
+                className="h-6 px-2 text-[10px] bg-[#0f0f0f] border border-[#1f1f1f] rounded text-[#a1a1aa]"
               >
-                <option value="All">Verdict Filter: All</option>
+                <option value="All">All Verdicts</option>
                 <option value="ALERT">ALERT</option>
                 <option value="SUSPICIOUS">SUSPICIOUS</option>
                 <option value="FALSE_POSITIVE">FALSE_POSITIVE</option>
@@ -228,183 +222,156 @@ const SOCDashboard = () => {
               </select>
               <input 
                 type="text"
-                placeholder="Filter by IP (SRC / DEST)"
+                placeholder="IP Filter"
                 value={ipFilter}
                 onChange={(e) => setIpFilter(e.target.value)}
-                className="filter-input text-xs"
+                className="h-6 px-2 text-[10px] bg-[#0f0f0f] border border-[#1f1f1f] rounded text-[#a1a1aa] placeholder-[#3f3f46] w-32"
               />
               <input 
                 type="text"
-                placeholder="Filter by Signature"
+                placeholder="Signature"
                 value={sigFilter}
                 onChange={(e) => setSigFilter(e.target.value)}
-                className="filter-input text-xs"
+                className="h-6 px-2 text-[10px] bg-[#0f0f0f] border border-[#1f1f1f] rounded text-[#a1a1aa] placeholder-[#3f3f46] w-32"
               />
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500 whitespace-nowrap">Min Conf:</span>
+              <div className="flex items-center gap-1 ml-auto">
+                <span className="text-[9px] text-[#3f3f46]">Conf ≥</span>
                 <input 
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
+                  type="range" min="0" max="1" step="0.05"
                   value={minConfidence}
                   onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
-                  className="flex-1 h-1 bg-zinc-800 rounded appearance-none cursor-pointer"
+                  className="w-16 h-1 bg-[#27272a] rounded appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:bg-[#3b82f6] [&::-webkit-slider-thumb]:rounded-full"
                 />
-                <span className="text-xs text-zinc-400 font-mono w-8">{minConfidence.toFixed(2)}</span>
+                <span className="text-[9px] text-[#52525b] font-mono w-6">{minConfidence.toFixed(2)}</span>
               </div>
             </div>
 
-            {/* Table */}
-            <div className="data-table overflow-auto max-h-[400px]">
-              <table className="w-full">
-                <thead className="sticky top-0 bg-[#09090b] z-10">
-                  <tr>
-                    {!isLive && <th className="w-12">Inspect</th>}
-                    <th>Time</th>
-                    <th>Verdict</th>
-                    <th>Source</th>
-                    <th>Dest</th>
-                    <th>Port</th>
-                    <th>Signature</th>
-                    <th>Confidence</th>
+            <div className="overflow-auto max-h-[320px]">
+              <table className="w-full text-[10px]">
+                <thead className="sticky top-0 bg-[#0a0a0a]">
+                  <tr className="text-[#52525b] uppercase tracking-wider border-b border-[#1f1f1f]">
+                    <th className="text-left py-2 px-3 font-medium">Time</th>
+                    <th className="text-left py-2 px-3 font-medium">Verdict</th>
+                    <th className="text-left py-2 px-3 font-medium">Source</th>
+                    <th className="text-left py-2 px-3 font-medium">Destination</th>
+                    <th className="text-left py-2 px-3 font-medium">Port</th>
+                    <th className="text-left py-2 px-3 font-medium">Signature</th>
+                    <th className="text-right py-2 px-3 font-medium">Conf</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedEvents.length === 0 ? (
-                    <tr><td colSpan={8} className="text-center py-4 text-zinc-500">No events match current filters.</td></tr>
-                  ) : (
-                    sortedEvents.map(event => (
-                      <tr 
-                        key={event.id} 
-                        className={`cursor-pointer ${selectedEvent?.id === event.id ? 'selected' : ''}`}
-                        onClick={() => !isLive && setSelectedEvent(event)}
-                      >
-                        {!isLive && (
-                          <td className="text-center">
-                            <input 
-                              type="checkbox" 
-                              checked={selectedEvent?.id === event.id}
-                              onChange={() => setSelectedEvent(selectedEvent?.id === event.id ? null : event)}
-                              className="w-4 h-4 accent-blue-500"
+                    <tr><td colSpan={7} className="text-center py-8 text-[#3f3f46]">No events</td></tr>
+                  ) : sortedEvents.map(event => (
+                    <tr 
+                      key={event.id} 
+                      onClick={() => !isLive && setSelectedEvent(selectedEvent?.id === event.id ? null : event)}
+                      className={`border-b border-[#18181b] cursor-pointer transition-colors ${
+                        selectedEvent?.id === event.id ? 'bg-[#1e3a5f]/30' : 'hover:bg-[#18181b]'
+                      }`}
+                    >
+                      <td className="py-1.5 px-3 font-mono text-[#71717a]">
+                        {event.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </td>
+                      <td className={`py-1.5 px-3 font-semibold ${getVerdictClass(event.verdict)}`}>
+                        {event.verdict}
+                      </td>
+                      <td className="py-1.5 px-3 font-mono text-[#60a5fa]">{event.src_ip}</td>
+                      <td className="py-1.5 px-3 font-mono text-[#a1a1aa]">{event.dst_ip}</td>
+                      <td className="py-1.5 px-3 font-mono text-[#71717a]">{event.dst_port || '-'}</td>
+                      <td className="py-1.5 px-3 text-[#a1a1aa]">{event.attack_type}</td>
+                      <td className="py-1.5 px-3 text-right">
+                        <div className="inline-flex items-center gap-1">
+                          <div className="w-10 h-1 bg-[#27272a] rounded overflow-hidden">
+                            <div 
+                              className="h-full rounded" 
+                              style={{ 
+                                width: `${event.confidence * 100}%`,
+                                background: event.confidence > 0.7 ? '#16a34a' : event.confidence > 0.4 ? '#d97706' : '#dc2626'
+                              }} 
                             />
-                          </td>
-                        )}
-                        <td className="text-zinc-400">{event.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>
-                        <td className={`verdict-${event.verdict.toLowerCase().replace('_', '-')}`}>{event.verdict}</td>
-                        <td className="text-blue-400">{event.src_ip}</td>
-                        <td>{event.dst_ip}</td>
-                        <td>{event.dst_port || '-'}</td>
-                        <td>{event.attack_type}</td>
-                        <td>
-                          <div className="flex items-center gap-2">
-                            <div className="confidence-bar">
-                              <div className="confidence-fill" style={{ width: `${event.confidence * 100}%` }} />
-                            </div>
-                            <span className="text-xs text-zinc-400">{event.confidence.toFixed(2)}</span>
                           </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                          <span className="font-mono text-[#52525b]">{event.confidence.toFixed(2)}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
 
           {/* Top Sources */}
-          <div>
-            <div className="soc-section-title">Top Threat Sources</div>
+          <div className="col-span-3 bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
+            <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-3">Top Sources</div>
             {barData.length === 0 ? (
-              <div className="text-zinc-500 text-sm py-8 text-center">No data.</div>
+              <div className="h-40 flex items-center justify-center text-[#3f3f46] text-xs">No data</div>
             ) : (
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={barData} layout="vertical" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                  <XAxis type="number" tick={{ fill: '#d4d4d8', fontSize: 10 }} axisLine={{ stroke: '#18181b' }} tickLine={false} />
-                  <YAxis type="category" dataKey="ip" tick={{ fill: '#e5e7eb', fontSize: 11, fontFamily: 'Roboto Mono, monospace' }} axisLine={false} tickLine={false} width={110} />
-                  <Tooltip contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: 4, color: '#e5e7eb', fontSize: 11 }} />
-                  <Bar dataKey="count" fill="#f97316" radius={[0, 2, 2, 0]} label={{ position: 'right', fill: '#a1a1aa', fontSize: 10 }} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="space-y-2">
+                {barData.slice(0, 8).map((d, i) => (
+                  <div key={d.ip} className="flex items-center gap-2">
+                    <span className="text-[9px] font-mono text-[#71717a] w-24 truncate">{d.ip}</span>
+                    <div className="flex-1 h-3 bg-[#18181b] rounded overflow-hidden">
+                      <div 
+                        className="h-full bg-[#ea580c] rounded"
+                        style={{ width: `${(d.count / barData[0].count) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-[9px] font-mono text-[#52525b] w-6 text-right">{d.count}</span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
 
         {/* Inspector Panel */}
         {!isLive && selectedEvent && (
-          <div className="inspector-panel mt-5">
-            <div className="inspector-grid">
-              <div>
-                <div className="inspector-label">Timestamp</div>
-                <div className="inspector-value inspector-value-strong">{selectedEvent.timestamp.toLocaleString()}</div>
-              </div>
-              <div>
-                <div className="inspector-label">Verdict</div>
-                <div className={`inspector-value inspector-value-strong text-xl inspector-verdict-${selectedEvent.verdict.toLowerCase()}`}>
-                  {selectedEvent.verdict}
-                </div>
-              </div>
-              <div>
-                <div className="inspector-label">Signature</div>
-                <div className="inspector-value inspector-value-strong">{selectedEvent.attack_type}</div>
-              </div>
-              <div>
-                <div className="inspector-label">Engine</div>
-                <div className="inspector-value">{selectedEvent.source_engine}</div>
-              </div>
-              <div>
-                <div className="inspector-label">Source</div>
-                <div className="inspector-value" style={{ color: '#3b82f6' }}>{selectedEvent.src_ip}</div>
-              </div>
-              <div>
-                <div className="inspector-label">Destination</div>
-                <div className="inspector-value">{selectedEvent.dst_ip}:{selectedEvent.dst_port || '-'}</div>
-              </div>
-              <div>
-                <div className="inspector-label">Protocol</div>
-                <div className="inspector-value">{selectedEvent.protocol}</div>
-              </div>
-              <div>
-                <div className="inspector-label">Community ID</div>
-                <div className="inspector-value text-xs">{selectedEvent.community_id}</div>
-              </div>
-              <div>
-                <div className="inspector-label">Confidence</div>
-                <div className="inspector-value">{selectedEvent.confidence.toFixed(2)}</div>
-              </div>
-              <div>
-                <div className="inspector-label">Auto-Block State</div>
-                <div className="inspector-value">{selectedEvent.action_taken || '-'}</div>
-              </div>
+          <div className="mt-4 bg-[#0f0f0f] border border-[#1f1f1f] rounded" style={{ borderLeftColor: '#dc2626', borderLeftWidth: 3 }}>
+            <div className="p-3 border-b border-[#1f1f1f]">
+              <span className="text-[10px] text-[#52525b] uppercase tracking-wider">Event Inspector</span>
             </div>
-            
-            <div className="mt-4">
-              <div className="inspector-label">Raw Payload</div>
-              <pre className="bg-black p-3 rounded text-xs font-mono text-zinc-400 overflow-x-auto mt-1 border border-zinc-800">
-                {selectedEvent.raw_log || '{}'}
+            <div className="p-4 grid grid-cols-5 gap-4">
+              {[
+                { label: 'Timestamp', value: selectedEvent.timestamp.toLocaleString() },
+                { label: 'Verdict', value: selectedEvent.verdict, className: getVerdictClass(selectedEvent.verdict) },
+                { label: 'Signature', value: selectedEvent.attack_type },
+                { label: 'Engine', value: selectedEvent.source_engine },
+                { label: 'Confidence', value: selectedEvent.confidence.toFixed(2) },
+                { label: 'Source IP', value: selectedEvent.src_ip, className: 'text-[#60a5fa]' },
+                { label: 'Destination', value: `${selectedEvent.dst_ip}:${selectedEvent.dst_port || '-'}` },
+                { label: 'Protocol', value: selectedEvent.protocol },
+                { label: 'Community ID', value: selectedEvent.community_id, mono: true },
+                { label: 'Action', value: selectedEvent.action_taken || 'None' },
+              ].map((field, i) => (
+                <div key={i}>
+                  <div className="text-[9px] text-[#52525b] uppercase tracking-wider mb-1">{field.label}</div>
+                  <div className={`text-[11px] ${field.mono ? 'font-mono' : ''} ${field.className || 'text-[#e4e4e7]'}`}>
+                    {field.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="px-4 pb-4">
+              <div className="text-[9px] text-[#52525b] uppercase tracking-wider mb-1">Raw Payload</div>
+              <pre className="text-[9px] font-mono text-[#71717a] bg-[#0a0a0a] p-2 rounded border border-[#1f1f1f] overflow-auto max-h-20">
+                {selectedEvent.raw_log}
               </pre>
             </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <div>
-                <div className="text-xs font-semibold text-zinc-500 mb-2">🧠 AI Playbook for this flow</div>
-                <button className="w-full bg-[#020617] border border-zinc-800 text-zinc-200 hover:border-blue-500 text-xs uppercase tracking-wider py-2 px-4 rounded transition-colors">
-                  Ask MegaLLM about this flow only
-                </button>
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-zinc-500 mb-2">🚫 Active Defense: Block Source IP on pfSense (Manual)</div>
-                <button className="w-full bg-red-600/20 border border-red-600 text-red-400 hover:bg-red-600/30 text-xs uppercase tracking-wider py-2 px-4 rounded transition-colors">
-                  Block IP {selectedEvent.src_ip} on pfSense
-                </button>
-              </div>
+            <div className="px-4 pb-4 flex gap-2">
+              <button className="px-3 py-1.5 text-[10px] bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded hover:bg-[#1e40af]/30 transition-colors">
+                Generate Playbook
+              </button>
+              <button className="px-3 py-1.5 text-[10px] bg-[#450a0a] text-[#f87171] border border-[#7f1d1d] rounded hover:bg-[#7f1d1d]/30 transition-colors">
+                Block Source IP
+              </button>
             </div>
           </div>
         )}
 
         {/* Footer */}
-        <div className="soc-footer mt-6 pt-4 border-t border-zinc-800">
-          V22 FINAL BUILD — SOC DASHBOARD POWERED BY PYTHON + STREAMLIT + MegaLLM
+        <div className="mt-6 text-center text-[9px] text-[#27272a]">
+          SOC Dashboard v22 — Hybrid NIDS Engine
         </div>
       </div>
     </div>
