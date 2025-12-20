@@ -1,96 +1,87 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* SOC Dashboard - Professional Cybersecurity Theme */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 222 47% 5%;
+    --foreground: 210 40% 96%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 222 47% 7%;
+    --card-foreground: 210 40% 96%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 96%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 222 47% 5%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 96%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 96%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 199 89% 48%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Severity Colors */
+    --severity-critical: 0 84% 60%;
+    --severity-high: 25 95% 53%;
+    --severity-medium: 45 93% 47%;
+    --severity-low: 142 76% 36%;
+    --severity-info: 199 89% 48%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    /* Status Colors */
+    --status-online: 142 76% 36%;
+    --status-offline: 0 84% 60%;
+    --status-warning: 45 93% 47%;
+    --status-pending: 199 89% 48%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 222 47% 5%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 199 89% 48%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    --chart-1: 199 89% 48%;
+    --chart-2: 142 76% 36%;
+    --chart-3: 45 93% 47%;
+    --chart-4: 25 95% 53%;
+    --chart-5: 0 84% 60%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar: 222 47% 7%;
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-    --sidebar-border: 220 13% 91%;
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.2);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.3);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.4), 0 1px 2px -1px hsl(0 0% 0% / 0.3);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.4), 0 1px 2px -1px hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.4), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.4), 0 4px 6px -4px hsl(0 0% 0% / 0.3);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.4), 0 8px 10px -6px hsl(0 0% 0% / 0.3);
+    --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.5);
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
   }
 }
 
@@ -100,6 +91,211 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Custom scrollbar for SOC theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--secondary));
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
+
+@layer components {
+  /* SOC Panel Styles */
+  .soc-panel {
+    @apply bg-card border border-border rounded-lg p-4;
+  }
+
+  .soc-panel-header {
+    @apply text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2;
+  }
+
+  .soc-panel-header::before {
+    content: '';
+    @apply w-1 h-4 bg-primary rounded-full;
+  }
+
+  /* Metric Card Styles */
+  .metric-card {
+    @apply bg-card border border-border rounded-lg p-4 relative overflow-hidden;
+  }
+
+  .metric-card::before {
+    content: '';
+    @apply absolute left-0 top-0 bottom-0 w-1 bg-primary;
+  }
+
+  .metric-card.critical::before {
+    background: hsl(var(--severity-critical));
+  }
+
+  .metric-card.high::before {
+    background: hsl(var(--severity-high));
+  }
+
+  .metric-card.medium::before {
+    background: hsl(var(--severity-medium));
+  }
+
+  .metric-card.low::before {
+    background: hsl(var(--severity-low));
+  }
+
+  .metric-card.info::before {
+    background: hsl(var(--severity-info));
+  }
+
+  /* Status Badge Styles */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-wide;
+  }
+
+  .status-badge.online {
+    background: hsl(var(--status-online) / 0.15);
+    color: hsl(var(--status-online));
+    border: 1px solid hsl(var(--status-online) / 0.3);
+  }
+
+  .status-badge.offline {
+    background: hsl(var(--status-offline) / 0.15);
+    color: hsl(var(--status-offline));
+    border: 1px solid hsl(var(--status-offline) / 0.3);
+  }
+
+  .status-badge.warning {
+    background: hsl(var(--status-warning) / 0.15);
+    color: hsl(var(--status-warning));
+    border: 1px solid hsl(var(--status-warning) / 0.3);
+  }
+
+  /* Severity Badge Styles */
+  .severity-badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase;
+  }
+
+  .severity-badge.critical {
+    background: hsl(var(--severity-critical) / 0.15);
+    color: hsl(var(--severity-critical));
+  }
+
+  .severity-badge.high {
+    background: hsl(var(--severity-high) / 0.15);
+    color: hsl(var(--severity-high));
+  }
+
+  .severity-badge.medium {
+    background: hsl(var(--severity-medium) / 0.15);
+    color: hsl(var(--severity-medium));
+  }
+
+  .severity-badge.low {
+    background: hsl(var(--severity-low) / 0.15);
+    color: hsl(var(--severity-low));
+  }
+
+  .severity-badge.info {
+    background: hsl(var(--severity-info) / 0.15);
+    color: hsl(var(--severity-info));
+  }
+
+  /* Pulse animation for live indicator */
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 0 0 hsl(var(--status-online) / 0.4);
+    }
+    50% {
+      opacity: 0.8;
+      box-shadow: 0 0 0 8px hsl(var(--status-online) / 0);
+    }
+  }
+
+  .pulse-dot {
+    @apply w-2 h-2 rounded-full;
+    background: hsl(var(--status-online));
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Data table styles */
+  .soc-table {
+    @apply w-full text-sm;
+  }
+
+  .soc-table th {
+    @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-secondary/50 px-4 py-3 text-left;
+  }
+
+  .soc-table td {
+    @apply px-4 py-3 border-t border-border font-mono text-sm;
+  }
+
+  .soc-table tr:hover {
+    @apply bg-secondary/30;
+  }
+
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .glow-critical {
+    box-shadow: 0 0 20px hsl(var(--severity-critical) / 0.3);
+  }
+
+  /* Terminal/Log style */
+  .log-line {
+    @apply font-mono text-xs leading-relaxed py-0.5 px-2 rounded;
+  }
+
+  .log-line:hover {
+    @apply bg-secondary/50;
+  }
+}
+
+@layer utilities {
+  .text-severity-critical {
+    color: hsl(var(--severity-critical));
+  }
+  .text-severity-high {
+    color: hsl(var(--severity-high));
+  }
+  .text-severity-medium {
+    color: hsl(var(--severity-medium));
+  }
+  .text-severity-low {
+    color: hsl(var(--severity-low));
+  }
+  .text-severity-info {
+    color: hsl(var(--severity-info));
+  }
+
+  .bg-severity-critical {
+    background: hsl(var(--severity-critical) / 0.15);
+  }
+  .bg-severity-high {
+    background: hsl(var(--severity-high) / 0.15);
+  }
+  .bg-severity-medium {
+    background: hsl(var(--severity-medium) / 0.15);
+  }
+  .bg-severity-low {
+    background: hsl(var(--severity-low) / 0.15);
+  }
+  .bg-severity-info {
+    background: hsl(var(--severity-info) / 0.15);
   }
 }
