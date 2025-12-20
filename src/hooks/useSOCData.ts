@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { SOCEvent, SOCMetrics, TimeRange } from '@/types/soc';
 import { mockEvents, generateMockEvents } from '@/data/mockEvents';
 
@@ -9,16 +9,27 @@ const timeRanges: TimeRange[] = [
   { label: 'All', value: 'all', minutes: Infinity }
 ];
 
-export const useSOCData = (timeRange: string, viewMode: 'all' | 'alerts', isLive: boolean) => {
+interface Filters {
+  verdictFocus: string;
+  ipFilter: string;
+  sigFilter: string;
+  minConfidence: number;
+}
+
+export const useSOCData = (
+  timeRange: string, 
+  viewMode: 'all' | 'alerts', 
+  isLive: boolean,
+  filters: Filters
+) => {
   const [events, setEvents] = useState<SOCEvent[]>(mockEvents);
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
-  // Simulate live data updates
   useEffect(() => {
     if (!isLive) return;
 
     const interval = setInterval(() => {
-      const newEvents = generateMockEvents(Math.floor(Math.random() * 5) + 1);
+      const newEvents = generateMockEvents(Math.floor(Math.random() * 3) + 1);
       setEvents(prev => [...newEvents, ...prev].slice(0, 1000));
       setLastUpdate(new Date());
     }, 3000);
@@ -26,7 +37,7 @@ export const useSOCData = (timeRange: string, viewMode: 'all' | 'alerts', isLive
     return () => clearInterval(interval);
   }, [isLive]);
 
-  const filteredEvents = useMemo(() => {
+  const filteredEvents = (() => {
     const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
     const now = new Date();
     const cutoff = new Date(now.getTime() - range.minutes * 60000);
@@ -41,15 +52,48 @@ export const useSOCData = (timeRange: string, viewMode: 'all' | 'alerts', isLive
       filtered = filtered.filter(e => e.verdict === 'ALERT');
     }
 
-    return filtered;
-  }, [events, timeRange, viewMode]);
+    // Apply filters
+    if (filters.verdictFocus !== 'All') {
+      filtered = filtered.filter(e => e.verdict === filters.verdictFocus);
+    }
 
-  const metrics: SOCMetrics = useMemo(() => {
-    const total = filteredEvents.length;
-    const alerts = filteredEvents.filter(e => e.verdict === 'ALERT').length;
-    const suspicious = filteredEvents.filter(e => e.verdict === 'SUSPICIOUS').length;
-    const falsePos = filteredEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length;
-    const uniqueSources = new Set(filteredEvents.map(e => e.src_ip)).size;
+    if (filters.ipFilter.trim()) {
+      const pat = filters.ipFilter.trim().toLowerCase();
+      filtered = filtered.filter(e => 
+        e.src_ip.toLowerCase().includes(pat) || 
+        e.dst_ip.toLowerCase().includes(pat)
+      );
+    }
+
+    if (filters.sigFilter.trim()) {
+      const pat = filters.sigFilter.trim().toLowerCase();
+      filtered = filtered.filter(e => 
+        e.attack_type.toLowerCase().includes(pat)
+      );
+    }
+
+    if (filters.minConfidence > 0) {
+      filtered = filtered.filter(e => e.confidence >= filters.minConfidence);
+    }
+
+    return filtered;
+  })();
+
+  const metrics: SOCMetrics = (() => {
+    const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - range.minutes * 60000);
+    
+    let baseEvents = events;
+    if (range.minutes !== Infinity) {
+      baseEvents = baseEvents.filter(e => e.timestamp >= cutoff);
+    }
+
+    const total = baseEvents.length;
+    const alerts = baseEvents.filter(e => e.verdict === 'ALERT').length;
+    const suspicious = baseEvents.filter(e => e.verdict === 'SUSPICIOUS').length;
+    const falsePos = baseEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length;
+    const uniqueSources = new Set(baseEvents.map(e => e.src_ip)).size;
 
     return {
       totalEvents: total,
@@ -59,11 +103,20 @@ export const useSOCData = (timeRange: string, viewMode: 'all' | 'alerts', isLive
       uniqueSources,
       alertRate: total > 0 ? (alerts / total) * 100 : 0
     };
-  }, [filteredEvents]);
+  })();
 
-  const topSources = useMemo(() => {
+  const topSources = (() => {
+    const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - range.minutes * 60000);
+    
+    let baseEvents = events;
+    if (range.minutes !== Infinity) {
+      baseEvents = baseEvents.filter(e => e.timestamp >= cutoff);
+    }
+
     const counts: Record<string, { count: number; lastSeen: Date }> = {};
-    filteredEvents.forEach(e => {
+    baseEvents.forEach(e => {
       if (!counts[e.src_ip]) {
         counts[e.src_ip] = { count: 0, lastSeen: e.timestamp };
       }
@@ -76,11 +129,20 @@ export const useSOCData = (timeRange: string, viewMode: 'all' | 'alerts', isLive
     return Object.entries(counts)
       .map(([ip, data]) => ({ ip, ...data }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-  }, [filteredEvents]);
+      .slice(0, 8);
+  })();
 
-  const attackTypeData = useMemo(() => {
-    const alertEvents = filteredEvents.filter(e => e.verdict === 'ALERT');
+  const attackTypeData = (() => {
+    const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - range.minutes * 60000);
+    
+    let baseEvents = events;
+    if (range.minutes !== Infinity) {
+      baseEvents = baseEvents.filter(e => e.timestamp >= cutoff);
+    }
+
+    const alertEvents = baseEvents.filter(e => e.verdict === 'ALERT');
     const counts: Record<string, number> = {};
     alertEvents.forEach(e => {
       counts[e.attack_type] = (counts[e.attack_type] || 0) + 1;
@@ -95,12 +157,21 @@ export const useSOCData = (timeRange: string, viewMode: 'all' | 'alerts', isLive
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 6);
-  }, [filteredEvents]);
+  })();
 
-  const trafficData = useMemo(() => {
+  const trafficData = (() => {
+    const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - range.minutes * 60000);
+    
+    let baseEvents = events;
+    if (range.minutes !== Infinity) {
+      baseEvents = baseEvents.filter(e => e.timestamp >= cutoff);
+    }
+
     const buckets: Record<string, { total: number; alerts: number }> = {};
     
-    filteredEvents.forEach(e => {
+    baseEvents.forEach(e => {
       const bucketTime = new Date(Math.floor(e.timestamp.getTime() / 60000) * 60000);
       const key = bucketTime.toISOString();
       
@@ -119,7 +190,7 @@ export const useSOCData = (timeRange: string, viewMode: 'all' | 'alerts', isLive
         ...data
       }))
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-  }, [filteredEvents]);
+  })();
 
   return {
     events: filteredEvents,
