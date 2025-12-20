@@ -1,19 +1,11 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { AttackTypeData } from '@/types/soc';
-import { ShieldCheck } from 'lucide-react';
 
 interface AttackTypesChartProps {
   data: AttackTypeData[];
 }
 
-const COLORS = [
-  'hsl(199, 89%, 48%)',
-  'hsl(172, 66%, 50%)',
-  'hsl(280, 65%, 60%)',
-  'hsl(25, 95%, 53%)',
-  'hsl(142, 76%, 36%)',
-  'hsl(45, 93%, 47%)',
-];
+const COLORS = ['#3b82f6', '#06b6d4', '#a855f7', '#f97316', '#22c55e', '#eab308'];
 
 export const AttackTypesChart = ({ data }: AttackTypesChartProps) => {
   const chartData = data.map(d => ({
@@ -23,24 +15,19 @@ export const AttackTypesChart = ({ data }: AttackTypesChartProps) => {
 
   if (chartData.length === 0) {
     return (
-      <div className="soc-panel h-full">
-        <div className="soc-panel-header">
-          Attack Types
-        </div>
-        <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-          <ShieldCheck className="w-12 h-12 mb-2 text-status-online" />
-          <p className="text-sm font-medium text-status-online">System is Safe</p>
-          <p className="text-xs">No active attacks detected</p>
+      <div>
+        <div className="soc-section-title">Attack Types</div>
+        <div className="flex flex-col items-center justify-center h-48 text-green-500">
+          <p className="text-sm font-medium">System is Safe</p>
+          <p className="text-xs text-zinc-500">No active attacks.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="soc-panel h-full">
-      <div className="soc-panel-header">
-        Attack Types
-      </div>
+    <div>
+      <div className="soc-section-title">Attack Types</div>
       
       <ResponsiveContainer width="100%" height={220}>
         <PieChart>
@@ -49,7 +36,7 @@ export const AttackTypesChart = ({ data }: AttackTypesChartProps) => {
             cx="50%"
             cy="50%"
             innerRadius={50}
-            outerRadius={80}
+            outerRadius={70}
             paddingAngle={2}
             dataKey="value"
           >
@@ -59,15 +46,16 @@ export const AttackTypesChart = ({ data }: AttackTypesChartProps) => {
           </Pie>
           <Tooltip 
             contentStyle={{
-              backgroundColor: 'hsl(222, 47%, 7%)',
-              border: '1px solid hsl(217, 33%, 17%)',
-              borderRadius: '8px',
-              color: 'hsl(210, 40%, 96%)'
+              backgroundColor: '#09090b',
+              border: '1px solid #27272a',
+              borderRadius: '4px',
+              color: '#e5e7eb',
+              fontSize: '11px'
             }}
           />
           <Legend 
             wrapperStyle={{ fontSize: '11px' }}
-            formatter={(value) => <span className="text-foreground">{value}</span>}
+            formatter={(value) => <span className="text-zinc-300">{value}</span>}
           />
         </PieChart>
       </ResponsiveContainer>

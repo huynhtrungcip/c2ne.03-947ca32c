@@ -1,87 +1,66 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* SOC Dashboard - Professional Cybersecurity Theme */
+/* SOC Dashboard - Splunk/ELK Style Professional Theme */
 
 @layer base {
   :root {
-    --background: 222 47% 5%;
-    --foreground: 210 40% 96%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 90%;
 
-    --card: 222 47% 7%;
-    --card-foreground: 210 40% 96%;
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 90%;
 
-    --popover: 222 47% 9%;
-    --popover-foreground: 210 40% 96%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 90%;
 
-    --primary: 199 89% 48%;
-    --primary-foreground: 222 47% 5%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 96%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 90%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%;
 
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 96%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 90%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 199 89% 48%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 217 91% 60%;
 
-    --radius: 0.5rem;
+    --radius: 0.25rem;
 
-    /* Severity Colors */
-    --severity-critical: 0 84% 60%;
-    --severity-high: 25 95% 53%;
-    --severity-medium: 45 93% 47%;
-    --severity-low: 142 76% 36%;
-    --severity-info: 199 89% 48%;
+    /* Verdict Colors */
+    --verdict-alert: 0 84% 60%;
+    --verdict-suspicious: 45 93% 47%;
+    --verdict-benign: 142 76% 36%;
+    --verdict-info: 217 91% 60%;
 
-    /* Status Colors */
-    --status-online: 142 76% 36%;
-    --status-offline: 0 84% 60%;
-    --status-warning: 45 93% 47%;
-    --status-pending: 199 89% 48%;
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 4% 16%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 240 4% 16%;
+    --sidebar-ring: 217 91% 60%;
 
-    --sidebar-background: 222 47% 5%;
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 199 89% 48%;
-    --sidebar-primary-foreground: 222 47% 5%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 199 89% 48%;
-
-    --chart-1: 199 89% 48%;
-    --chart-2: 142 76% 36%;
+    --chart-1: 217 91% 60%;
+    --chart-2: 0 84% 60%;
     --chart-3: 45 93% 47%;
     --chart-4: 25 95% 53%;
-    --chart-5: 0 84% 60%;
+    --chart-5: 142 76% 36%;
 
-    --sidebar: 222 47% 7%;
-
-    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-
-    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.2);
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.3);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.4), 0 1px 2px -1px hsl(0 0% 0% / 0.3);
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.4), 0 1px 2px -1px hsl(0 0% 0% / 0.3);
-    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.4), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.4), 0 4px 6px -4px hsl(0 0% 0% / 0.3);
-    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.4), 0 8px 10px -6px hsl(0 0% 0% / 0.3);
-    --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.5);
-
-    --tracking-normal: 0em;
-    --spacing: 0.25rem;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, monospace;
   }
 }
 
@@ -91,211 +70,114 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    font-size: 14px;
   }
 
-  /* Custom scrollbar for SOC theme */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(var(--background));
+    background: hsl(0 0% 0%);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--secondary));
-    border-radius: 4px;
+    background: hsl(240 4% 26%);
+    border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: hsl(240 4% 36%);
   }
 }
 
 @layer components {
-  /* SOC Panel Styles */
-  .soc-panel {
-    @apply bg-card border border-border rounded-lg p-4;
+  /* Section Title - Splunk style */
+  .soc-section-title {
+    @apply text-xs font-bold uppercase tracking-[0.16em] text-zinc-300 mb-2;
+    padding-left: 9px;
+    border-left: 3px solid hsl(217 91% 60%);
   }
 
-  .soc-panel-header {
-    @apply text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2;
+  /* Metric container style */
+  .soc-metric {
+    @apply bg-card border border-border p-3 rounded;
+    border-left: 4px solid hsl(217 91% 60%);
   }
 
-  .soc-panel-header::before {
-    content: '';
-    @apply w-1 h-4 bg-primary rounded-full;
+  .soc-metric-label {
+    @apply text-[0.7rem] font-bold uppercase tracking-[0.06em] text-zinc-500 mb-1;
   }
 
-  /* Metric Card Styles */
-  .metric-card {
-    @apply bg-card border border-border rounded-lg p-4 relative overflow-hidden;
+  .soc-metric-value {
+    @apply text-2xl font-bold font-mono text-zinc-100;
   }
 
-  .metric-card::before {
-    content: '';
-    @apply absolute left-0 top-0 bottom-0 w-1 bg-primary;
+  .soc-metric-delta {
+    @apply text-xs font-medium;
   }
 
-  .metric-card.critical::before {
-    background: hsl(var(--severity-critical));
+  /* Live badge */
+  .live-badge {
+    @apply inline-flex items-center gap-1.5 px-2 py-1 rounded text-[0.7rem] font-bold uppercase tracking-[0.09em];
   }
 
-  .metric-card.high::before {
-    background: hsl(var(--severity-high));
+  .live-badge-on {
+    background: rgba(34, 197, 94, 0.18);
+    color: #4ade80;
+    border: 1px solid #22c55e;
   }
 
-  .metric-card.medium::before {
-    background: hsl(var(--severity-medium));
+  .live-badge-off {
+    background: rgba(63, 63, 70, 0.5);
+    color: #d4d4d8;
+    border: 1px solid #71717a;
   }
 
-  .metric-card.low::before {
-    background: hsl(var(--severity-low));
+  /* Verdict badges - minimal */
+  .verdict-alert {
+    color: #ef4444;
+    font-weight: 600;
   }
 
-  .metric-card.info::before {
-    background: hsl(var(--severity-info));
+  .verdict-suspicious {
+    color: #eab308;
+    font-weight: 600;
   }
 
-  /* Status Badge Styles */
-  .status-badge {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-wide;
+  .verdict-benign {
+    color: #22c55e;
+    font-weight: 600;
   }
 
-  .status-badge.online {
-    background: hsl(var(--status-online) / 0.15);
-    color: hsl(var(--status-online));
-    border: 1px solid hsl(var(--status-online) / 0.3);
+  .verdict-false-positive {
+    color: #22c55e;
+    font-weight: 600;
   }
 
-  .status-badge.offline {
-    background: hsl(var(--status-offline) / 0.15);
-    color: hsl(var(--status-offline));
-    border: 1px solid hsl(var(--status-offline) / 0.3);
+  /* Data table - terminal style */
+  .soc-table-row {
+    @apply border-t border-border hover:bg-zinc-900/50 transition-colors cursor-pointer;
   }
 
-  .status-badge.warning {
-    background: hsl(var(--status-warning) / 0.15);
-    color: hsl(var(--status-warning));
-    border: 1px solid hsl(var(--status-warning) / 0.3);
+  .soc-table-row.selected {
+    @apply bg-blue-500/10 border-l-2 border-l-blue-500;
   }
 
-  /* Severity Badge Styles */
-  .severity-badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold uppercase;
+  /* Inspector panel */
+  .inspector-panel {
+    @apply bg-card border rounded-md p-4;
+    border-color: #ef4444;
   }
 
-  .severity-badge.critical {
-    background: hsl(var(--severity-critical) / 0.15);
-    color: hsl(var(--severity-critical));
+  .inspector-label {
+    @apply text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-zinc-500 mb-1;
   }
 
-  .severity-badge.high {
-    background: hsl(var(--severity-high) / 0.15);
-    color: hsl(var(--severity-high));
-  }
-
-  .severity-badge.medium {
-    background: hsl(var(--severity-medium) / 0.15);
-    color: hsl(var(--severity-medium));
-  }
-
-  .severity-badge.low {
-    background: hsl(var(--severity-low) / 0.15);
-    color: hsl(var(--severity-low));
-  }
-
-  .severity-badge.info {
-    background: hsl(var(--severity-info) / 0.15);
-    color: hsl(var(--severity-info));
-  }
-
-  /* Pulse animation for live indicator */
-  @keyframes pulse-glow {
-    0%, 100% {
-      opacity: 1;
-      box-shadow: 0 0 0 0 hsl(var(--status-online) / 0.4);
-    }
-    50% {
-      opacity: 0.8;
-      box-shadow: 0 0 0 8px hsl(var(--status-online) / 0);
-    }
-  }
-
-  .pulse-dot {
-    @apply w-2 h-2 rounded-full;
-    background: hsl(var(--status-online));
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-
-  /* Data table styles */
-  .soc-table {
-    @apply w-full text-sm;
-  }
-
-  .soc-table th {
-    @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-secondary/50 px-4 py-3 text-left;
-  }
-
-  .soc-table td {
-    @apply px-4 py-3 border-t border-border font-mono text-sm;
-  }
-
-  .soc-table tr:hover {
-    @apply bg-secondary/30;
-  }
-
-  /* Glow effects */
-  .glow-primary {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
-  }
-
-  .glow-critical {
-    box-shadow: 0 0 20px hsl(var(--severity-critical) / 0.3);
-  }
-
-  /* Terminal/Log style */
-  .log-line {
-    @apply font-mono text-xs leading-relaxed py-0.5 px-2 rounded;
-  }
-
-  .log-line:hover {
-    @apply bg-secondary/50;
-  }
-}
-
-@layer utilities {
-  .text-severity-critical {
-    color: hsl(var(--severity-critical));
-  }
-  .text-severity-high {
-    color: hsl(var(--severity-high));
-  }
-  .text-severity-medium {
-    color: hsl(var(--severity-medium));
-  }
-  .text-severity-low {
-    color: hsl(var(--severity-low));
-  }
-  .text-severity-info {
-    color: hsl(var(--severity-info));
-  }
-
-  .bg-severity-critical {
-    background: hsl(var(--severity-critical) / 0.15);
-  }
-  .bg-severity-high {
-    background: hsl(var(--severity-high) / 0.15);
-  }
-  .bg-severity-medium {
-    background: hsl(var(--severity-medium) / 0.15);
-  }
-  .bg-severity-low {
-    background: hsl(var(--severity-low) / 0.15);
-  }
-  .bg-severity-info {
-    background: hsl(var(--severity-info) / 0.15);
+  .inspector-value {
+    @apply font-mono text-zinc-100 text-sm break-all;
   }
 }
