@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSOCData } from '@/hooks/useSOCData';
 import { SOCEvent } from '@/types/soc';
 import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip } from 'recharts';
@@ -68,6 +69,7 @@ const AIChatPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
 };
 
 const SOCDashboard = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [isLive, setIsLive] = useState(true);
   const [autoBlock, setAutoBlock] = useState(false);
@@ -92,10 +94,10 @@ const SOCDashboard = () => {
     if (isLive) setSelectedEvent(null);
   }, [isLive]);
 
-  // Reset selected event when switching tabs
+  // Reset selected event when switching tabs or mode changes
   useEffect(() => {
     setSelectedEvent(null);
-  }, [activeTab]);
+  }, [activeTab, isLive, timeRange, viewMode]);
 
   const handleEventClick = (event: SOCEvent) => {
     if (isLive) return;
@@ -770,9 +772,12 @@ const SOCDashboard = () => {
       {/* Top Bar */}
       <header className="h-10 bg-[#0f0f0f] border-b border-[#1f1f1f] flex items-center justify-between px-4">
         <div className="flex items-center gap-6">
-          <span className="text-[11px] font-semibold tracking-[0.2em] text-[#a1a1aa] uppercase">
+          <button 
+            onClick={() => navigate('/')}
+            className="text-[11px] font-semibold tracking-[0.2em] text-[#a1a1aa] uppercase hover:text-[#e4e4e7] transition-colors"
+          >
             Security Operations Center
-          </span>
+          </button>
           <nav className="flex gap-1">
             {tabs.map((tab) => (
               <button 
@@ -789,16 +794,20 @@ const SOCDashboard = () => {
             ))}
           </nav>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAIChat(!showAIChat)}
-            className="px-3 py-1 text-[10px] font-semibold bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded hover:bg-[#1e40af]/50 transition-colors"
+            className="h-7 px-4 text-[10px] font-medium bg-gradient-to-b from-[#1e3a5f] to-[#162d4d] text-[#93c5fd] border border-[#2563eb]/40 rounded-md hover:from-[#2563eb] hover:to-[#1e40af] hover:text-[#bfdbfe] transition-all shadow-sm"
           >
             AI Chat
           </button>
-          <span className="text-[10px] text-[#52525b] font-mono">{now}</span>
-          <div className={`px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase rounded ${
-            isLive ? 'bg-[#166534]/30 text-[#4ade80] border border-[#166534]' : 'bg-[#27272a] text-[#71717a]'
+          <div className="h-7 px-3 flex items-center text-[10px] text-[#71717a] font-mono bg-[#0a0a0a] border border-[#1f1f1f] rounded-md">
+            {now}
+          </div>
+          <div className={`h-7 px-3 flex items-center text-[9px] font-semibold tracking-wider uppercase rounded-md transition-all ${
+            isLive 
+              ? 'bg-gradient-to-b from-[#166534] to-[#14532d] text-[#86efac] border border-[#22c55e]/30 shadow-sm shadow-[#22c55e]/10' 
+              : 'bg-[#18181b] text-[#71717a] border border-[#27272a]'
           }`}>
             {isLive ? '● LIVE' : 'PAUSED'}
           </div>
