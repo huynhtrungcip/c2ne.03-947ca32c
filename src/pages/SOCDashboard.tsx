@@ -306,16 +306,16 @@ const SOCDashboard = () => {
       {/* Metrics Row */}
       <div className="grid grid-cols-5 gap-3 mb-4">
         {[
-          { label: 'EVENTS', value: metrics.totalEvents, color: '#3b82f6', valueColor: '#60a5fa' },
-          { label: 'CRITICAL', value: metrics.criticalAlerts, delta: `${metrics.alertRate.toFixed(1)}%`, color: '#dc2626', valueColor: '#f87171' },
-          { label: 'SUSPICIOUS', value: metrics.suspicious, color: '#d97706', valueColor: '#fbbf24' },
-          { label: 'FALSE POS', value: metrics.falsePositives, color: '#16a34a', valueColor: '#4ade80' },
-          { label: 'SOURCES', value: metrics.uniqueSources, color: '#8b5cf6', valueColor: '#a78bfa' },
+          { label: 'EVENTS', value: metrics.totalEvents, color: '#3b82f6' },
+          { label: 'CRITICAL', value: metrics.criticalAlerts, delta: `+${metrics.alertRate.toFixed(1)}%`, color: '#dc2626' },
+          { label: 'SUSPICIOUS', value: metrics.suspicious, color: '#d97706' },
+          { label: 'FALSE POS', value: metrics.falsePositives, color: '#16a34a' },
+          { label: 'SOURCES', value: metrics.uniqueSources, color: '#8b5cf6' },
         ].map((m, i) => (
-          <div key={i} className="bg-[#0a0a0a] border border-[#1f1f1f] p-4 rounded-lg" style={{ borderLeftColor: m.color, borderLeftWidth: 4 }}>
-            <div className="text-xs text-[#71717a] uppercase tracking-wider font-medium mb-2">{m.label}</div>
-            <div className="text-4xl font-bold font-mono" style={{ color: m.valueColor }}>{m.value.toLocaleString()}</div>
-            {m.delta && <div className="text-sm text-[#f87171] font-semibold mt-1">+{m.delta}</div>}
+          <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] p-4 rounded" style={{ borderLeftColor: m.color, borderLeftWidth: 3 }}>
+            <div className="text-sm text-[#a1a1aa] uppercase tracking-wider font-semibold mb-1">{m.label}</div>
+            <div className="text-2xl font-bold font-mono text-[#e4e4e7]">{m.value.toLocaleString()}</div>
+            {m.delta && <div className="text-xs text-[#71717a] mt-1">{m.delta}</div>}
           </div>
         ))}
       </div>
@@ -442,124 +442,188 @@ const SOCDashboard = () => {
   const renderEventsTab = () => (
     <>
       <div className="mb-4">
-        <h2 className="text-sm font-semibold text-[#e4e4e7] mb-1">All Security Events</h2>
-        <p className="text-[10px] text-[#52525b]">Complete event log with advanced filtering</p>
+        <h2 className="text-sm font-semibold text-[#e4e4e7] mb-1">Security Event Log</h2>
+        <p className="text-[10px] text-[#52525b]">Complete event stream with real-time filtering • {sortedEvents.length} events in selected range</p>
       </div>
+      
+      {/* Event Statistics */}
+      <div className="grid grid-cols-6 gap-2 mb-4">
+        {[
+          { label: 'Total', value: sortedEvents.length, color: '#3b82f6' },
+          { label: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: '#dc2626' },
+          { label: 'Suspicious', value: sortedEvents.filter(e => e.verdict === 'SUSPICIOUS').length, color: '#d97706' },
+          { label: 'False Pos', value: sortedEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length, color: '#16a34a' },
+          { label: 'Benign', value: sortedEvents.filter(e => e.verdict === 'BENIGN').length, color: '#71717a' },
+          { label: 'High Conf', value: sortedEvents.filter(e => e.confidence > 0.8).length, color: '#8b5cf6' },
+        ].map((s, i) => (
+          <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] p-2 rounded text-center">
+            <div className="text-lg font-bold font-mono" style={{ color: s.color }}>{s.value}</div>
+            <div className="text-[9px] text-[#52525b] uppercase">{s.label}</div>
+          </div>
+        ))}
+      </div>
+      
       {renderEventTable(sortedEvents)}
       {renderInspector()}
     </>
   );
 
-  const renderThreatsTab = () => (
-    <>
-      <div className="mb-4">
-        <h2 className="text-sm font-semibold text-[#e4e4e7] mb-1">Active Threats</h2>
-        <p className="text-[10px] text-[#52525b]">Critical alerts requiring immediate attention</p>
-      </div>
-      
-      <div className="grid grid-cols-12 gap-4 mb-4">
-        <div className="col-span-8">
-          {renderEventTable(alertEvents, false)}
+  const renderThreatsTab = () => {
+    const criticalEvents = sortedEvents.filter(e => e.verdict === 'ALERT' || e.verdict === 'SUSPICIOUS');
+    const uniqueAttackTypes = [...new Set(criticalEvents.map(e => e.attack_type))];
+    const attackCounts = uniqueAttackTypes.map(type => ({
+      type,
+      count: criticalEvents.filter(e => e.attack_type === type).length,
+      severity: criticalEvents.filter(e => e.attack_type === type && e.verdict === 'ALERT').length > 0 ? 'critical' : 'warning'
+    })).sort((a, b) => b.count - a.count);
+
+    return (
+      <>
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-[#e4e4e7] mb-1">Threat Intelligence</h2>
+          <p className="text-[10px] text-[#52525b]">Active threats requiring attention • {criticalEvents.length} critical events detected</p>
         </div>
-        <div className="col-span-4 space-y-4">
-          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
-            <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-3">Threat Summary</div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] text-[#71717a]">Total Alerts</span>
-                <span className="text-sm font-bold text-[#dc2626]">{alertEvents.length}</span>
+        
+        <div className="grid grid-cols-12 gap-4">
+          {/* Threat Severity Matrix */}
+          <div className="col-span-4 space-y-3">
+            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
+              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Severity Distribution</div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[#71717a]">Critical Alerts</span>
+                  <span className="text-xl font-bold text-[#dc2626]">{alertEvents.length}</span>
+                </div>
+                <div className="w-full h-2 bg-[#1f1f1f] rounded">
+                  <div className="h-full bg-[#dc2626] rounded" style={{ width: `${Math.min((alertEvents.length / Math.max(criticalEvents.length, 1)) * 100, 100)}%` }} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[#71717a]">Suspicious Activity</span>
+                  <span className="text-xl font-bold text-[#d97706]">{criticalEvents.length - alertEvents.length}</span>
+                </div>
+                <div className="w-full h-2 bg-[#1f1f1f] rounded">
+                  <div className="h-full bg-[#d97706] rounded" style={{ width: `${Math.min(((criticalEvents.length - alertEvents.length) / Math.max(criticalEvents.length, 1)) * 100, 100)}%` }} />
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] text-[#71717a]">High Confidence</span>
-                <span className="text-sm font-bold text-[#d97706]">{alertEvents.filter(e => e.confidence > 0.7).length}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] text-[#71717a]">Unique Sources</span>
-                <span className="text-sm font-bold text-[#3b82f6]">{new Set(alertEvents.map(e => e.src_ip)).size}</span>
+            </div>
+            
+            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
+              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Attack Signatures</div>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {attackCounts.slice(0, 8).map((attack, i) => (
+                  <div key={attack.type} className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${attack.severity === 'critical' ? 'bg-[#dc2626]' : 'bg-[#d97706]'}`} />
+                    <span className="text-[10px] text-[#a1a1aa] flex-1 truncate">{attack.type}</span>
+                    <span className="text-[10px] font-mono text-[#71717a]">{attack.count}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
           
-          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
-            <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-3">Attack Types</div>
-            {pieData.length === 0 ? (
-              <div className="text-[10px] text-[#16a34a]">No active threats</div>
-            ) : (
-              <div className="space-y-1">
-                {pieData.slice(0, 6).map((d, i) => (
-                  <div key={d.name} className="flex items-center gap-2 text-[10px]">
-                    <span className="w-2 h-2 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
-                    <span className="text-[#a1a1aa] truncate flex-1">{d.name}</span>
-                    <span className="text-[#52525b] font-mono">{d.value}</span>
-                  </div>
-                ))}
+          {/* Threat Events */}
+          <div className="col-span-8">
+            <div className="bg-[#0f0f0f] border border-[#dc2626]/30 rounded">
+              <div className="p-3 border-b border-[#1f1f1f] flex items-center justify-between">
+                <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold">Active Threats</div>
+                <span className="text-[9px] text-[#dc2626]">{criticalEvents.length} threats detected</span>
               </div>
-            )}
+              {renderEventTable(criticalEvents.slice(0, 50), false)}
+            </div>
           </div>
         </div>
-      </div>
-      {renderInspector()}
-    </>
-  );
+        {renderInspector()}
+      </>
+    );
+  };
 
-  const renderReportsTab = () => (
-    <>
-      <div className="mb-4">
-        <h2 className="text-sm font-semibold text-[#e4e4e7] mb-1">Reports & Analytics</h2>
-        <p className="text-[10px] text-[#52525b]">Security metrics and trend analysis</p>
-      </div>
-      
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
-          <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-3">Traffic Trend</div>
-          <ResponsiveContainer width="100%" height={200}>
-            <ComposedChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <defs>
-                <linearGradient id="trafficGrad2" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.15} />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="time" tick={{ fill: '#52525b', fontSize: 9 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#52525b', fontSize: 9 }} axisLine={false} tickLine={false} />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: 4, fontSize: 10 }}
-              />
-              <Area type="monotone" dataKey="Traffic" stroke="#3b82f6" strokeWidth={1} fill="url(#trafficGrad2)" />
-              <Line type="monotone" dataKey="Alerts" stroke="#dc2626" strokeWidth={1.5} dot={false} />
-            </ComposedChart>
-          </ResponsiveContainer>
+  const renderReportsTab = () => {
+    const avgConfidence = events.length > 0 ? (events.reduce((a, e) => a + e.confidence, 0) / events.length) : 0;
+    const protocolCounts = events.reduce((acc, e) => {
+      acc[e.protocol] = (acc[e.protocol] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const topProtocols = Object.entries(protocolCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    
+    return (
+      <>
+        <div className="mb-4">
+          <h2 className="text-sm font-semibold text-[#e4e4e7] mb-1">Security Reports</h2>
+          <p className="text-[10px] text-[#52525b]">Analytics dashboard for {timeRangeLabel} • Generated at {now}</p>
         </div>
         
-        <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
-          <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-3">Top Attack Sources</div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={barData.slice(0, 6)} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
-              <XAxis type="number" tick={{ fill: '#52525b', fontSize: 9 }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="ip" tick={{ fill: '#71717a', fontSize: 9 }} axisLine={false} tickLine={false} width={55} />
-              <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: 4, fontSize: 10 }} />
-              <Bar dataKey="count" fill="#ea580c" radius={2} />
-            </BarChart>
-          </ResponsiveContainer>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-4 gap-3 mb-4">
+          {[
+            { label: 'Detection Rate', value: `${metrics.alertRate.toFixed(1)}%`, sub: 'Alerts / Total Events' },
+            { label: 'Avg Confidence', value: avgConfidence.toFixed(2), sub: 'Mean detection score' },
+            { label: 'Unique Sources', value: metrics.uniqueSources, sub: 'Distinct IPs detected' },
+            { label: 'Event Volume', value: metrics.totalEvents, sub: 'Total in time range' },
+          ].map((card, i) => (
+            <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
+              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-2">{card.label}</div>
+              <div className="text-2xl font-bold font-mono text-[#e4e4e7]">{card.value}</div>
+              <div className="text-[9px] text-[#52525b] mt-1">{card.sub}</div>
+            </div>
+          ))}
         </div>
-      </div>
 
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: 'Total Events', value: metrics.totalEvents, desc: 'In selected time range' },
-          { label: 'Alert Rate', value: `${metrics.alertRate.toFixed(1)}%`, desc: 'Alerts vs total' },
-          { label: 'Avg Confidence', value: (events.reduce((a, e) => a + e.confidence, 0) / Math.max(events.length, 1)).toFixed(2), desc: 'Detection confidence' },
-          { label: 'Unique IPs', value: metrics.uniqueSources, desc: 'Distinct source addresses' },
-        ].map((stat, i) => (
-          <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
-            <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-1">{stat.label}</div>
-            <div className="text-xl font-bold font-mono text-[#fafafa]">{stat.value}</div>
-            <div className="text-[9px] text-[#3f3f46] mt-1">{stat.desc}</div>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          {/* Traffic Trend */}
+          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold">Traffic Trend</div>
+              <div className="flex items-center gap-4 text-[10px]">
+                <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-[#3b82f6]"></span> Traffic</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-[#dc2626]"></span> Alerts</span>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="trafficGrad2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="time" tick={{ fill: '#71717a', fontSize: 9 }} axisLine={{ stroke: '#27272a' }} tickLine={false} />
+                <YAxis tick={{ fill: '#71717a', fontSize: 9 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: 6, fontSize: 10 }} />
+                <Area type="monotone" dataKey="Traffic" stroke="#3b82f6" strokeWidth={2} fill="url(#trafficGrad2)" />
+                <Line type="monotone" dataKey="Alerts" stroke="#dc2626" strokeWidth={2} dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
           </div>
-        ))}
-      </div>
-    </>
-  );
+          
+          {/* Top Attack Sources */}
+          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
+            <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Top Attack Sources</div>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={barData.slice(0, 6)} layout="vertical" margin={{ top: 5, right: 30, left: 70, bottom: 5 }}>
+                <XAxis type="number" tick={{ fill: '#71717a', fontSize: 9 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="ip" tick={{ fill: '#a1a1aa', fontSize: 10 }} axisLine={false} tickLine={false} width={65} />
+                <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: 6, fontSize: 10 }} />
+                <Bar dataKey="count" fill="#ea580c" radius={2} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Protocol Distribution */}
+        <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
+          <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Protocol Distribution</div>
+          <div className="flex gap-3">
+            {topProtocols.map(([proto, count]) => (
+              <div key={proto} className="bg-[#0a0a0a] border border-[#27272a] rounded px-4 py-2 text-center">
+                <div className="text-lg font-bold font-mono text-[#e4e4e7]">{count}</div>
+                <div className="text-[10px] text-[#71717a] uppercase">{proto}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-[#e4e4e7] font-['Inter',system-ui,sans-serif]">
@@ -588,9 +652,9 @@ const SOCDashboard = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowAIChat(!showAIChat)}
-            className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-semibold bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded hover:bg-[#1e40af]/50 transition-colors"
+            className="px-3 py-1 text-[10px] font-semibold bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded hover:bg-[#1e40af]/50 transition-colors"
           >
-            <span>🧠</span> AI Chat
+            AI Chat
           </button>
           <span className="text-[10px] text-[#52525b] font-mono">{now}</span>
           <div className={`px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase rounded ${
