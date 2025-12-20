@@ -5,6 +5,72 @@ import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart
 
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
 
+// AI Chatbot Panel Component
+const AIChatPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
+    { role: 'assistant', content: 'SOC AI Assistant sẵn sàng. Hãy đặt câu hỏi về alerts, IP nguồn, pattern tấn công hoặc đề xuất hành động.' }
+  ]);
+
+  if (!isOpen) return null;
+
+  const handleSend = () => {
+    if (!message.trim()) return;
+    setMessages(prev => [...prev, { role: 'user', content: message }]);
+    // Simulate AI response
+    setTimeout(() => {
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Đang phân tích dữ liệu SOC... Tính năng AI sẽ được kết nối với MegaLLM backend.' 
+      }]);
+    }, 500);
+    setMessage('');
+  };
+
+  return (
+    <div className="fixed right-4 bottom-4 w-96 bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg shadow-2xl z-50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f1f]">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🧠</span>
+          <span className="text-[11px] font-semibold text-[#e4e4e7] uppercase tracking-wider">AI Assistant</span>
+        </div>
+        <button onClick={onClose} className="text-[#71717a] hover:text-[#e4e4e7] text-sm">✕</button>
+      </div>
+      <div className="h-72 overflow-y-auto p-3 space-y-3">
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] px-3 py-2 rounded-lg text-[11px] ${
+              msg.role === 'user' 
+                ? 'bg-[#1e3a5f] text-[#93c5fd]' 
+                : 'bg-[#18181b] text-[#a1a1aa]'
+            }`}>
+              {msg.content}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="p-3 border-t border-[#1f1f1f]">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            placeholder="Hỏi về logs, alerts, correlation..."
+            className="flex-1 h-8 px-3 text-[11px] bg-[#0a0a0a] border border-[#27272a] rounded text-[#e4e4e7] placeholder-[#3f3f46] focus:outline-none focus:border-[#3b82f6]"
+          />
+          <button 
+            onClick={handleSend}
+            className="px-3 h-8 text-[10px] bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded hover:bg-[#1e40af]/50 transition-colors font-medium"
+          >
+            Gửi
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SOCDashboard = () => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [isLive, setIsLive] = useState(true);
@@ -12,6 +78,7 @@ const SOCDashboard = () => {
   const [timeRange, setTimeRange] = useState('1h');
   const [viewMode, setViewMode] = useState<'all' | 'alerts'>('all');
   const [selectedEvent, setSelectedEvent] = useState<SOCEvent | null>(null);
+  const [showAIChat, setShowAIChat] = useState(false);
   
   const [verdictFocus, setVerdictFocus] = useState('All');
   const [ipFilter, setIpFilter] = useState('');
@@ -175,50 +242,70 @@ const SOCDashboard = () => {
   const renderInspector = () => {
     if (isLive || !selectedEvent) return null;
     
+    const verdictBorderColor = selectedEvent.verdict === 'ALERT' ? '#dc2626' : 
+                               selectedEvent.verdict === 'SUSPICIOUS' ? '#d97706' : '#16a34a';
+    
     return (
-      <div className="mt-4 bg-[#0f0f0f] border border-[#1f1f1f] rounded" style={{ borderLeftColor: '#dc2626', borderLeftWidth: 3 }}>
-        <div className="p-3 border-b border-[#1f1f1f] flex items-center justify-between">
-          <span className="text-[10px] text-[#52525b] uppercase tracking-wider">Event Inspector</span>
+      <div className="mt-4 bg-[#0f0f0f] border-2 rounded-lg shadow-xl" style={{ borderColor: verdictBorderColor }}>
+        <div className="p-4 border-b border-[#1f1f1f] flex items-center justify-between bg-[#0a0a0a] rounded-t-lg">
+          <div className="flex items-center gap-3">
+            <span className="text-lg">🔍</span>
+            <span className="text-xs font-bold text-[#e4e4e7] uppercase tracking-wider">Event Inspector</span>
+            <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
+              selectedEvent.verdict === 'ALERT' ? 'bg-[#450a0a] text-[#f87171]' :
+              selectedEvent.verdict === 'SUSPICIOUS' ? 'bg-[#451a03] text-[#fbbf24]' : 'bg-[#052e16] text-[#4ade80]'
+            }`}>
+              {selectedEvent.verdict}
+            </span>
+          </div>
           <button 
             onClick={() => setSelectedEvent(null)}
-            className="text-[#71717a] hover:text-[#a1a1aa] text-xs"
+            className="w-6 h-6 flex items-center justify-center text-[#71717a] hover:text-[#e4e4e7] hover:bg-[#27272a] rounded transition-colors"
           >
-            ✕ Close
+            ✕
           </button>
         </div>
-        <div className="p-4 grid grid-cols-5 gap-4">
+        
+        <div className="p-5 grid grid-cols-4 gap-x-6 gap-y-4">
           {[
-            { label: 'Timestamp', value: selectedEvent.timestamp.toLocaleString() },
-            { label: 'Verdict', value: selectedEvent.verdict, className: getVerdictClass(selectedEvent.verdict) },
-            { label: 'Signature', value: selectedEvent.attack_type },
-            { label: 'Engine', value: selectedEvent.source_engine },
-            { label: 'Confidence', value: selectedEvent.confidence.toFixed(2) },
-            { label: 'Source IP', value: selectedEvent.src_ip, className: 'text-[#60a5fa]' },
-            { label: 'Destination', value: `${selectedEvent.dst_ip}:${selectedEvent.dst_port || '-'}` },
-            { label: 'Protocol', value: selectedEvent.protocol },
-            { label: 'Community ID', value: selectedEvent.community_id, mono: true },
-            { label: 'Action', value: selectedEvent.action_taken || 'None' },
+            { label: 'Timestamp', value: selectedEvent.timestamp.toLocaleString(), icon: '🕐' },
+            { label: 'Signature', value: selectedEvent.attack_type, icon: '⚠️', className: 'font-semibold text-[#fbbf24]' },
+            { label: 'Engine', value: selectedEvent.source_engine, icon: '⚙️' },
+            { label: 'Confidence', value: `${(selectedEvent.confidence * 100).toFixed(0)}%`, icon: '📊' },
+            { label: 'Source IP', value: selectedEvent.src_ip, icon: '📤', className: 'text-[#60a5fa] font-mono' },
+            { label: 'Destination', value: `${selectedEvent.dst_ip}:${selectedEvent.dst_port || '-'}`, icon: '📥', className: 'font-mono' },
+            { label: 'Protocol', value: selectedEvent.protocol, icon: '🔗' },
+            { label: 'Community ID', value: selectedEvent.community_id, icon: '🆔', className: 'font-mono text-[10px]' },
           ].map((field, i) => (
             <div key={i}>
-              <div className="text-[9px] text-[#52525b] uppercase tracking-wider mb-1">{field.label}</div>
-              <div className={`text-[11px] ${field.mono ? 'font-mono' : ''} ${field.className || 'text-[#e4e4e7]'}`}>
+              <div className="text-[9px] text-[#52525b] uppercase tracking-wider mb-1 flex items-center gap-1">
+                <span>{field.icon}</span> {field.label}
+              </div>
+              <div className={`text-[12px] ${field.className || 'text-[#e4e4e7]'}`}>
                 {field.value}
               </div>
             </div>
           ))}
         </div>
-        <div className="px-4 pb-4">
-          <div className="text-[9px] text-[#52525b] uppercase tracking-wider mb-1">Raw Payload</div>
-          <pre className="text-[9px] font-mono text-[#71717a] bg-[#0a0a0a] p-2 rounded border border-[#1f1f1f] overflow-auto max-h-20">
+        
+        <div className="px-5 pb-4">
+          <div className="text-[9px] text-[#52525b] uppercase tracking-wider mb-2 flex items-center gap-1">
+            <span>📄</span> Raw Payload
+          </div>
+          <pre className="text-[10px] font-mono text-[#a1a1aa] bg-[#000] p-3 rounded-lg border border-[#27272a] overflow-auto max-h-32">
             {selectedEvent.raw_log}
           </pre>
         </div>
-        <div className="px-4 pb-4 flex gap-2">
-          <button className="px-3 py-1.5 text-[10px] bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded hover:bg-[#1e40af]/30 transition-colors">
-            Generate Playbook
+        
+        <div className="px-5 pb-5 flex gap-3">
+          <button 
+            onClick={() => setShowAIChat(true)}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] font-semibold bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded-lg hover:bg-[#1e40af]/50 transition-colors"
+          >
+            <span>🧠</span> Ask MegaLLM About This Flow
           </button>
-          <button className="px-3 py-1.5 text-[10px] bg-[#450a0a] text-[#f87171] border border-[#7f1d1d] rounded hover:bg-[#7f1d1d]/30 transition-colors">
-            Block Source IP
+          <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] font-semibold bg-[#450a0a] text-[#f87171] border border-[#7f1d1d] rounded-lg hover:bg-[#7f1d1d]/50 transition-colors">
+            <span>🚫</span> Block IP {selectedEvent.src_ip} on pfSense
           </button>
         </div>
       </div>
@@ -273,26 +360,44 @@ const SOCDashboard = () => {
           )}
         </div>
 
-        {/* Attack Types */}
-        <div className="col-span-4 bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
-          <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-3">Attack Distribution</div>
+        {/* Attack Types - Larger Pie Chart */}
+        <div className="col-span-4 bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
+          <div className="text-[11px] text-[#52525b] uppercase tracking-wider mb-2 font-semibold">Attack Distribution</div>
           {pieData.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-[#16a34a] text-xs">No threats detected</div>
+            <div className="h-48 flex flex-col items-center justify-center">
+              <span className="text-3xl mb-2">✓</span>
+              <span className="text-[#16a34a] text-sm font-medium">System Safe</span>
+              <span className="text-[10px] text-[#3f3f46]">No active threats</span>
+            </div>
           ) : (
-            <div className="flex items-center gap-4">
-              <ResponsiveContainer width={120} height={120}>
+            <div className="flex flex-col items-center">
+              <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={30} outerRadius={50} paddingAngle={1} dataKey="value" stroke="none">
+                  <Pie 
+                    data={pieData} 
+                    cx="50%" 
+                    cy="50%" 
+                    innerRadius={50} 
+                    outerRadius={80} 
+                    paddingAngle={2} 
+                    dataKey="value" 
+                    stroke="#0a0a0a"
+                    strokeWidth={2}
+                  >
                     {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: 6, fontSize: 11 }}
+                    labelStyle={{ color: '#e4e4e7' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="flex-1 space-y-1">
-                {pieData.slice(0, 5).map((d, i) => (
+              <div className="w-full grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
+                {pieData.slice(0, 6).map((d, i) => (
                   <div key={d.name} className="flex items-center gap-2 text-[10px]">
-                    <span className="w-2 h-2 rounded-sm" style={{ background: COLORS[i % COLORS.length] }} />
+                    <span className="w-2.5 h-2.5 rounded" style={{ background: COLORS[i % COLORS.length] }} />
                     <span className="text-[#a1a1aa] truncate flex-1">{d.name}</span>
-                    <span className="text-[#52525b] font-mono">{d.value}</span>
+                    <span className="text-[#71717a] font-mono font-semibold">{d.value}</span>
                   </div>
                 ))}
               </div>
@@ -479,7 +584,13 @@ const SOCDashboard = () => {
             ))}
           </nav>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAIChat(!showAIChat)}
+            className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-semibold bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded hover:bg-[#1e40af]/50 transition-colors"
+          >
+            <span>🧠</span> AI Chat
+          </button>
           <span className="text-[10px] text-[#52525b] font-mono">{now}</span>
           <div className={`px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase rounded ${
             isLive ? 'bg-[#166534]/30 text-[#4ade80] border border-[#166534]' : 'bg-[#27272a] text-[#71717a]'
@@ -544,6 +655,9 @@ const SOCDashboard = () => {
           SOC Dashboard v22 — Hybrid NIDS Engine
         </div>
       </div>
+      
+      {/* AI Chat Panel */}
+      <AIChatPanel isOpen={showAIChat} onClose={() => setShowAIChat(false)} />
     </div>
   );
 };
