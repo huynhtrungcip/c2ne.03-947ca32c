@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw, Database, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw, Database, RotateCcw, AlertTriangle, Send, Bell, MessageCircle, CheckCircle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ConfirmDialog, useConfirmDialog, ConfirmActionType } from './ConfirmDialog';
 
@@ -44,7 +44,7 @@ const TIMEZONES = [
 
 const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: SettingsModalProps) => {
   const { language, setLanguage, t } = useLanguage();
-  const [activeSection, setActiveSection] = useState<'general' | 'data' | 'sources' | 'blacklist' | 'whitelist' | 'blocked' | 'help'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'telegram' | 'data' | 'sources' | 'blacklist' | 'whitelist' | 'blocked' | 'help'>('general');
   const [timezone, setTimezone] = useState(() => localStorage.getItem('soc-timezone') || 'Asia/Ho_Chi_Minh');
   const [connectedSources, setConnectedSources] = useState<ConnectedSource[]>([]);
   const [loadingSources, setLoadingSources] = useState(false);
@@ -95,6 +95,23 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   // API URL for backend
   const apiUrl = localStorage.getItem('soc-api-url') || '';
   const [apiUrlInput, setApiUrlInput] = useState(apiUrl);
+
+  // Telegram settings state
+  const [telegramConfig, setTelegramConfig] = useState(() => {
+    const stored = localStorage.getItem('soc-telegram-config');
+    return stored ? JSON.parse(stored) : {
+      enabled: false,
+      botToken: '',
+      chatId: '',
+      confidenceThreshold: 80,
+      alertTypes: ['ALERT', 'SUSPICIOUS'],
+      notifyBlockIP: true,
+      notifyWhitelist: true,
+      notifyBlacklist: true,
+    };
+  });
+  const [telegramTestStatus, setTelegramTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [telegramTestMessage, setTelegramTestMessage] = useState('');
 
   // Time ranges for data management
   const TIME_RANGES = [
@@ -260,6 +277,51 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   useEffect(() => {
     localStorage.setItem('soc-whitelist', JSON.stringify(whitelist));
   }, [whitelist]);
+
+  // Save Telegram config
+  useEffect(() => {
+    localStorage.setItem('soc-telegram-config', JSON.stringify(telegramConfig));
+  }, [telegramConfig]);
+
+  // Telegram test function
+  const handleTestTelegram = useCallback(async () => {
+    if (!telegramConfig.botToken || !telegramConfig.chatId) {
+      setTelegramTestStatus('error');
+      setTelegramTestMessage('Vui lòng nhập Bot Token và Chat ID');
+      return;
+    }
+
+    setTelegramTestStatus('testing');
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${telegramConfig.botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: telegramConfig.chatId,
+          text: `🔔 *SOC Dashboard - Test Alert*\n\n✅ Kết nối Telegram thành công!\n📊 Confidence threshold: ${telegramConfig.confidenceThreshold}%\n⏰ ${new Date().toLocaleString('vi-VN')}`,
+          parse_mode: 'Markdown',
+        }),
+      });
+
+      if (response.ok) {
+        setTelegramTestStatus('success');
+        setTelegramTestMessage('Gửi tin nhắn test thành công!');
+      } else {
+        const data = await response.json();
+        setTelegramTestStatus('error');
+        setTelegramTestMessage(data.description || 'Lỗi kết nối Telegram');
+      }
+    } catch (error) {
+      setTelegramTestStatus('error');
+      setTelegramTestMessage('Không thể kết nối đến Telegram API');
+    }
+
+    // Reset status after 5s
+    setTimeout(() => {
+      setTelegramTestStatus('idle');
+      setTelegramTestMessage('');
+    }, 5000);
+  }, [telegramConfig]);
   
   // Early return AFTER all hooks are defined
   if (!isOpen) return null;
@@ -328,6 +390,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   
   const sections = [
     { id: 'general', label: t('settings.general'), icon: Settings },
+    { id: 'telegram', label: 'Telegram Alerts', icon: Send },
     { id: 'data', label: 'Data Management', icon: Database },
     { id: 'sources', label: 'NIDS Sources', icon: Server },
     { id: 'blocked', label: 'Blocked IPs', icon: Ban },
@@ -336,7 +399,267 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     { id: 'help', label: t('settings.help'), icon: HelpCircle },
   ];
 
+  // Telegram Section Renderer
+  const renderTelegramSection = () => (
+    <div className="space-y-6">
+      <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+        Telegram Alert Configuration
+      </div>
+      <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+        Cấu hình gửi cảnh báo qua Telegram Bot. Chỉ gửi các sự kiện có mức độ tin cậy cao để tránh spam.
+      </p>
 
+      {/* Enable Toggle */}
+      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${telegramConfig.enabled ? 'bg-[#3b82f6]/20 text-[#60a5fa]' : isDarkMode ? 'bg-[#27272a] text-[#52525b]' : 'bg-[#e5e7eb] text-[#9ca3af]'}`}>
+              <Send className="w-5 h-5" />
+            </div>
+            <div>
+              <div className={`text-[12px] font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+                Telegram Alerts
+              </div>
+              <div className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+                {telegramConfig.enabled ? 'Đang bật - Gửi cảnh báo tự động' : 'Đang tắt'}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => setTelegramConfig({ ...telegramConfig, enabled: !telegramConfig.enabled })}
+            className={`w-12 h-6 rounded-full transition-colors relative ${
+              telegramConfig.enabled ? 'bg-[#3b82f6]' : isDarkMode ? 'bg-[#27272a]' : 'bg-[#d1d5db]'
+            }`}
+          >
+            <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${
+              telegramConfig.enabled ? 'translate-x-6' : 'translate-x-0.5'
+            }`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Bot Configuration */}
+      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+        <div className={`text-[11px] font-semibold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+          <MessageCircle className="w-4 h-4 text-[#3b82f6]" />
+          Bot Configuration
+        </div>
+
+        <div className="space-y-4">
+          {/* Bot Token */}
+          <div>
+            <label className={`block text-[11px] font-medium mb-1.5 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+              Bot Token
+            </label>
+            <input
+              type="password"
+              placeholder="123456789:ABCDefGHIjklMNOpqrSTUvwxYZ"
+              value={telegramConfig.botToken}
+              onChange={(e) => setTelegramConfig({ ...telegramConfig, botToken: e.target.value })}
+              className={`w-full h-9 px-3 text-[11px] font-mono border rounded-lg ${
+                isDarkMode 
+                  ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7] placeholder-[#52525b]' 
+                  : 'bg-white border-[#d1d5db] text-[#111827] placeholder-[#9ca3af]'
+              }`}
+            />
+            <p className={`mt-1 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+              Tạo bot tại @BotFather trên Telegram, sau đó copy token
+            </p>
+          </div>
+
+          {/* Chat ID */}
+          <div>
+            <label className={`block text-[11px] font-medium mb-1.5 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+              Chat ID
+            </label>
+            <input
+              type="text"
+              placeholder="-1001234567890 hoặc 123456789"
+              value={telegramConfig.chatId}
+              onChange={(e) => setTelegramConfig({ ...telegramConfig, chatId: e.target.value })}
+              className={`w-full h-9 px-3 text-[11px] font-mono border rounded-lg ${
+                isDarkMode 
+                  ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7] placeholder-[#52525b]' 
+                  : 'bg-white border-[#d1d5db] text-[#111827] placeholder-[#9ca3af]'
+              }`}
+            />
+            <p className={`mt-1 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+              Chat ID của nhóm hoặc cá nhân. Dùng @userinfobot để lấy ID
+            </p>
+          </div>
+
+          {/* Test Button */}
+          <button
+            onClick={handleTestTelegram}
+            disabled={telegramTestStatus === 'testing' || !telegramConfig.botToken || !telegramConfig.chatId}
+            className={`w-full flex items-center justify-center gap-2 h-10 rounded-lg font-medium text-[11px] transition-colors ${
+              telegramTestStatus === 'success' 
+                ? 'bg-[#22c55e] text-white' 
+                : telegramTestStatus === 'error'
+                  ? 'bg-[#dc2626] text-white'
+                  : isDarkMode 
+                    ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:bg-[#27272a] disabled:text-[#52525b]' 
+                    : 'bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:bg-[#e5e7eb] disabled:text-[#9ca3af]'
+            }`}
+          >
+            {telegramTestStatus === 'testing' ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Đang gửi test...
+              </>
+            ) : telegramTestStatus === 'success' ? (
+              <>
+                <CheckCircle className="w-4 h-4" />
+                {telegramTestMessage}
+              </>
+            ) : telegramTestStatus === 'error' ? (
+              <>
+                <AlertTriangle className="w-4 h-4" />
+                {telegramTestMessage}
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Test Kết Nối
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Alert Settings */}
+      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+        <div className={`text-[11px] font-semibold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+          <Bell className="w-4 h-4 text-[#f59e0b]" />
+          Alert Settings
+        </div>
+
+        {/* Confidence Threshold */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <label className={`text-[11px] font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+              Confidence Threshold
+            </label>
+            <span className={`text-[12px] font-bold ${
+              telegramConfig.confidenceThreshold >= 90 ? 'text-[#dc2626]' : 
+              telegramConfig.confidenceThreshold >= 80 ? 'text-[#f59e0b]' : 'text-[#22c55e]'
+            }`}>
+              {telegramConfig.confidenceThreshold}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min="50"
+            max="99"
+            value={telegramConfig.confidenceThreshold}
+            onChange={(e) => setTelegramConfig({ ...telegramConfig, confidenceThreshold: parseInt(e.target.value) })}
+            className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#27272a]"
+            style={{
+              background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(telegramConfig.confidenceThreshold - 50) / 49 * 100}%, ${isDarkMode ? '#27272a' : '#e5e7eb'} ${(telegramConfig.confidenceThreshold - 50) / 49 * 100}%, ${isDarkMode ? '#27272a' : '#e5e7eb'} 100%)`
+            }}
+          />
+          <p className={`mt-2 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+            Chỉ gửi cảnh báo khi AI confidence ≥ {telegramConfig.confidenceThreshold}%. Khuyến nghị: 80-90% để tránh spam.
+          </p>
+        </div>
+
+        {/* Alert Types */}
+        <div className="mb-4">
+          <label className={`block text-[11px] font-medium mb-2 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+            Loại cảnh báo gửi
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {['ALERT', 'SUSPICIOUS'].map((type) => (
+              <button
+                key={type}
+                onClick={() => {
+                  const types = telegramConfig.alertTypes.includes(type)
+                    ? telegramConfig.alertTypes.filter((t: string) => t !== type)
+                    : [...telegramConfig.alertTypes, type];
+                  setTelegramConfig({ ...telegramConfig, alertTypes: types });
+                }}
+                className={`p-2 rounded-lg border text-[11px] font-medium transition-all ${
+                  telegramConfig.alertTypes.includes(type)
+                    ? type === 'ALERT' 
+                      ? 'bg-[#dc2626]/20 border-[#dc2626] text-[#f87171]'
+                      : 'bg-[#f59e0b]/20 border-[#f59e0b] text-[#fbbf24]'
+                    : isDarkMode 
+                      ? 'bg-[#18181b] border-[#27272a] text-[#71717a]' 
+                      : 'bg-[#f9fafb] border-[#e5e7eb] text-[#9ca3af]'
+                }`}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Action Notifications */}
+        <div>
+          <label className={`block text-[11px] font-medium mb-2 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+            Thông báo hành động quan trọng
+          </label>
+          <div className="space-y-2">
+            {[
+              { key: 'notifyBlockIP', label: 'Block IP', desc: 'Khi có IP bị block trên firewall' },
+              { key: 'notifyWhitelist', label: 'Whitelist', desc: 'Thêm/xóa IP khỏi whitelist' },
+              { key: 'notifyBlacklist', label: 'Blacklist', desc: 'Thêm/xóa IP khỏi blacklist' },
+            ].map(({ key, label, desc }) => (
+              <div 
+                key={key}
+                className={`flex items-center justify-between p-3 rounded-lg border ${
+                  isDarkMode ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'
+                }`}
+              >
+                <div>
+                  <div className={`text-[11px] font-medium ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>{label}</div>
+                  <div className={`text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{desc}</div>
+                </div>
+                <button
+                  onClick={() => setTelegramConfig({ ...telegramConfig, [key]: !telegramConfig[key as keyof typeof telegramConfig] })}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${
+                    telegramConfig[key as keyof typeof telegramConfig] ? 'bg-[#22c55e]' : isDarkMode ? 'bg-[#27272a]' : 'bg-[#d1d5db]'
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${
+                    telegramConfig[key as keyof typeof telegramConfig] ? 'translate-x-5' : 'translate-x-0.5'
+                  }`} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Telegram Bot Commands Info */}
+      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#1e3a5f]/30 border-[#3b82f6]/30' : 'bg-[#eff6ff] border-[#3b82f6]/30'}`}>
+        <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>
+          Telegram Bot Commands
+        </div>
+        <div className={`space-y-2 text-[10px] font-mono ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+          <div className="flex items-start gap-2">
+            <code className="px-1.5 py-0.5 bg-[#27272a] rounded text-[#60a5fa]">/status</code>
+            <span>- Xem trạng thái hệ thống (CPU, RAM, Disk, Network)</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <code className="px-1.5 py-0.5 bg-[#27272a] rounded text-[#60a5fa]">/logs [5m|30m|1h|12h|1d]</code>
+            <span>- Xem log theo thời gian</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <code className="px-1.5 py-0.5 bg-[#27272a] rounded text-[#60a5fa]">/blocked</code>
+            <span>- Danh sách IP đang bị block</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <code className="px-1.5 py-0.5 bg-[#27272a] rounded text-[#60a5fa]">/stats</code>
+            <span>- Thống kê sự kiện hôm nay</span>
+          </div>
+        </div>
+        <p className={`mt-3 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+          Bot cần được chạy trên server backend (AI-Engine) để xử lý commands.
+        </p>
+      </div>
+    </div>
+  );
 
   const handleDeleteData = (timeRange: string) => {
     const range = TIME_RANGES.find(r => r.value === timeRange);
@@ -1222,6 +1545,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           
           <div className="flex-1 overflow-y-auto p-6">
             {activeSection === 'general' && renderGeneralSection()}
+            {activeSection === 'telegram' && renderTelegramSection()}
             {activeSection === 'data' && renderDataManagementSection()}
             {activeSection === 'sources' && renderSourcesSection()}
             {activeSection === 'blocked' && renderBlockedIPsSection()}
