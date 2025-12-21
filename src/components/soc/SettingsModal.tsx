@@ -95,15 +95,19 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   // API URL for backend
   const apiUrl = localStorage.getItem('soc-api-url') || '';
   const [apiUrlInput, setApiUrlInput] = useState(apiUrl);
+
+  // Time ranges for data management
+  const TIME_RANGES = [
+    { value: '5m', label: '5 phút', ms: 5 * 60 * 1000 },
+    { value: '15m', label: '15 phút', ms: 15 * 60 * 1000 },
+    { value: '30m', label: '30 phút', ms: 30 * 60 * 1000 },
+    { value: '1h', label: '1 giờ', ms: 60 * 60 * 1000 },
+    { value: '1d', label: '1 ngày', ms: 24 * 60 * 60 * 1000 },
+    { value: 'all', label: 'Tất cả', ms: Infinity },
+  ];
   
-  // Fetch connected sources when section is opened
-  useEffect(() => {
-    if (activeSection === 'sources' && apiUrl) {
-      fetchConnectedSources();
-    }
-  }, [activeSection, apiUrl]);
-  
-  const fetchConnectedSources = async () => {
+  // Define all useCallback hooks BEFORE any conditional returns
+  const fetchConnectedSources = useCallback(async () => {
     if (!apiUrl) return;
     setLoadingSources(true);
     try {
@@ -117,7 +121,106 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     } finally {
       setLoadingSources(false);
     }
-  };
+  }, [apiUrl]);
+
+  const executeDeleteData = useCallback(async (timeRange: string) => {
+    const range = TIME_RANGES.find(r => r.value === timeRange);
+    if (!range) return;
+
+    const currentEvents = localStorage.getItem('soc-events') || '[]';
+    const parsedEvents = JSON.parse(currentEvents);
+    
+    let deletedData: any[] = [];
+    let remainingData: any[] = [];
+    const now = Date.now();
+    
+    if (timeRange === 'all') {
+      deletedData = parsedEvents;
+      remainingData = [];
+    } else {
+      parsedEvents.forEach((event: any) => {
+        const eventTime = new Date(event.timestamp).getTime();
+        if (now - eventTime <= range.ms) {
+          deletedData.push(event);
+        } else {
+          remainingData.push(event);
+        }
+      });
+    }
+
+    localStorage.setItem('soc-events', JSON.stringify(remainingData));
+    
+    const intervalId = setInterval(() => {
+      setPendingDelete(prev => {
+        if (!prev) return null;
+        if (prev.countdown <= 1) {
+          clearInterval(prev.intervalId!);
+          return null;
+        }
+        return { ...prev, countdown: prev.countdown - 1 };
+      });
+    }, 1000);
+
+    setPendingDelete({
+      timeRange,
+      deletedData,
+      countdown: 120,
+      intervalId,
+    });
+
+    if (apiUrl) {
+      try {
+        await fetch(`${apiUrl}/api/events/delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ timeRange, deleteBefore: now - range.ms }),
+        });
+      } catch (error) {
+        console.error('Failed to delete from backend:', error);
+      }
+    }
+  }, [apiUrl]);
+
+  const handleRecoverData = useCallback(() => {
+    if (!pendingDelete?.deletedData) return;
+    
+    const currentEvents = JSON.parse(localStorage.getItem('soc-events') || '[]');
+    const restoredEvents = [...currentEvents, ...pendingDelete.deletedData];
+    localStorage.setItem('soc-events', JSON.stringify(restoredEvents));
+    
+    if (pendingDelete.intervalId) {
+      clearInterval(pendingDelete.intervalId);
+    }
+    setPendingDelete(null);
+  }, [pendingDelete]);
+
+  const handleAddMockData = useCallback(async () => {
+    setAddingMockData(true);
+    try {
+      const { generateMockEvents } = await import('@/data/mockEvents');
+      const mockEvents = generateMockEvents(50);
+      
+      const currentEvents = JSON.parse(localStorage.getItem('soc-events') || '[]');
+      const newEvents = [...mockEvents.map(e => ({
+        ...e,
+        timestamp: e.timestamp.toISOString(),
+      })), ...currentEvents];
+      localStorage.setItem('soc-events', JSON.stringify(newEvents));
+      
+      window.dispatchEvent(new CustomEvent('soc-data-updated'));
+    } catch (error) {
+      console.error('Failed to add mock data:', error);
+    } finally {
+      setAddingMockData(false);
+    }
+  }, []);
+
+  // Fetch connected sources when section is opened
+  useEffect(() => {
+    if (activeSection === 'sources' && apiUrl) {
+      fetchConnectedSources();
+    }
+  }, [activeSection, apiUrl, fetchConnectedSources]);
   
   // Save to localStorage
   useEffect(() => {
@@ -132,6 +235,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     localStorage.setItem('soc-whitelist', JSON.stringify(whitelist));
   }, [whitelist]);
   
+  // Early return AFTER all hooks are defined
   if (!isOpen) return null;
   
   const currentList = activeSection === 'blacklist' ? blacklist : whitelist;
@@ -206,117 +310,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     { id: 'help', label: t('settings.help'), icon: HelpCircle },
   ];
 
-  // Data Management Functions
-  const TIME_RANGES = [
-    { value: '5m', label: '5 phút', ms: 5 * 60 * 1000 },
-    { value: '15m', label: '15 phút', ms: 15 * 60 * 1000 },
-    { value: '30m', label: '30 phút', ms: 30 * 60 * 1000 },
-    { value: '1h', label: '1 giờ', ms: 60 * 60 * 1000 },
-    { value: '1d', label: '1 ngày', ms: 24 * 60 * 60 * 1000 },
-    { value: 'all', label: 'Tất cả', ms: Infinity },
-  ];
 
-  const executeDeleteData = useCallback(async (timeRange: string) => {
-    const range = TIME_RANGES.find(r => r.value === timeRange);
-    if (!range) return;
-
-    // Store current data for potential recovery
-    const currentEvents = localStorage.getItem('soc-events') || '[]';
-    const parsedEvents = JSON.parse(currentEvents);
-    
-    let deletedData: any[] = [];
-    let remainingData: any[] = [];
-    const now = Date.now();
-    
-    if (timeRange === 'all') {
-      deletedData = parsedEvents;
-      remainingData = [];
-    } else {
-      parsedEvents.forEach((event: any) => {
-        const eventTime = new Date(event.timestamp).getTime();
-        if (now - eventTime <= range.ms) {
-          deletedData.push(event);
-        } else {
-          remainingData.push(event);
-        }
-      });
-    }
-
-    // Save remaining data
-    localStorage.setItem('soc-events', JSON.stringify(remainingData));
-    
-    // Start countdown for recovery
-    const intervalId = setInterval(() => {
-      setPendingDelete(prev => {
-        if (!prev) return null;
-        if (prev.countdown <= 1) {
-          clearInterval(prev.intervalId!);
-          // Permanent delete - clear backup
-          return null;
-        }
-        return { ...prev, countdown: prev.countdown - 1 };
-      });
-    }, 1000);
-
-    setPendingDelete({
-      timeRange,
-      deletedData,
-      countdown: 120, // 2 minutes
-      intervalId,
-    });
-
-    // Call backend API if available
-    if (apiUrl) {
-      try {
-        await fetch(`${apiUrl}/api/events/delete`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ timeRange, deleteBefore: now - range.ms }),
-        });
-      } catch (error) {
-        console.error('Failed to delete from backend:', error);
-      }
-    }
-  }, [apiUrl]);
-
-  const handleRecoverData = useCallback(() => {
-    if (!pendingDelete?.deletedData) return;
-    
-    // Restore data
-    const currentEvents = JSON.parse(localStorage.getItem('soc-events') || '[]');
-    const restoredEvents = [...currentEvents, ...pendingDelete.deletedData];
-    localStorage.setItem('soc-events', JSON.stringify(restoredEvents));
-    
-    // Clear countdown
-    if (pendingDelete.intervalId) {
-      clearInterval(pendingDelete.intervalId);
-    }
-    setPendingDelete(null);
-  }, [pendingDelete]);
-
-  const handleAddMockData = useCallback(async () => {
-    setAddingMockData(true);
-    try {
-      // Import mock data generator
-      const { generateMockEvents } = await import('@/data/mockEvents');
-      const mockEvents = generateMockEvents(50);
-      
-      // Add to localStorage
-      const currentEvents = JSON.parse(localStorage.getItem('soc-events') || '[]');
-      const newEvents = [...mockEvents.map(e => ({
-        ...e,
-        timestamp: e.timestamp.toISOString(),
-      })), ...currentEvents];
-      localStorage.setItem('soc-events', JSON.stringify(newEvents));
-      
-      // Trigger refresh by dispatching custom event
-      window.dispatchEvent(new CustomEvent('soc-data-updated'));
-    } catch (error) {
-      console.error('Failed to add mock data:', error);
-    } finally {
-      setAddingMockData(false);
-    }
-  }, []);
 
   const handleDeleteData = (timeRange: string) => {
     const range = TIME_RANGES.find(r => r.value === timeRange);
