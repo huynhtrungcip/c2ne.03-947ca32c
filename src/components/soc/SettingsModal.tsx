@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw, Database, RotateCcw, AlertTriangle, Send, Bell, MessageCircle, CheckCircle, Terminal, FileText } from 'lucide-react';
+import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw, Database, RotateCcw, AlertTriangle, Send, Bell, MessageCircle, CheckCircle, Terminal, FileText, Activity } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import SystemHealthMonitor from '@/components/soc/SystemHealthMonitor';
 import { ConfirmDialog, useConfirmDialog, ConfirmActionType } from './ConfirmDialog';
 
 type Theme = 'light' | 'dark';
@@ -364,6 +365,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       return;
     }
 
+    // Validate chat_id (Telegram chat id is integer: can be negative for groups)
+    const chatIdClean = telegramConfig.chatId.trim();
+    if (!/^-?\d+$/.test(chatIdClean)) {
+      setTelegramTestStatus('error');
+      setTelegramTestMessage('Chat ID phải là số nguyên (ví dụ: 123456 hoặc -1001234567890)');
+      return;
+    }
+
     if (!apiUrl) {
       setTelegramTestStatus('error');
       setTelegramTestMessage('Vui lòng cấu hình AI Engine URL trong phần Telegram trước');
@@ -381,8 +390,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bot_token: telegramConfig.botToken.trim(),
-          chat_id: telegramConfig.chatId.trim(),
-          confidence_threshold: telegramConfig.confidenceThreshold / 100,
+          chat_id: chatIdClean,
+          confidence_threshold: telegramConfig.confidenceThreshold, // <-- must be integer percent
         }),
       });
 
@@ -515,6 +524,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   
   const sections = [
     { id: 'general', label: t('settings.general'), icon: Settings },
+    { id: 'health', label: 'System Health', icon: Activity },
     { id: 'telegram', label: 'Telegram Alerts', icon: Send },
     { id: 'data', label: 'Data Management', icon: Database },
     { id: 'sources', label: 'NIDS Sources', icon: Server },
@@ -524,6 +534,19 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     { id: 'whitelist', label: t('settings.whitelist'), icon: List },
     { id: 'help', label: t('settings.help'), icon: HelpCircle },
   ];
+
+  // Health Section Renderer
+  const renderHealthSection = () => (
+    <div className="space-y-6">
+      <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+        System Health
+      </div>
+      <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+        Kiểm tra định kỳ tình trạng NIDS shipper và pfSense/Telegram để tránh nhấp nháy trạng thái trên giao diện.
+      </p>
+      <SystemHealthMonitor isDarkMode={isDarkMode} apiUrl={apiUrl} />
+    </div>
+  );
 
   // Telegram Section Renderer
   const renderTelegramSection = () => (
@@ -1982,6 +2005,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           
           <div className="flex-1 overflow-y-auto p-6">
             {activeSection === 'general' && renderGeneralSection()}
+            {activeSection === 'health' && renderHealthSection()}
             {activeSection === 'telegram' && renderTelegramSection()}
             {activeSection === 'data' && renderDataManagementSection()}
             {activeSection === 'sources' && renderSourcesSection()}

@@ -295,6 +295,35 @@ async def list_blocked_ips():
     }
 
 
+@app.get("/pfsense/status")
+async def pfsense_status():
+    """Healthcheck pfSense via REST API (verify auth + alias access)."""
+    success, ips, debug = get_blocked_ips()
+
+    status_code = debug.get("status_code") or debug.get("list_status")
+    connected = bool(success)
+
+    # Provide a friendly error message
+    if connected:
+        return {
+            "connected": True,
+            "blocked_count": len(ips),
+            "alias": debug.get("alias", ""),
+        }
+
+    msg = "pfSense not reachable"
+    if status_code == 401:
+        msg = "HTTP 401 - API key không hợp lệ hoặc thiếu quyền"
+    elif isinstance(status_code, int):
+        msg = f"HTTP {status_code}"
+
+    return {
+        "connected": False,
+        "error": msg,
+        "debug": debug,
+    }
+
+
 @app.get("/auto-block")
 async def get_auto_block():
     """Get auto-block status"""
