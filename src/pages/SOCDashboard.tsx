@@ -22,7 +22,17 @@ const MEGALLM_MODELS = [
 const DEFAULT_MODEL = 'openai-gpt-oss-120b';
 
 // AI Chatbot Panel Component - Gọi trực tiếp MegaLLM API
-const AIChatPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+const AIChatPanel = ({ 
+  isOpen, 
+  onClose, 
+  events = [],
+  selectedEvent = null 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void;
+  events?: SOCEvent[];
+  selectedEvent?: SOCEvent | null;
+}) => {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
@@ -42,17 +52,64 @@ Ví dụ câu hỏi:
     }
   ]);
 
+  // Build context from events for AI analysis
+  const buildEventsContext = () => {
+    if (events.length === 0) return '';
+    
+    // Get last 100 events for context (to avoid token limit)
+    const recentEvents = events.slice(0, 100).map(e => ({
+      time: e.timestamp.toISOString(),
+      verdict: e.verdict,
+      src_ip: e.src_ip,
+      dst_ip: e.dst_ip,
+      dst_port: e.dst_port,
+      protocol: e.protocol,
+      signature: e.attack_type,
+      confidence: e.confidence.toFixed(2),
+      engine: e.source_engine
+    }));
+    
+    // Group by IP for summary
+    const ipSummary: Record<string, { count: number; alerts: number; suspicious: number }> = {};
+    events.forEach(e => {
+      if (!ipSummary[e.src_ip]) {
+        ipSummary[e.src_ip] = { count: 0, alerts: 0, suspicious: 0 };
+      }
+      ipSummary[e.src_ip].count++;
+      if (e.verdict === 'ALERT') ipSummary[e.src_ip].alerts++;
+      if (e.verdict === 'SUSPICIOUS') ipSummary[e.src_ip].suspicious++;
+    });
+    
+    const topAttackers = Object.entries(ipSummary)
+      .sort((a, b) => (b[1].alerts + b[1].suspicious) - (a[1].alerts + a[1].suspicious))
+      .slice(0, 10);
+
+    return `
+--- SOC EVENTS SNAPSHOT ---
+Total events: ${events.length}
+Time range: ${events[events.length - 1]?.timestamp.toISOString()} to ${events[0]?.timestamp.toISOString()}
+
+TOP 10 SOURCE IPs BY THREAT LEVEL:
+${topAttackers.map(([ip, data]) => `- ${ip}: ${data.count} events (${data.alerts} ALERT, ${data.suspicious} SUSPICIOUS)`).join('\n')}
+
+RECENT EVENTS (last 100):
+${JSON.stringify(recentEvents, null, 2)}
+--- END SNAPSHOT ---`;
+  };
+
   const SOC_SYSTEM_PROMPT = `You are an AI SOC analyst (Tier 2) working on a hybrid NIDS stack with Zeek, Suricata and AI correlation.
 You receive:
 1) A natural language question from the analyst.
-2) A compact JSON snapshot of recent SOC alerts (if available).
+2) A compact JSON snapshot of recent SOC alerts (provided below).
 
 You must:
 - Correlate patterns.
 - Identify likely attack scenarios.
 - Propose CLEAR next actions (block / investigate / ignore).
 - NEVER hallucinate log entries that are not present in JSON.
-- Answer in concise Vietnamese, nhưng giữ technical terms tiếng Anh khi cần.`;
+- Answer in concise Vietnamese, nhưng giữ technical terms tiếng Anh khi cần.
+
+${buildEventsContext()}`;
 
   if (!isOpen) return null;
 
@@ -97,7 +154,7 @@ You must:
     } catch (error) {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `❌ Lỗi: ${error instanceof Error ? error.message : 'Unknown error'}
+        content: `[ERROR] ${error instanceof Error ? error.message : 'Unknown error'}
 
 Kiểm tra:
 1. Kết nối internet
@@ -113,7 +170,7 @@ Kiểm tra:
     <div className="fixed right-4 bottom-4 w-[420px] bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg shadow-2xl z-50">
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f1f]">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold text-[#e4e4e7] uppercase tracking-wider">🧠 AI Assistant</span>
+          <span className="text-[11px] font-semibold text-[#e4e4e7] uppercase tracking-wider">SOC AI Assistant</span>
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value)}
@@ -124,7 +181,7 @@ Kiểm tra:
             ))}
           </select>
         </div>
-        <button onClick={onClose} className="text-[#71717a] hover:text-[#e4e4e7] text-sm">✕</button>
+        <button onClick={onClose} className="text-[#71717a] hover:text-[#e4e4e7] text-sm">×</button>
       </div>
       <div className="h-80 overflow-y-auto p-3 space-y-3">
         {messages.map((msg, i) => (
@@ -141,7 +198,7 @@ Kiểm tra:
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-[#18181b] text-[#a1a1aa] px-3 py-2 rounded-lg text-[11px]">
-              <span className="animate-pulse">🔄 Đang phân tích với {selectedModel}...</span>
+              <span className="animate-pulse">Đang phân tích với {selectedModel}...</span>
             </div>
           </div>
         )}
@@ -490,7 +547,7 @@ Answer in Vietnamese, keep technical terms in English.` },
               disabled={analysisLoading}
               className="w-full px-4 py-2.5 text-[11px] font-semibold bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded-lg hover:bg-[#1e40af]/50 transition-colors disabled:opacity-50"
             >
-              {analysisLoading ? '🔄 Đang phân tích...' : '🧠 Ask ASSISTANT About This Flow ▾'}
+              {analysisLoading ? 'Đang phân tích...' : 'Ask ASSISTANT About This Flow'}
             </button>
             
             {/* Dropdown options */}
@@ -500,14 +557,14 @@ Answer in Vietnamese, keep technical terms in English.` },
                   onClick={() => handleAnalyzeFlow(false)}
                   className="w-full px-4 py-3 text-left text-[11px] text-[#a1a1aa] hover:bg-[#27272a] hover:text-[#e4e4e7] transition-colors border-b border-[#27272a]"
                 >
-                  <div className="font-semibold text-[#60a5fa]">🔍 Phân tích Flow này</div>
+                  <div className="font-semibold text-[#60a5fa]">Analyze This Flow</div>
                   <div className="text-[10px] text-[#52525b] mt-0.5">Chỉ phân tích sự kiện đang chọn</div>
                 </button>
                 <button
                   onClick={() => handleAnalyzeFlow(true)}
                   className="w-full px-4 py-3 text-left text-[11px] text-[#a1a1aa] hover:bg-[#27272a] hover:text-[#e4e4e7] transition-colors"
                 >
-                  <div className="font-semibold text-[#fbbf24]">📊 Phân tích TẤT CẢ từ IP {selectedEvent.src_ip}</div>
+                  <div className="font-semibold text-[#fbbf24]">Analyze ALL from IP {selectedEvent.src_ip}</div>
                   <div className="text-[10px] text-[#52525b] mt-0.5">Phân tích toàn bộ flows từ IP nguồn này</div>
                 </button>
               </div>
@@ -524,7 +581,7 @@ Answer in Vietnamese, keep technical terms in English.` },
                 : 'bg-[#450a0a] text-[#f87171] border border-[#7f1d1d] hover:bg-[#7f1d1d]/50'
             } disabled:opacity-50`}
           >
-            {blockingIP ? '🔄 Đang block...' : isAlreadyBlocked ? `✓ IP đã bị block` : `🚫 Block IP ${selectedEvent.src_ip}`}
+            {blockingIP ? 'Đang block...' : isAlreadyBlocked ? `IP đã bị block` : `Block IP ${selectedEvent.src_ip}`}
           </button>
         </div>
       </div>
@@ -1142,7 +1199,12 @@ Answer in Vietnamese, keep technical terms in English.` },
       </div>
       
       {/* AI Chat Panel */}
-      <AIChatPanel isOpen={showAIChat} onClose={() => setShowAIChat(false)} />
+      <AIChatPanel 
+        isOpen={showAIChat} 
+        onClose={() => setShowAIChat(false)} 
+        events={events}
+        selectedEvent={selectedEvent}
+      />
       
       {/* Settings Modal */}
       <SettingsModal 
