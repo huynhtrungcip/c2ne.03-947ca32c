@@ -1,6 +1,10 @@
 /**
- * SOC Dashboard Backend Server
- * Receives logs from Suricata/Zeek and serves them to the dashboard
+ * SOC Dashboard Backend Server - False Positive Reduction System
+ * 
+ * Architecture:
+ * 1. Receives alerts from Suricata (stored as PENDING)
+ * 2. Correlates with Zeek logs using community_id or 5-tuple
+ * 3. AI analyzes combined data to determine final verdict
  * 
  * Author: C1NE.03 Team - Cybersecurity K28 - Duy Tan University
  */
@@ -17,16 +21,20 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3001;
 const WS_PORT = process.env.WS_PORT || 3002;
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'soc_events.db');
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.text({ type: 'text/plain', limit: '50mb' }));
 
-// Initialize SQLite Database
-const db = new Database(path.join(__dirname, 'soc_events.db'));
+// Trust proxy for getting real client IP
+app.set('trust proxy', true);
 
-// Create tables
+// Initialize SQLite Database
+const db = new Database(DB_PATH);
+
+// Create tables with enhanced schema for correlation
 db.exec(`
   CREATE TABLE IF NOT EXISTS events (
     id TEXT PRIMARY KEY,
@@ -37,12 +45,46 @@ db.exec(`
     dst_port INTEGER,
     protocol TEXT,
     attack_type TEXT,
-    verdict TEXT DEFAULT 'SUSPICIOUS',
+    verdict TEXT DEFAULT 'PENDING',
+    final_verdict TEXT,
     confidence REAL DEFAULT 0.5,
     source_engine TEXT,
     community_id TEXT,
+    flow_id TEXT,
     raw_log TEXT,
     action_taken TEXT,
+    zeek_correlated INTEGER DEFAULT 0,
+    ai_analyzed INTEGER DEFAULT 0,
+    ai_analysis TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS zeek_flows (
+    id TEXT PRIMARY KEY,
+    timestamp DATETIME,
+    uid TEXT,
+    community_id TEXT,
+    src_ip TEXT,
+    dst_ip TEXT,
+    src_port INTEGER,
+    dst_port INTEGER,
+    protocol TEXT,
+    service TEXT,
+    duration REAL,
+    orig_bytes INTEGER,
+    resp_bytes INTEGER,
+    conn_state TEXT,
+    raw_log TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS connected_sources (
+    id TEXT PRIMARY KEY,
+    ip_address TEXT UNIQUE,
+    source_type TEXT,
+    hostname TEXT,
+    last_seen DATETIME,
+    total_events INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -51,18 +93,24 @@ db.exec(`
     value TEXT
   );
 
-  CREATE INDEX IF NOT EXISTS idx_timestamp ON events(timestamp);
-  CREATE INDEX IF NOT EXISTS idx_src_ip ON events(src_ip);
-  CREATE INDEX IF NOT EXISTS idx_verdict ON events(verdict);
+  CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
+  CREATE INDEX IF NOT EXISTS idx_events_src_ip ON events(src_ip);
+  CREATE INDEX IF NOT EXISTS idx_events_verdict ON events(verdict);
+  CREATE INDEX IF NOT EXISTS idx_events_community_id ON events(community_id);
+  CREATE INDEX IF NOT EXISTS idx_zeek_community_id ON zeek_flows(community_id);
+  CREATE INDEX IF NOT EXISTS idx_zeek_5tuple ON zeek_flows(src_ip, dst_ip, src_port, dst_port, protocol);
 `);
 
 // WebSocket Server for real-time updates
 const wss = new WebSocketServer({ port: WS_PORT });
 const clients = new Set();
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
   clients.add(ws);
-  console.log(`[WS] Client connected. Total: ${clients.size}`);
+  console.log(`[WS] Client connected from ${req.socket.remoteAddress}. Total: ${clients.size}`);
+  
+  // Send current connection status
+  ws.send(JSON.stringify({ type: 'CONNECTED', clients: clients.size }));
   
   ws.on('close', () => {
     clients.delete(ws);
@@ -74,11 +122,112 @@ wss.on('connection', (ws) => {
 function broadcastEvent(event) {
   const message = JSON.stringify({ type: 'NEW_EVENT', data: event });
   clients.forEach((client) => {
-    if (client.readyState === 1) { // WebSocket.OPEN
+    if (client.readyState === 1) {
       client.send(message);
     }
   });
 }
+
+// Update or create connected source
+function updateConnectedSource(ip, sourceType, req) {
+  const hostname = req.headers['x-nids-hostname'] || req.headers['host'] || 'Unknown';
+  
+  db.prepare(`
+    INSERT INTO connected_sources (id, ip_address, source_type, hostname, last_seen, total_events)
+    VALUES (?, ?, ?, ?, datetime('now'), 1)
+    ON CONFLICT(ip_address) DO UPDATE SET
+      last_seen = datetime('now'),
+      total_events = total_events + 1,
+      source_type = CASE 
+        WHEN source_type NOT LIKE '%' || ? || '%' THEN source_type || ', ' || ?
+        ELSE source_type
+      END
+  `).run(uuidv4(), ip, sourceType, hostname, sourceType, sourceType);
+}
+
+// ==================== CORRELATION ENGINE ====================
+
+// Find matching Zeek flow for a Suricata alert
+function findZeekCorrelation(event) {
+  // First try community_id (most accurate)
+  if (event.community_id) {
+    const zeekFlow = db.prepare(`
+      SELECT * FROM zeek_flows 
+      WHERE community_id = ?
+      ORDER BY ABS(julianday(timestamp) - julianday(?)) 
+      LIMIT 1
+    `).get(event.community_id, event.timestamp);
+    
+    if (zeekFlow) return zeekFlow;
+  }
+  
+  // Fallback to 5-tuple matching within time window
+  const zeekFlow = db.prepare(`
+    SELECT * FROM zeek_flows 
+    WHERE src_ip = ? AND dst_ip = ? AND dst_port = ?
+    AND ABS(julianday(timestamp) - julianday(?)) < 0.0007  -- ~1 minute window
+    ORDER BY ABS(julianday(timestamp) - julianday(?))
+    LIMIT 1
+  `).get(event.src_ip, event.dst_ip, event.dst_port, event.timestamp, event.timestamp);
+  
+  return zeekFlow;
+}
+
+// Process pending alerts - correlate with Zeek and update verdict
+function processPendingAlerts() {
+  const pendingAlerts = db.prepare(`
+    SELECT * FROM events 
+    WHERE verdict = 'PENDING' AND zeek_correlated = 0
+    ORDER BY timestamp DESC
+    LIMIT 100
+  `).all();
+  
+  for (const alert of pendingAlerts) {
+    const zeekFlow = findZeekCorrelation(alert);
+    
+    if (zeekFlow) {
+      // Found Zeek correlation - update alert
+      const correlationData = {
+        zeek_uid: zeekFlow.uid,
+        zeek_service: zeekFlow.service,
+        zeek_conn_state: zeekFlow.conn_state,
+        zeek_duration: zeekFlow.duration,
+        zeek_bytes: (zeekFlow.orig_bytes || 0) + (zeekFlow.resp_bytes || 0)
+      };
+      
+      // Preliminary verdict based on Zeek data
+      let preliminaryVerdict = 'SUSPICIOUS';
+      
+      // If connection was reset/rejected, more likely to be attack
+      if (['REJ', 'RSTO', 'RSTOS0'].includes(zeekFlow.conn_state)) {
+        preliminaryVerdict = 'ALERT';
+      }
+      // If connection completed normally with normal duration, might be false positive
+      else if (zeekFlow.conn_state === 'SF' && zeekFlow.duration > 0.5) {
+        preliminaryVerdict = 'SUSPICIOUS'; // Still need AI verification
+      }
+      
+      db.prepare(`
+        UPDATE events SET 
+          zeek_correlated = 1,
+          verdict = ?,
+          raw_log = json_patch(raw_log, ?)
+        WHERE id = ?
+      `).run(preliminaryVerdict, JSON.stringify({ zeek_correlation: correlationData }), alert.id);
+      
+      console.log(`[CORRELATION] Alert ${alert.id} correlated with Zeek flow ${zeekFlow.uid}`);
+    } else {
+      // No Zeek correlation found - mark as checked but uncorrelated
+      db.prepare(`
+        UPDATE events SET zeek_correlated = -1, verdict = 'SUSPICIOUS'
+        WHERE id = ?
+      `).run(alert.id);
+    }
+  }
+}
+
+// Run correlation every 5 seconds
+setInterval(processPendingAlerts, 5000);
 
 // ==================== API ENDPOINTS ====================
 
@@ -88,22 +237,40 @@ app.get('/api/health', (req, res) => {
     status: 'ok', 
     timestamp: new Date().toISOString(),
     connections: clients.size,
-    version: '1.0.0'
+    version: '2.0.0',
+    mode: 'False Positive Reduction System'
   });
 });
 
 // Get server configuration info
 app.get('/api/config', (req, res) => {
-  const serverIP = req.socket.localAddress || '0.0.0.0';
+  const serverIP = req.ip || req.socket.localAddress || '0.0.0.0';
   res.json({
     ingest_endpoint: `http://${req.headers.host}/api/ingest`,
     suricata_endpoint: `http://${req.headers.host}/api/ingest/suricata`,
     zeek_endpoint: `http://${req.headers.host}/api/ingest/zeek`,
-    websocket: `ws://${req.headers.host.replace(`:${PORT}`, `:${WS_PORT}`)}`,
+    websocket: `ws://${req.headers.host.replace(/:\d+$/, '')}:${WS_PORT}`,
     server_ip: serverIP,
     port: PORT,
-    ws_port: WS_PORT
+    ws_port: WS_PORT,
+    system_mode: 'False Positive Reduction',
+    correlation_engine: 'active'
   });
+});
+
+// Get connected sources (NIDS machines sending logs)
+app.get('/api/sources', (req, res) => {
+  try {
+    const sources = db.prepare(`
+      SELECT * FROM connected_sources 
+      ORDER BY last_seen DESC
+    `).all();
+    
+    res.json(sources);
+  } catch (error) {
+    console.error('[API] Error fetching sources:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Get all events with filtering
@@ -115,15 +282,16 @@ app.get('/api/events', (req, res) => {
       verdict, 
       src_ip, 
       time_range,
-      attack_type 
+      attack_type,
+      correlated_only
     } = req.query;
 
     let query = 'SELECT * FROM events WHERE 1=1';
     const params = [];
 
     if (verdict && verdict !== 'All') {
-      query += ' AND verdict = ?';
-      params.push(verdict);
+      query += ' AND (verdict = ? OR final_verdict = ?)';
+      params.push(verdict, verdict);
     }
 
     if (src_ip) {
@@ -134,6 +302,10 @@ app.get('/api/events', (req, res) => {
     if (attack_type) {
       query += ' AND attack_type LIKE ?';
       params.push(`%${attack_type}%`);
+    }
+
+    if (correlated_only === 'true') {
+      query += ' AND zeek_correlated = 1';
     }
 
     if (time_range) {
@@ -159,6 +331,77 @@ app.get('/api/events', (req, res) => {
     res.json(events);
   } catch (error) {
     console.error('[API] Error fetching events:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get event with Zeek correlation data for AI analysis
+app.get('/api/events/:id/full', (req, res) => {
+  try {
+    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    // Get related Zeek flows
+    let zeekFlows = [];
+    if (event.community_id) {
+      zeekFlows = db.prepare(`
+        SELECT * FROM zeek_flows WHERE community_id = ?
+      `).all(event.community_id);
+    }
+    
+    // Get all events from same source IP in last hour
+    const relatedEvents = db.prepare(`
+      SELECT * FROM events 
+      WHERE src_ip = ? 
+      AND id != ?
+      AND timestamp >= datetime(?, '-1 hour')
+      ORDER BY timestamp DESC
+      LIMIT 20
+    `).all(event.src_ip, event.id, event.timestamp);
+    
+    res.json({
+      event,
+      zeek_flows: zeekFlows,
+      related_events: relatedEvents,
+      correlation_status: event.zeek_correlated === 1 ? 'correlated' : 
+                          event.zeek_correlated === -1 ? 'no_match' : 'pending'
+    });
+  } catch (error) {
+    console.error('[API] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all events from an IP for AI analysis
+app.get('/api/events/by-ip/:ip', (req, res) => {
+  try {
+    const { ip } = req.params;
+    const { limit = 100 } = req.query;
+    
+    const events = db.prepare(`
+      SELECT * FROM events 
+      WHERE src_ip = ? OR dst_ip = ?
+      ORDER BY timestamp DESC 
+      LIMIT ?
+    `).all(ip, ip, parseInt(limit));
+    
+    const zeekFlows = db.prepare(`
+      SELECT * FROM zeek_flows 
+      WHERE src_ip = ? OR dst_ip = ?
+      ORDER BY timestamp DESC 
+      LIMIT ?
+    `).all(ip, ip, parseInt(limit));
+    
+    res.json({ 
+      events, 
+      zeek_flows: zeekFlows,
+      total_events: events.length,
+      total_flows: zeekFlows.length
+    });
+  } catch (error) {
+    console.error('[API] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -203,6 +446,15 @@ app.get('/api/metrics', (req, res) => {
       GROUP BY attack_type ORDER BY count DESC LIMIT 10
     `).all(startTime.toISOString());
 
+    // Correlation stats
+    const correlationStats = db.prepare(`
+      SELECT 
+        SUM(CASE WHEN zeek_correlated = 1 THEN 1 ELSE 0 END) as correlated,
+        SUM(CASE WHEN zeek_correlated = -1 THEN 1 ELSE 0 END) as uncorrelated,
+        SUM(CASE WHEN zeek_correlated = 0 THEN 1 ELSE 0 END) as pending
+      FROM events WHERE timestamp >= ?
+    `).get(startTime.toISOString());
+
     const verdictMap = {};
     byVerdict.forEach(v => verdictMap[v.verdict] = v.count);
 
@@ -212,9 +464,11 @@ app.get('/api/metrics', (req, res) => {
       suspicious: verdictMap['SUSPICIOUS'] || 0,
       falsePositives: verdictMap['FALSE_POSITIVE'] || 0,
       benign: verdictMap['BENIGN'] || 0,
+      pending: verdictMap['PENDING'] || 0,
       uniqueSources: uniqueSources.count,
       topSources,
-      attackTypes
+      attackTypes,
+      correlation: correlationStats
     });
   } catch (error) {
     console.error('[API] Error fetching metrics:', error);
@@ -227,31 +481,21 @@ app.get('/api/traffic', (req, res) => {
   try {
     const timeRange = req.query.time_range || '1h';
     const now = new Date();
-    let startTime, interval;
+    let startTime;
     
     switch (timeRange) {
-      case '1h': 
-        startTime = new Date(now - 3600000); 
-        interval = 5; // 5 minutes
-        break;
-      case '6h': 
-        startTime = new Date(now - 21600000); 
-        interval = 30; // 30 minutes
-        break;
-      case '24h': 
-        startTime = new Date(now - 86400000); 
-        interval = 60; // 1 hour
-        break;
-      default: 
-        startTime = new Date(now - 3600000);
-        interval = 5;
+      case '1h': startTime = new Date(now - 3600000); break;
+      case '6h': startTime = new Date(now - 21600000); break;
+      case '24h': startTime = new Date(now - 86400000); break;
+      default: startTime = new Date(now - 3600000);
     }
 
     const data = db.prepare(`
       SELECT 
-        strftime('%Y-%m-%d %H:%M', datetime(timestamp, 'unixepoch')) as time_bucket,
+        strftime('%Y-%m-%d %H:%M', timestamp) as time_bucket,
         COUNT(*) as total,
-        SUM(CASE WHEN verdict = 'ALERT' THEN 1 ELSE 0 END) as alerts
+        SUM(CASE WHEN verdict = 'ALERT' THEN 1 ELSE 0 END) as alerts,
+        SUM(CASE WHEN zeek_correlated = 1 THEN 1 ELSE 0 END) as correlated
       FROM events 
       WHERE timestamp >= ?
       GROUP BY time_bucket
@@ -267,65 +511,14 @@ app.get('/api/traffic', (req, res) => {
 
 // ==================== LOG INGESTION ====================
 
-// Generic log ingestion endpoint
-app.post('/api/ingest', (req, res) => {
-  try {
-    const logs = Array.isArray(req.body) ? req.body : [req.body];
-    let inserted = 0;
-
-    const insertStmt = db.prepare(`
-      INSERT INTO events (id, timestamp, src_ip, dst_ip, src_port, dst_port, protocol, 
-        attack_type, verdict, confidence, source_engine, community_id, raw_log)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertMany = db.transaction((logs) => {
-      for (const log of logs) {
-        const event = {
-          id: uuidv4(),
-          timestamp: log.timestamp || new Date().toISOString(),
-          src_ip: log.src_ip || log.source_ip || 'unknown',
-          dst_ip: log.dst_ip || log.dest_ip || 'unknown',
-          src_port: log.src_port || log.source_port || null,
-          dst_port: log.dst_port || log.dest_port || null,
-          protocol: log.protocol || log.proto || 'unknown',
-          attack_type: log.attack_type || log.alert?.signature || log.signature || 'Unknown',
-          verdict: log.verdict || classifyVerdict(log),
-          confidence: log.confidence || 0.5,
-          source_engine: log.source_engine || 'generic',
-          community_id: log.community_id || null,
-          raw_log: JSON.stringify(log)
-        };
-
-        insertStmt.run(
-          event.id, event.timestamp, event.src_ip, event.dst_ip,
-          event.src_port, event.dst_port, event.protocol, event.attack_type,
-          event.verdict, event.confidence, event.source_engine,
-          event.community_id, event.raw_log
-        );
-
-        broadcastEvent(event);
-        inserted++;
-      }
-    });
-
-    insertMany(logs);
-    console.log(`[INGEST] Inserted ${inserted} events`);
-    res.json({ success: true, inserted });
-  } catch (error) {
-    console.error('[INGEST] Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Suricata EVE JSON ingestion
 app.post('/api/ingest/suricata', (req, res) => {
   try {
-    // Handle both single event and batch
-    let logs = [];
+    const clientIP = req.ip || req.socket.remoteAddress || 'unknown';
+    updateConnectedSource(clientIP, 'Suricata', req);
     
+    let logs = [];
     if (typeof req.body === 'string') {
-      // NDJSON format (one JSON per line)
       logs = req.body.split('\n')
         .filter(line => line.trim())
         .map(line => JSON.parse(line));
@@ -336,13 +529,12 @@ app.post('/api/ingest/suricata', (req, res) => {
     let inserted = 0;
     const insertStmt = db.prepare(`
       INSERT INTO events (id, timestamp, src_ip, dst_ip, src_port, dst_port, protocol, 
-        attack_type, verdict, confidence, source_engine, community_id, raw_log)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        attack_type, verdict, confidence, source_engine, community_id, flow_id, raw_log)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertMany = db.transaction((logs) => {
       for (const log of logs) {
-        // Only process alert events
         if (log.event_type !== 'alert') continue;
 
         const event = {
@@ -354,10 +546,11 @@ app.post('/api/ingest/suricata', (req, res) => {
           dst_port: log.dest_port || null,
           protocol: log.proto || 'unknown',
           attack_type: log.alert?.signature || 'Unknown Suricata Alert',
-          verdict: classifySuricataVerdict(log),
+          verdict: 'PENDING', // Always start as PENDING - wait for Zeek correlation
           confidence: (log.alert?.severity ? (4 - log.alert.severity) / 3 : 0.5),
           source_engine: 'Suricata',
           community_id: log.community_id || null,
+          flow_id: log.flow_id?.toString() || null,
           raw_log: JSON.stringify(log)
         };
 
@@ -365,17 +558,17 @@ app.post('/api/ingest/suricata', (req, res) => {
           event.id, event.timestamp, event.src_ip, event.dst_ip,
           event.src_port, event.dst_port, event.protocol, event.attack_type,
           event.verdict, event.confidence, event.source_engine,
-          event.community_id, event.raw_log
+          event.community_id, event.flow_id, event.raw_log
         );
 
-        broadcastEvent(event);
+        broadcastEvent({ ...event, status: 'pending_correlation' });
         inserted++;
       }
     });
 
     insertMany(logs);
-    console.log(`[SURICATA] Inserted ${inserted} alerts`);
-    res.json({ success: true, inserted });
+    console.log(`[SURICATA] Received ${inserted} alerts from ${clientIP}`);
+    res.json({ success: true, inserted, status: 'pending_zeek_correlation' });
   } catch (error) {
     console.error('[SURICATA] Error:', error);
     res.status(500).json({ error: error.message });
@@ -385,16 +578,16 @@ app.post('/api/ingest/suricata', (req, res) => {
 // Zeek log ingestion
 app.post('/api/ingest/zeek', (req, res) => {
   try {
-    let logs = [];
+    const clientIP = req.ip || req.socket.remoteAddress || 'unknown';
+    updateConnectedSource(clientIP, 'Zeek', req);
     
+    let logs = [];
     if (typeof req.body === 'string') {
-      // TSV or JSON format
       const lines = req.body.split('\n').filter(line => line.trim() && !line.startsWith('#'));
       logs = lines.map(line => {
         try {
           return JSON.parse(line);
         } catch {
-          // Parse TSV format
           const fields = line.split('\t');
           return { raw: line, fields };
         }
@@ -405,43 +598,49 @@ app.post('/api/ingest/zeek', (req, res) => {
 
     let inserted = 0;
     const insertStmt = db.prepare(`
-      INSERT INTO events (id, timestamp, src_ip, dst_ip, src_port, dst_port, protocol, 
-        attack_type, verdict, confidence, source_engine, community_id, raw_log)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO zeek_flows (id, timestamp, uid, community_id, src_ip, dst_ip, 
+        src_port, dst_port, protocol, service, duration, orig_bytes, resp_bytes, 
+        conn_state, raw_log)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertMany = db.transaction((logs) => {
       for (const log of logs) {
-        const event = {
+        const flow = {
           id: uuidv4(),
           timestamp: log.ts ? new Date(parseFloat(log.ts) * 1000).toISOString() : new Date().toISOString(),
+          uid: log.uid || null,
+          community_id: log.community_id || null,
           src_ip: log['id.orig_h'] || log.src_ip || 'unknown',
           dst_ip: log['id.resp_h'] || log.dst_ip || 'unknown',
           src_port: log['id.orig_p'] || log.src_port || null,
           dst_port: log['id.resp_p'] || log.dst_port || null,
-          protocol: log.proto || log.service || 'unknown',
-          attack_type: log.note || log.msg || 'Zeek Connection',
-          verdict: classifyZeekVerdict(log),
-          confidence: 0.5,
-          source_engine: 'Zeek',
-          community_id: log.community_id || log.uid || null,
+          protocol: log.proto || 'unknown',
+          service: log.service || null,
+          duration: log.duration || null,
+          orig_bytes: log.orig_bytes || 0,
+          resp_bytes: log.resp_bytes || 0,
+          conn_state: log.conn_state || null,
           raw_log: JSON.stringify(log)
         };
 
         insertStmt.run(
-          event.id, event.timestamp, event.src_ip, event.dst_ip,
-          event.src_port, event.dst_port, event.protocol, event.attack_type,
-          event.verdict, event.confidence, event.source_engine,
-          event.community_id, event.raw_log
+          flow.id, flow.timestamp, flow.uid, flow.community_id,
+          flow.src_ip, flow.dst_ip, flow.src_port, flow.dst_port,
+          flow.protocol, flow.service, flow.duration, flow.orig_bytes,
+          flow.resp_bytes, flow.conn_state, flow.raw_log
         );
 
-        broadcastEvent(event);
         inserted++;
       }
     });
 
     insertMany(logs);
-    console.log(`[ZEEK] Inserted ${inserted} events`);
+    console.log(`[ZEEK] Received ${inserted} flows from ${clientIP}`);
+    
+    // Trigger correlation check
+    processPendingAlerts();
+    
     res.json({ success: true, inserted });
   } catch (error) {
     console.error('[ZEEK] Error:', error);
@@ -449,50 +648,23 @@ app.post('/api/ingest/zeek', (req, res) => {
   }
 });
 
-// ==================== VERDICT CLASSIFICATION ====================
-
-function classifyVerdict(log) {
-  const severity = log.severity || log.alert?.severity;
-  if (severity === 1) return 'ALERT';
-  if (severity === 2) return 'SUSPICIOUS';
-  if (severity >= 3) return 'BENIGN';
-  return 'SUSPICIOUS';
-}
-
-function classifySuricataVerdict(log) {
-  const severity = log.alert?.severity;
-  const action = log.alert?.action;
-  
-  if (action === 'blocked' || severity === 1) return 'ALERT';
-  if (severity === 2) return 'SUSPICIOUS';
-  if (severity >= 3) return 'BENIGN';
-  return 'SUSPICIOUS';
-}
-
-function classifyZeekVerdict(log) {
-  // Zeek notice.log events
-  if (log.note) {
-    if (log.note.includes('Attack') || log.note.includes('Exploit')) return 'ALERT';
-    if (log.note.includes('Scan') || log.note.includes('Suspicious')) return 'SUSPICIOUS';
-  }
-  return 'BENIGN';
-}
-
-// ==================== GET EVENTS BY IP (for AI analysis) ====================
-
-app.get('/api/events/by-ip/:ip', (req, res) => {
+// Update event verdict after AI analysis
+app.post('/api/events/:id/verdict', (req, res) => {
   try {
-    const { ip } = req.params;
-    const { limit = 100 } = req.query;
+    const { verdict, analysis } = req.body;
     
-    const events = db.prepare(`
-      SELECT * FROM events 
-      WHERE src_ip = ? OR dst_ip = ?
-      ORDER BY timestamp DESC 
-      LIMIT ?
-    `).all(ip, ip, parseInt(limit));
+    db.prepare(`
+      UPDATE events SET 
+        final_verdict = ?,
+        ai_analyzed = 1,
+        ai_analysis = ?
+      WHERE id = ?
+    `).run(verdict, JSON.stringify(analysis), req.params.id);
     
-    res.json(events);
+    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
+    broadcastEvent({ ...event, type: 'VERDICT_UPDATED' });
+    
+    res.json({ success: true, event });
   } catch (error) {
     console.error('[API] Error:', error);
     res.status(500).json({ error: error.message });
@@ -502,22 +674,23 @@ app.get('/api/events/by-ip/:ip', (req, res) => {
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`
-╔══════════════════════════════════════════════════════════════╗
-║           SOC Dashboard Backend Server v1.0.0                ║
-║          C1NE.03 Team - Cybersecurity K28 - DTU              ║
-╠══════════════════════════════════════════════════════════════╣
-║  REST API:    http://0.0.0.0:${PORT}                            ║
-║  WebSocket:   ws://0.0.0.0:${WS_PORT}                             ║
-╠══════════════════════════════════════════════════════════════╣
-║  Endpoints:                                                  ║
-║    GET  /api/health         - Health check                   ║
-║    GET  /api/config         - Get server config              ║
-║    GET  /api/events         - Get all events                 ║
-║    GET  /api/metrics        - Get metrics                    ║
-║    GET  /api/traffic        - Get traffic data               ║
-║    POST /api/ingest         - Generic log ingestion          ║
-║    POST /api/ingest/suricata - Suricata EVE JSON             ║
-║    POST /api/ingest/zeek    - Zeek logs                      ║
-╚══════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════╗
+║       SOC Dashboard - False Positive Reduction System v2.0       ║
+║            C1NE.03 Team - Cybersecurity K28 - DTU                ║
+╠══════════════════════════════════════════════════════════════════╣
+║  REST API:    http://0.0.0.0:${PORT}                                ║
+║  WebSocket:   ws://0.0.0.0:${WS_PORT}                                 ║
+╠══════════════════════════════════════════════════════════════════╣
+║  System Flow:                                                    ║
+║    1. Suricata alert → PENDING                                   ║
+║    2. Correlate with Zeek flow (community_id / 5-tuple)          ║
+║    3. AI analysis → Final verdict                                ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Endpoints:                                                      ║
+║    POST /api/ingest/suricata  - Receive Suricata alerts          ║
+║    POST /api/ingest/zeek      - Receive Zeek flows               ║
+║    GET  /api/sources          - View connected NIDS machines     ║
+║    GET  /api/events/:id/full  - Get event + Zeek correlation     ║
+╚══════════════════════════════════════════════════════════════════╝
   `);
 });

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe } from 'lucide-react';
+import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 type Theme = 'light' | 'dark';
@@ -19,6 +19,15 @@ interface ListItem {
   note?: string;
 }
 
+interface ConnectedSource {
+  id: string;
+  ip_address: string;
+  source_type: string;
+  hostname: string;
+  last_seen: string;
+  total_events: number;
+}
+
 const TIMEZONES = [
   { value: 'Asia/Ho_Chi_Minh', label: 'Vietnam (UTC+7)' },
   { value: 'Asia/Bangkok', label: 'Thailand (UTC+7)' },
@@ -34,8 +43,10 @@ const TIMEZONES = [
 
 const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: SettingsModalProps) => {
   const { language, setLanguage, t } = useLanguage();
-  const [activeSection, setActiveSection] = useState<'general' | 'blacklist' | 'whitelist' | 'help'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'sources' | 'blacklist' | 'whitelist' | 'help'>('general');
   const [timezone, setTimezone] = useState(() => localStorage.getItem('soc-timezone') || 'Asia/Ho_Chi_Minh');
+  const [connectedSources, setConnectedSources] = useState<ConnectedSource[]>([]);
+  const [loadingSources, setLoadingSources] = useState(false);
   
   // Blacklist state
   const [blacklist, setBlacklist] = useState<ListItem[]>(() => {
@@ -58,6 +69,33 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   
   const [newItem, setNewItem] = useState({ value: '', type: 'ip' as 'ip' | 'domain', note: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // API URL for backend
+  const apiUrl = localStorage.getItem('soc-api-url') || '';
+  const [apiUrlInput, setApiUrlInput] = useState(apiUrl);
+  
+  // Fetch connected sources when section is opened
+  useEffect(() => {
+    if (activeSection === 'sources' && apiUrl) {
+      fetchConnectedSources();
+    }
+  }, [activeSection, apiUrl]);
+  
+  const fetchConnectedSources = async () => {
+    if (!apiUrl) return;
+    setLoadingSources(true);
+    try {
+      const response = await fetch(`${apiUrl}/api/sources`);
+      if (response.ok) {
+        const data = await response.json();
+        setConnectedSources(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch sources:', error);
+    } finally {
+      setLoadingSources(false);
+    }
+  };
   
   // Save to localStorage
   useEffect(() => {
@@ -97,13 +135,162 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     setCurrentList(currentList.map(item => item.id === id ? { ...item, ...updates } : item));
     setEditingId(null);
   };
+
+  const handleSaveApiUrl = () => {
+    localStorage.setItem('soc-api-url', apiUrlInput);
+    fetchConnectedSources();
+  };
   
   const sections = [
     { id: 'general', label: t('settings.general'), icon: Settings },
+    { id: 'sources', label: 'NIDS Sources', icon: Server },
     { id: 'blacklist', label: t('settings.blacklist'), icon: Shield },
     { id: 'whitelist', label: t('settings.whitelist'), icon: List },
     { id: 'help', label: t('settings.help'), icon: HelpCircle },
   ];
+
+  const renderSourcesSection = () => (
+    <div className="space-y-6">
+      <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+        Connected NIDS Sources
+      </div>
+      <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+        View IP addresses of machines sending logs (Suricata/Zeek) to this dashboard.
+      </p>
+
+      {/* API URL Configuration */}
+      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+        <div className={`text-[11px] font-semibold mb-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+          Backend API URL
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="http://192.168.1.100:3001"
+            value={apiUrlInput}
+            onChange={(e) => setApiUrlInput(e.target.value)}
+            className={`flex-1 h-9 px-3 text-[11px] border rounded-lg ${
+              isDarkMode 
+                ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7] placeholder-[#52525b]' 
+                : 'bg-white border-[#d1d5db] text-[#111827] placeholder-[#9ca3af]'
+            }`}
+          />
+          <button
+            onClick={handleSaveApiUrl}
+            className="px-4 h-9 text-[11px] font-medium bg-[#3b82f6] text-white rounded-lg hover:bg-[#2563eb]"
+          >
+            Save & Test
+          </button>
+        </div>
+        <p className={`mt-2 text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+          Enter the URL of your self-hosted SOC backend server
+        </p>
+      </div>
+
+      {/* Connected Sources List */}
+      <div className={`border rounded-lg overflow-hidden ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
+        <div className={`p-3 border-b ${isDarkMode ? 'bg-[#18181b] border-[#27272a]' : 'bg-[#f3f4f6] border-[#e5e7eb]'}`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-[11px] font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+              NIDS Machines Sending Logs
+            </span>
+            <button
+              onClick={fetchConnectedSources}
+              className={`text-[10px] px-2 py-1 rounded ${isDarkMode ? 'bg-[#27272a] text-[#a1a1aa] hover:bg-[#3f3f46]' : 'bg-[#e5e7eb] text-[#6b7280] hover:bg-[#d1d5db]'}`}
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {loadingSources ? (
+          <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+            <div className="animate-spin w-6 h-6 border-2 border-[#3b82f6] border-t-transparent rounded-full mx-auto mb-2"></div>
+            Loading...
+          </div>
+        ) : !apiUrl ? (
+          <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+            <WifiOff className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <div className="text-[11px]">Configure Backend API URL first</div>
+          </div>
+        ) : connectedSources.length === 0 ? (
+          <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+            <Server className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <div className="text-[11px]">No NIDS sources connected yet</div>
+            <div className="text-[10px] mt-1">Start sending logs from Suricata/Zeek</div>
+          </div>
+        ) : (
+          <div className="divide-y divide-[#27272a]">
+            {connectedSources.map((source) => (
+              <div key={source.id} className={`p-4 ${isDarkMode ? 'hover:bg-[#18181b]' : 'hover:bg-[#f9fafb]'}`}>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      source.source_type.includes('Suricata') 
+                        ? 'bg-[#dc2626]/20 text-[#f87171]' 
+                        : 'bg-[#3b82f6]/20 text-[#60a5fa]'
+                    }`}>
+                      <Wifi className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className={`text-[13px] font-mono font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+                        {source.ip_address}
+                      </div>
+                      <div className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+                        {source.hostname}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex gap-1">
+                      {source.source_type.split(', ').map((type, i) => (
+                        <span key={i} className={`px-2 py-0.5 rounded text-[9px] font-medium ${
+                          type === 'Suricata' 
+                            ? 'bg-[#dc2626]/20 text-[#f87171]' 
+                            : 'bg-[#3b82f6]/20 text-[#60a5fa]'
+                        }`}>
+                          {type}
+                        </span>
+                      ))}
+                    </div>
+                    <div className={`text-[10px] mt-1 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+                      {source.total_events.toLocaleString()} events
+                    </div>
+                  </div>
+                </div>
+                <div className={`mt-2 text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+                  Last seen: {new Date(source.last_seen).toLocaleString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Endpoint Info */}
+      {apiUrl && (
+        <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+          <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+            Log Ingestion Endpoints
+          </div>
+          <div className={`space-y-2 text-[11px] font-mono ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+            <div className="flex items-center gap-2">
+              <span className="px-1.5 py-0.5 bg-[#dc2626]/20 text-[#f87171] rounded text-[9px]">Suricata</span>
+              <code className={`flex-1 p-2 rounded ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f3f4f6]'}`}>
+                POST {apiUrl}/api/ingest/suricata
+              </code>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-1.5 py-0.5 bg-[#3b82f6]/20 text-[#60a5fa] rounded text-[9px]">Zeek</span>
+              <code className={`flex-1 p-2 rounded ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f3f4f6]'}`}>
+                POST {apiUrl}/api/ingest/zeek
+              </code>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
   
   const renderListSection = () => (
     <div className="space-y-4">
@@ -342,6 +529,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             <span className={`font-mono ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>Hybrid NIDS</span>
           </div>
           <div className="flex justify-between">
+            <span>Mode:</span>
+            <span className={`font-mono ${isDarkMode ? 'text-[#22c55e]' : 'text-[#16a34a]'}`}>False Positive Reduction</span>
+          </div>
+          <div className="flex justify-between">
             <span>{t('settings.timezone')}:</span>
             <span className={`font-mono ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>{timezone}</span>
           </div>
@@ -354,6 +545,27 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     <div className="space-y-6">
       <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
         {t('help.title')}
+      </div>
+
+      {/* System Architecture */}
+      <div className={`p-4 rounded-lg border-2 ${isDarkMode ? 'bg-[#0f0f0f] border-[#3b82f6]/30' : 'bg-[#eff6ff] border-[#3b82f6]/30'}`}>
+        <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>
+          False Positive Reduction System
+        </div>
+        <div className={`space-y-2 text-[11px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-[#dc2626]/20 text-[#f87171] flex items-center justify-center text-[10px] font-bold">1</span>
+            <span>Suricata alert received → Status: <span className="text-[#f59e0b]">PENDING</span></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-[#3b82f6]/20 text-[#60a5fa] flex items-center justify-center text-[10px] font-bold">2</span>
+            <span>Correlate with Zeek flow (community_id / 5-tuple)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-[#22c55e]/20 text-[#4ade80] flex items-center justify-center text-[10px] font-bold">3</span>
+            <span>AI analyzes combined data → Final verdict</span>
+          </div>
+        </div>
       </div>
       
       {/* Quick Guide */}
@@ -377,27 +589,17 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         </div>
       </div>
       
-      {/* Features */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-        <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
-          {t('help.features')}
-        </div>
-        <ul className={`space-y-2 text-[11px] list-disc list-inside ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
-          <li><strong>LIVE Mode:</strong> Real-time event monitoring, disable to inspect details</li>
-          <li><strong>Auto Block:</strong> Automatically block suspicious IPs on pfSense</li>
-          <li><strong>Filters:</strong> Filter by Verdict, IP, Signature, Confidence</li>
-          <li><strong>Event Inspector:</strong> Click event to view details (disable LIVE mode first)</li>
-          <li><strong>AI Assistant:</strong> Ask AI about attack patterns</li>
-          <li><strong>Blacklist/Whitelist:</strong> Manage IP/Domain lists</li>
-        </ul>
-      </div>
-      
       {/* Verdicts Guide */}
       <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
         <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
           {t('help.verdictMeaning')}
         </div>
         <div className="space-y-2 text-[11px]">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded bg-[#f59e0b]"></span>
+            <span className={isDarkMode ? 'text-[#fbbf24]' : 'text-[#d97706]'}>PENDING:</span>
+            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>Waiting for Zeek correlation</span>
+          </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-[#dc2626]"></span>
             <span className={isDarkMode ? 'text-[#f87171]' : 'text-[#dc2626]'}>ALERT:</span>
@@ -504,6 +706,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           
           <div className="flex-1 overflow-y-auto p-6">
             {activeSection === 'general' && renderGeneralSection()}
+            {activeSection === 'sources' && renderSourcesSection()}
             {(activeSection === 'blacklist' || activeSection === 'whitelist') && renderListSection()}
             {activeSection === 'help' && renderHelpSection()}
           </div>

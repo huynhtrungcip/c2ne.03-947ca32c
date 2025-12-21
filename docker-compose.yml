@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # Backend API Server
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: soc-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"  # REST API
+      - "3002:3002"  # WebSocket
+    volumes:
+      - ./server/data:/app/data  # Persist database
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - WS_PORT=3002
+    networks:
+      - soc-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend (Nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: soc-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"  # Dashboard web interface
+    depends_on:
+      - backend
+    networks:
+      - soc-network
+
+networks:
+  soc-network:
+    driver: bridge
