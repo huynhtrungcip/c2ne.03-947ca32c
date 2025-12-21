@@ -128,7 +128,19 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     if (!range) return;
 
     const currentEvents = localStorage.getItem('soc-events') || '[]';
-    const parsedEvents = JSON.parse(currentEvents);
+    let parsedEvents: any[] = [];
+    try {
+      parsedEvents = JSON.parse(currentEvents);
+    } catch (e) {
+      console.error('Failed to parse events:', e);
+      return;
+    }
+    
+    // Check if there are events to delete
+    if (parsedEvents.length === 0) {
+      console.warn('No events in localStorage to delete');
+      return;
+    }
     
     let deletedData: any[] = [];
     let remainingData: any[] = [];
@@ -140,6 +152,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     } else {
       parsedEvents.forEach((event: any) => {
         const eventTime = new Date(event.timestamp).getTime();
+        // Delete events WITHIN the time range (recent events)
         if (now - eventTime <= range.ms) {
           deletedData.push(event);
         } else {
@@ -148,13 +161,20 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       });
     }
 
+    console.log(`[Data Management] Deleting ${deletedData.length} events, keeping ${remainingData.length}`);
+
+    // Save remaining data to localStorage
     localStorage.setItem('soc-events', JSON.stringify(remainingData));
+    
+    // Dispatch event to update dashboard
+    window.dispatchEvent(new CustomEvent('soc-data-updated'));
     
     const intervalId = setInterval(() => {
       setPendingDelete(prev => {
         if (!prev) return null;
         if (prev.countdown <= 1) {
           clearInterval(prev.intervalId!);
+          // Permanently delete - clear the backup
           return null;
         }
         return { ...prev, countdown: prev.countdown - 1 };
@@ -182,11 +202,16 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   }, [apiUrl]);
 
   const handleRecoverData = useCallback(() => {
-    if (!pendingDelete?.deletedData) return;
+    if (!pendingDelete?.deletedData || pendingDelete.deletedData.length === 0) return;
     
     const currentEvents = JSON.parse(localStorage.getItem('soc-events') || '[]');
     const restoredEvents = [...currentEvents, ...pendingDelete.deletedData];
     localStorage.setItem('soc-events', JSON.stringify(restoredEvents));
+    
+    // Dispatch event to update dashboard
+    window.dispatchEvent(new CustomEvent('soc-data-updated'));
+    
+    console.log(`[Data Management] Restored ${pendingDelete.deletedData.length} events`);
     
     if (pendingDelete.intervalId) {
       clearInterval(pendingDelete.intervalId);

@@ -29,14 +29,42 @@ export const useSOCData = (
   filters: Filters,
   options?: UseSOCDataOptions
 ) => {
-  const [events, setEvents] = useState<SOCEvent[]>(mockEvents);
+  // Initialize events - check localStorage first, then fallback to mockEvents
+  const [events, setEvents] = useState<SOCEvent[]>(() => {
+    const stored = localStorage.getItem('soc-events');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        return parsed.map((e: Record<string, unknown>) => ({
+          ...e,
+          timestamp: new Date(e.timestamp as string),
+        }));
+      } catch {
+        // If parse fails, use mockEvents
+      }
+    }
+    // Initialize localStorage with mockEvents on first load
+    localStorage.setItem('soc-events', JSON.stringify(mockEvents.map(e => ({
+      ...e,
+      timestamp: e.timestamp.toISOString(),
+    }))));
+    return mockEvents;
+  });
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [wsConnected, setWsConnected] = useState(false);
   const [wsEventCount, setWsEventCount] = useState(0);
 
   // Add new event (from WebSocket or any source)
   const addEvent = useCallback((event: SOCEvent) => {
-    setEvents(prev => [event, ...prev].slice(0, 20000));
+    setEvents(prev => {
+      const newEvents = [event, ...prev].slice(0, 20000);
+      // Also update localStorage
+      localStorage.setItem('soc-events', JSON.stringify(newEvents.map(e => ({
+        ...e,
+        timestamp: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
+      }))));
+      return newEvents;
+    });
     setLastUpdate(new Date());
     setWsEventCount(c => c + 1);
     options?.onWebSocketEvent?.(event);
