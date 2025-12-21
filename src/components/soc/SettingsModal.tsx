@@ -283,7 +283,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     localStorage.setItem('soc-telegram-config', JSON.stringify(telegramConfig));
   }, [telegramConfig]);
 
-  // Telegram test function
+  // Telegram test function - call through backend to avoid CORS
   const handleTestTelegram = useCallback(async () => {
     if (!telegramConfig.botToken || !telegramConfig.chatId) {
       setTelegramTestStatus('error');
@@ -291,29 +291,57 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       return;
     }
 
+    if (!apiUrl) {
+      setTelegramTestStatus('error');
+      setTelegramTestMessage('Vui lòng cấu hình API URL trong phần General trước');
+      return;
+    }
+
     setTelegramTestStatus('testing');
     try {
-      const response = await fetch(`https://api.telegram.org/bot${telegramConfig.botToken}/sendMessage`, {
+      // First configure telegram bot on backend
+      const configResponse = await fetch(`${apiUrl}/telegram/configure`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          bot_token: telegramConfig.botToken,
           chat_id: telegramConfig.chatId,
-          text: `🔔 *SOC Dashboard - Test Alert*\n\n✅ Kết nối Telegram thành công!\n📊 Confidence threshold: ${telegramConfig.confidenceThreshold}%\n⏰ ${new Date().toLocaleString('vi-VN')}`,
-          parse_mode: 'Markdown',
+          confidence_threshold: telegramConfig.confidenceThreshold / 100,
         }),
       });
 
-      if (response.ok) {
+      if (!configResponse.ok) {
+        throw new Error('Failed to configure Telegram');
+      }
+
+      // Then send test alert through backend
+      const response = await fetch(`${apiUrl}/telegram/send-alert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_id: 'test-' + Date.now(),
+          verdict: 'ALERT',
+          confidence: 0.95,
+          src_ip: '192.168.1.100',
+          dst_ip: '10.0.0.1',
+          attack_type: 'Test Connection',
+          description: `✅ Kết nối Telegram thành công!\n📊 Confidence threshold: ${telegramConfig.confidenceThreshold}%\n⏰ ${new Date().toLocaleString('vi-VN')}`,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
         setTelegramTestStatus('success');
         setTelegramTestMessage('Gửi tin nhắn test thành công!');
       } else {
-        const data = await response.json();
         setTelegramTestStatus('error');
-        setTelegramTestMessage(data.description || 'Lỗi kết nối Telegram');
+        setTelegramTestMessage(data.error || data.message || 'Lỗi kết nối Telegram');
       }
     } catch (error) {
+      console.error('Telegram test error:', error);
       setTelegramTestStatus('error');
-      setTelegramTestMessage('Không thể kết nối đến Telegram API');
+      setTelegramTestMessage('Không thể kết nối đến Backend API. Kiểm tra API URL.');
     }
 
     // Reset status after 5s
@@ -321,7 +349,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       setTelegramTestStatus('idle');
       setTelegramTestMessage('');
     }, 5000);
-  }, [telegramConfig]);
+  }, [telegramConfig, apiUrl]);
   
   // Early return AFTER all hooks are defined
   if (!isOpen) return null;
