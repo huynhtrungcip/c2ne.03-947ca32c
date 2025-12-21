@@ -31,6 +31,7 @@ from megallm_client import (
     MEGALLM_API_KEY,
 )
 from ingest import router as ingest_router
+from telegram_bot import telegram_bot, handle_telegram_update, configure_bot
 
 # Logging setup
 logging.basicConfig(
@@ -305,6 +306,43 @@ async def set_auto_block(config: AutoBlockConfig):
     """Set auto-block status"""
     set_auto_block_status(config.enabled)
     return {"enabled": get_auto_block_status()}
+
+
+# ==================== TELEGRAM ====================
+
+class TelegramConfigRequest(BaseModel):
+    bot_token: str
+    chat_id: str
+    confidence_threshold: int = 80
+
+
+@app.post("/telegram/configure")
+async def configure_telegram(req: TelegramConfigRequest):
+    """Configure Telegram bot"""
+    configure_bot(req.bot_token, req.chat_id, req.confidence_threshold)
+    return {"success": True, "enabled": telegram_bot.enabled}
+
+
+@app.post("/telegram/webhook")
+async def telegram_webhook(update: dict):
+    """Handle Telegram webhook updates"""
+    async def get_blocked():
+        success, ips, _ = get_blocked_ips()
+        return ips if success else []
+    
+    response = await handle_telegram_update(update, get_blocked)
+    if response:
+        chat_id = update.get("message", {}).get("chat", {}).get("id")
+        if chat_id:
+            await telegram_bot.send_message(response, chat_id=str(chat_id))
+    return {"ok": True}
+
+
+@app.post("/telegram/send-alert")
+async def send_telegram_alert(event: dict, verdict: str, confidence: float):
+    """Manually send alert via Telegram"""
+    success = await telegram_bot.send_alert(event, verdict, confidence)
+    return {"success": success}
 
 
 # ==================== BACKGROUND TASKS ====================
