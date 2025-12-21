@@ -12,34 +12,84 @@ type TabType = 'overview' | 'events' | 'threats' | 'reports';
 // AI Chatbot Panel Component
 const AIChatPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
-    { role: 'assistant', content: 'SOC AI Assistant ready. Ask me about alerts, source IPs, attack patterns or recommended actions.' }
+    { 
+      role: 'assistant', 
+      content: `Xin chào, tôi là **SOC AI Assistant** của hệ thống AI-SOC Dashboard, được phát triển bởi nhóm **C1NE.03 – K28 An ninh mạng, Đại học Duy Tân**.
+
+- Tôi chỉ tập trung vào **phân tích sự kiện an ninh**, logs, alerts và traffic trong SOC.
+- Anh/chị có thể hỏi bằng **tiếng Việt (có/không dấu) hoặc tiếng Anh**.
+- Phong cách trả lời theo chuẩn **SOC Tier-2**, ngắn gọn, rõ ràng, tập trung vào hành động.
+
+Ví dụ câu hỏi:
+- IP nao tan cong he thong nhieu nhat trong 1h qua?
+- Are these ICMP alerts likely to be a scan or health check?
+- De xuat hanh dong xu ly cho cac PortScan trong 1h gan day` 
+    }
   ]);
+
+  const AI_URL = import.meta.env.VITE_AI_URL || 'http://localhost:8000';
 
   if (!isOpen) return null;
 
-  const handleSend = () => {
-    if (!message.trim()) return;
-    setMessages(prev => [...prev, { role: 'user', content: message }]);
-    setTimeout(() => {
+  const handleSend = async () => {
+    if (!message.trim() || isLoading) return;
+    
+    const userMessage = message.trim();
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setMessage('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${AI_URL}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: userMessage,
+          events: [],
+          model: 'deepseek-r1-distill-llama-70b'
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.response) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+      } else {
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: `⚠️ Không thể kết nối với AI Engine. Vui lòng kiểm tra:
+1. AI Engine đang chạy tại ${AI_URL}
+2. MegaLLM API key đã được cấu hình trong .env
+3. Chạy \`docker compose up -d\` để khởi động tất cả services` 
+        }]);
+      }
+    } catch (error) {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'Đang phân tích dữ liệu SOC... Tính năng AI sẽ được kết nối với MegaLLM backend.' 
+        content: `❌ Lỗi kết nối: ${error instanceof Error ? error.message : 'Unknown error'}
+
+Để sử dụng AI Assistant, bạn cần:
+1. Deploy backend với Docker: \`docker compose up -d --build\`
+2. AI Engine sẽ chạy tại http://localhost:8000
+3. Cấu hình MEGALLM_API_KEY trong file .env` 
       }]);
-    }, 500);
-    setMessage('');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="fixed right-4 bottom-4 w-96 bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg shadow-2xl z-50">
+    <div className="fixed right-4 bottom-4 w-[420px] bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg shadow-2xl z-50">
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f1f]">
-        <span className="text-[11px] font-semibold text-[#e4e4e7] uppercase tracking-wider">AI Assistant</span>
+        <span className="text-[11px] font-semibold text-[#e4e4e7] uppercase tracking-wider">🧠 AI Assistant (MegaLLM)</span>
         <button onClick={onClose} className="text-[#71717a] hover:text-[#e4e4e7] text-sm">✕</button>
       </div>
-      <div className="h-72 overflow-y-auto p-3 space-y-3">
+      <div className="h-80 overflow-y-auto p-3 space-y-3">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] px-3 py-2 rounded-lg text-[11px] ${
+            <div className={`max-w-[85%] px-3 py-2 rounded-lg text-[11px] whitespace-pre-wrap ${
               msg.role === 'user' 
                 ? 'bg-[#1e3a5f] text-[#93c5fd]' 
                 : 'bg-[#18181b] text-[#a1a1aa]'
@@ -48,6 +98,13 @@ const AIChatPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
             </div>
           </div>
         ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-[#18181b] text-[#a1a1aa] px-3 py-2 rounded-lg text-[11px]">
+              <span className="animate-pulse">🔄 Đang phân tích với MegaLLM...</span>
+            </div>
+          </div>
+        )}
       </div>
       <div className="p-3 border-t border-[#1f1f1f]">
         <div className="flex gap-2">
@@ -55,15 +112,17 @@ const AIChatPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
             type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
             placeholder="Hỏi về logs, alerts, correlation..."
-            className="flex-1 h-8 px-3 text-[11px] bg-[#0a0a0a] border border-[#27272a] rounded text-[#e4e4e7] placeholder-[#3f3f46] focus:outline-none focus:border-[#3b82f6]"
+            disabled={isLoading}
+            className="flex-1 h-8 px-3 text-[11px] bg-[#0a0a0a] border border-[#27272a] rounded text-[#e4e4e7] placeholder-[#3f3f46] focus:outline-none focus:border-[#3b82f6] disabled:opacity-50"
           />
           <button 
             onClick={handleSend}
-            className="px-3 h-8 text-[10px] bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded hover:bg-[#1e40af]/50 transition-colors font-medium"
+            disabled={isLoading || !message.trim()}
+            className="px-3 h-8 text-[10px] bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded hover:bg-[#1e40af]/50 transition-colors font-medium disabled:opacity-50"
           >
-            Gửi
+            {isLoading ? '...' : 'Gửi'}
           </button>
         </div>
       </div>
@@ -138,7 +197,8 @@ const SOCDashboard = () => {
   const COLORS = ['#2563eb', '#0891b2', '#7c3aed', '#ea580c', '#16a34a', '#ca8a04'];
 
   const barData = topSources.map(d => ({ ip: d.ip, count: d.count }));
-  const sortedEvents = [...events].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 200);
+  const sortedEvents = [...events].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  const displayEvents = sortedEvents.slice(0, 500); // Hiển thị tối đa 500 events cho performance
   const alertEvents = sortedEvents.filter(e => e.verdict === 'ALERT');
 
   const getVerdictClass = (verdict: string) => {
@@ -489,7 +549,7 @@ const SOCDashboard = () => {
 
         {/* Event Table */}
         <div className="col-span-9">
-          {renderEventTable(sortedEvents)}
+          {renderEventTable(displayEvents)}
         </div>
 
         {/* Top Sources - themed */}
@@ -559,7 +619,7 @@ const SOCDashboard = () => {
               ))}
             </div>
             
-            {renderEventTable(sortedEvents)}
+            {renderEventTable(displayEvents)}
           </div>
           
           {/* Sidebar */}
