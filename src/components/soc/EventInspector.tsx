@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { Loader2, Brain, Shield, ShieldAlert } from 'lucide-react';
+import { ConfirmDialog, useConfirmDialog } from './ConfirmDialog';
 
 interface EventInspectorProps {
   event: SOCEvent | null;
@@ -23,6 +24,7 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
   const [analyzingIP, setAnalyzingIP] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [aiResult, setAiResult] = useState<AIAnalysis | null>(null);
+  const { dialogState, showConfirm, closeConfirm } = useConfirmDialog();
 
   if (!event) return null;
 
@@ -105,7 +107,7 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
     }
   };
 
-  const blockIP = async () => {
+  const executeBlockIP = async () => {
     setBlocking(true);
     try {
       const res = await fetch(`${AI_URL}/block`, {
@@ -125,6 +127,15 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
     } finally {
       setBlocking(false);
     }
+  };
+
+  const handleBlockIP = () => {
+    showConfirm(
+      'block_ip',
+      executeBlockIP,
+      event.src_ip,
+      `Signature: ${event.attack_type} | Verdict: ${event.verdict} | Confidence: ${(event.confidence * 100).toFixed(0)}%`
+    );
   };
 
   return (
@@ -209,7 +220,7 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
 
           <div className="text-xs font-semibold text-muted-foreground mt-4 mb-2">🚫 Active Defense</div>
           <Button 
-            onClick={blockIP}
+            onClick={handleBlockIP}
             disabled={blocking}
             variant="destructive"
             className="w-full text-xs"
@@ -219,6 +230,17 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
           </Button>
         </div>
       </ScrollArea>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={dialogState.onConfirm}
+        actionType={dialogState.actionType}
+        targetValue={dialogState.targetValue}
+        details={dialogState.details}
+        isDarkMode={true}
+      />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # AI Engine - Python FastAPI with MegaLLM
+  # AI Engine - Python FastAPI with MegaLLM + Ingest endpoint
   ai-engine:
     build: ./ai-engine
     container_name: soc-ai-engine
@@ -23,6 +23,11 @@ services:
     restart: unless-stopped
     networks:
       - soc-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Node.js Backend
   soc-backend:
@@ -39,7 +44,8 @@ services:
     volumes:
       - backend-data:/app/data
     depends_on:
-      - ai-engine
+      ai-engine:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - soc-network
@@ -62,7 +68,8 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - soc-backend
+      soc-backend:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - soc-network
