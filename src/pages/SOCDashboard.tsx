@@ -13,7 +13,7 @@ type TabType = 'overview' | 'events' | 'threats' | 'reports';
 const AIChatPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
-    { role: 'assistant', content: 'SOC AI Assistant sẵn sàng. Hãy đặt câu hỏi về alerts, IP nguồn, pattern tấn công hoặc đề xuất hành động.' }
+    { role: 'assistant', content: 'SOC AI Assistant ready. Ask me about alerts, source IPs, attack patterns or recommended actions.' }
   ]);
 
   if (!isOpen) return null;
@@ -329,7 +329,7 @@ const SOCDashboard = () => {
             onClick={() => setShowAIChat(true)}
             className="flex-1 px-4 py-2.5 text-[11px] font-semibold bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded-lg hover:bg-[#1e40af]/50 transition-colors"
           >
-            Ask MegaLLM About This Flow
+            Ask ASSISTANT About This Flow
           </button>
           <button className="flex-1 px-4 py-2.5 text-[11px] font-semibold bg-[#450a0a] text-[#f87171] border border-[#7f1d1d] rounded-lg hover:bg-[#7f1d1d]/50 transition-colors">
             Block IP {selectedEvent.src_ip} on pfSense
@@ -836,7 +836,7 @@ const SOCDashboard = () => {
       <header className={`h-10 flex items-center justify-between px-4 border-b ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
         <div className="flex items-center gap-6">
           <button 
-            onClick={() => navigate('/')}
+            onClick={() => setActiveTab('overview')}
             className={`text-[11px] font-semibold tracking-[0.2em] uppercase transition-colors ${isDarkMode ? 'text-[#a1a1aa] hover:text-[#e4e4e7]' : 'text-[#6b7280] hover:text-[#111827]'}`}
           >
             Security Operations Center
