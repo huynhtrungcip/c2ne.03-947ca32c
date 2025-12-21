@@ -277,7 +277,7 @@ app.get('/api/sources', (req, res) => {
 app.get('/api/events', (req, res) => {
   try {
     const { 
-      limit = 500, 
+      limit = 20000,
       offset = 0, 
       verdict, 
       src_ip, 

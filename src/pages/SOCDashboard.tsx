@@ -5,6 +5,7 @@ import { SOCEvent } from '@/types/soc';
 import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
 import { Settings } from 'lucide-react';
 import SettingsModal from '@/components/soc/SettingsModal';
+import VirtualizedEventTable from '@/components/soc/VirtualizedEventTable';
 
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
@@ -198,7 +199,7 @@ const SOCDashboard = () => {
 
   const barData = topSources.map(d => ({ ip: d.ip, count: d.count }));
   const sortedEvents = [...events].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  const displayEvents = sortedEvents.slice(0, 500); // Hiển thị tối đa 500 events cho performance
+  const displayEvents = sortedEvents.slice(0, 20000); // Hiển thị tối đa 20000 events với virtualization
   const alertEvents = sortedEvents.filter(e => e.verdict === 'ALERT');
 
   const getVerdictClass = (verdict: string) => {
@@ -268,69 +269,13 @@ const SOCDashboard = () => {
   );
 
   const renderEventTable = (eventList: SOCEvent[]) => (
-    <div className={`border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-      <div className={`flex items-center justify-between p-3 border-b ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#e5e7eb]'}`}>
-        <div className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Event Stream ({eventList.length} events)</div>
-        {isLive && <span className="text-[9px] text-[#f59e0b]">Pause LIVE mode to inspect events</span>}
-        {!isLive && <span className="text-[9px] text-[#22c55e]">Click any row to inspect</span>}
-      </div>
-
-      <div className="overflow-auto max-h-[400px] relative">
-        <table className="w-full text-[10px]">
-          <thead className={`sticky top-0 z-10 ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`} style={{ boxShadow: isDarkMode ? '0 1px 0 #1f1f1f' : '0 1px 0 #e5e7eb' }}>
-            <tr className={`uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Time</th>
-              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Verdict</th>
-              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Source</th>
-              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Destination</th>
-              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Port</th>
-              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Signature</th>
-              <th className={`text-right py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Conf</th>
-            </tr>
-          </thead>
-          <tbody>
-            {eventList.length === 0 ? (
-              <tr><td colSpan={7} className={`text-center py-8 ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No events</td></tr>
-            ) : eventList.map(event => (
-              <tr 
-                key={event.id} 
-                onClick={() => handleEventClick(event)}
-                className={`border-b transition-colors ${
-                  isDarkMode ? 'border-[#18181b]' : 'border-[#f3f4f6]'
-                } ${
-                  isLive ? 'cursor-not-allowed opacity-70' : `cursor-pointer ${isDarkMode ? 'hover:bg-[#18181b]' : 'hover:bg-[#f9fafb]'}`
-                } ${selectedEvent?.id === event.id ? (isDarkMode ? 'bg-[#1e3a5f]/40 border-l-2 border-l-[#3b82f6]' : 'bg-[#eff6ff] border-l-2 border-l-[#3b82f6]') : ''}`}
-              >
-                <td className={`py-1.5 px-3 font-mono ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
-                  {event.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </td>
-                <td className={`py-1.5 px-3 font-semibold ${getVerdictClass(event.verdict)}`}>
-                  {event.verdict}
-                </td>
-                <td className="py-1.5 px-3 font-mono text-[#3b82f6]">{event.src_ip}</td>
-                <td className={`py-1.5 px-3 font-mono ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.dst_ip}</td>
-                <td className={`py-1.5 px-3 font-mono ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{event.dst_port || '-'}</td>
-                <td className={`py-1.5 px-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.attack_type}</td>
-                <td className="py-1.5 px-3 text-right">
-                  <div className="inline-flex items-center gap-1">
-                    <div className={`w-10 h-1 rounded overflow-hidden ${isDarkMode ? 'bg-[#27272a]' : 'bg-[#e5e7eb]'}`}>
-                      <div 
-                        className="h-full rounded" 
-                        style={{ 
-                          width: `${event.confidence * 100}%`,
-                          background: event.confidence > 0.7 ? '#22c55e' : event.confidence > 0.4 ? '#f59e0b' : '#ef4444'
-                        }} 
-                      />
-                    </div>
-                    <span className={`font-mono ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{event.confidence.toFixed(2)}</span>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <VirtualizedEventTable
+      events={eventList}
+      isLive={isLive}
+      isDarkMode={isDarkMode}
+      selectedEvent={selectedEvent}
+      onEventClick={handleEventClick}
+    />
   );
 
   const renderInspector = () => {
