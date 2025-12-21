@@ -44,7 +44,7 @@ const TIMEZONES = [
 
 const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: SettingsModalProps) => {
   const { language, setLanguage, t } = useLanguage();
-  const [activeSection, setActiveSection] = useState<'general' | 'telegram' | 'data' | 'sources' | 'nids_debug' | 'blacklist' | 'whitelist' | 'blocked' | 'help'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'telegram' | 'data' | 'sources' | 'nids_debug' | 'health' | 'blacklist' | 'whitelist' | 'blocked' | 'help'>('general');
   const [timezone, setTimezone] = useState(() => localStorage.getItem('soc-timezone') || 'Asia/Ho_Chi_Minh');
   const [connectedSources, setConnectedSources] = useState<ConnectedSource[]>([]);
   const [loadingSources, setLoadingSources] = useState(false);
@@ -95,6 +95,11 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   // Mock data toggle state - must be before any early returns
   const [mockDataEnabled, setMockDataEnabled] = useState(() => {
     return localStorage.getItem('soc-mock-data-enabled') === 'true';
+  });
+
+  // NIDS data toggle state (default: ON)
+  const [nidsDataEnabled, setNidsDataEnabled] = useState(() => {
+    return localStorage.getItem('soc-nids-data-enabled') !== 'false';
   });
 
   // API URL for backend - using state for reactivity
@@ -846,6 +851,43 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         Quản lý dữ liệu sự kiện trong dashboard. Bật/tắt mock data, xóa dữ liệu cũ hoặc thêm dữ liệu demo.
       </p>
 
+      {/* NIDS Data Toggle */}
+      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${nidsDataEnabled ? 'bg-[#22c55e]/20 text-[#4ade80]' : isDarkMode ? 'bg-[#27272a] text-[#52525b]' : 'bg-[#e5e7eb] text-[#9ca3af]'}`}>
+              <Wifi className="w-5 h-5" />
+            </div>
+            <div>
+              <div className={`text-[12px] font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+                NIDS Data (Real)
+              </div>
+              <div className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+                {nidsDataEnabled ? 'Đang bật - Nhận dữ liệu từ Suricata/Zeek' : 'Đang tắt - Không hiển thị dữ liệu NIDS'}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const newValue = !nidsDataEnabled;
+              setNidsDataEnabled(newValue);
+              localStorage.setItem('soc-nids-data-enabled', String(newValue));
+              window.dispatchEvent(new CustomEvent('soc-data-updated'));
+            }}
+            className={`w-12 h-6 rounded-full transition-colors relative ${
+              nidsDataEnabled ? 'bg-[#22c55e]' : isDarkMode ? 'bg-[#27272a]' : 'bg-[#d1d5db]'
+            }`}
+          >
+            <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${
+              nidsDataEnabled ? 'translate-x-6' : 'translate-x-0.5'
+            }`} />
+          </button>
+        </div>
+        <p className={`mt-3 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+          Dữ liệu thật từ NIDS (Suricata/Zeek) qua WebSocket. Mặc định: BẬT.
+        </p>
+      </div>
+
       {/* Mock Data Toggle */}
       <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
         <div className="flex items-center justify-between">
@@ -874,7 +916,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </button>
         </div>
         <p className={`mt-3 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-          Khi tắt, dashboard sẽ chỉ hiển thị dữ liệu thật từ Suricata/Zeek qua backend. Mặc định: TẮT.
+          Khi tắt, dashboard sẽ chỉ hiển thị dữ liệu thật từ NIDS. Mặc định: TẮT.
         </p>
       </div>
 

@@ -29,48 +29,82 @@ export const useSOCData = (
   filters: Filters,
   options?: UseSOCDataOptions
 ) => {
-  // Check if mock data is enabled (default: OFF)
+  // Check data source settings
   const isMockDataEnabled = () => {
     return localStorage.getItem('soc-mock-data-enabled') === 'true';
   };
+  
+  const isNIDSDataEnabled = () => {
+    return localStorage.getItem('soc-nids-data-enabled') !== 'false'; // Default: ON
+  };
 
-  // Initialize events - check localStorage first, then start empty if mock disabled
-  const [events, setEvents] = useState<SOCEvent[]>(() => {
-    const stored = localStorage.getItem('soc-events');
+  // Separate storage for NIDS and Mock data
+  const [nidsEvents, setNidsEvents] = useState<SOCEvent[]>(() => {
+    const stored = localStorage.getItem('soc-nids-events');
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         return parsed.map((e: Record<string, unknown>) => ({
           ...e,
           timestamp: new Date(e.timestamp as string),
+          source: 'nids' as const,
         }));
       } catch {
-        // If parse fails, return empty or mockEvents based on setting
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const [mockEventsState, setMockEventsState] = useState<SOCEvent[]>(() => {
+    if (!isMockDataEnabled()) return [];
+    
+    const stored = localStorage.getItem('soc-mock-events');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        return parsed.map((e: Record<string, unknown>) => ({
+          ...e,
+          timestamp: new Date(e.timestamp as string),
+          source: 'mock' as const,
+        }));
+      } catch {
+        return [];
       }
     }
     
-    // Only use mockEvents if mock data is enabled
-    if (isMockDataEnabled()) {
-      localStorage.setItem('soc-events', JSON.stringify(mockEvents.map(e => ({
-        ...e,
-        timestamp: e.timestamp.toISOString(),
-      }))));
-      return mockEvents;
-    }
-    
-    // Default: start with empty events
-    return [];
+    // Initialize with mock data if enabled
+    const initialMock = mockEvents.map(e => ({ ...e, source: 'mock' as const }));
+    localStorage.setItem('soc-mock-events', JSON.stringify(initialMock.map(e => ({
+      ...e,
+      timestamp: e.timestamp.toISOString(),
+    }))));
+    return initialMock;
   });
+
+  // Combined events based on enabled sources
+  const events = (() => {
+    const combined: SOCEvent[] = [];
+    if (isNIDSDataEnabled()) {
+      combined.push(...nidsEvents);
+    }
+    if (isMockDataEnabled()) {
+      combined.push(...mockEventsState);
+    }
+    // Sort by timestamp descending
+    return combined.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  })();
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [wsConnected, setWsConnected] = useState(false);
   const [wsEventCount, setWsEventCount] = useState(0);
 
-  // Add new event (from WebSocket or any source)
+  // Add new event (from WebSocket/NIDS)
   const addEvent = useCallback((event: SOCEvent) => {
-    setEvents(prev => {
-      const newEvents = [event, ...prev].slice(0, 20000);
-      // Also update localStorage
-      localStorage.setItem('soc-events', JSON.stringify(newEvents.map(e => ({
+    const eventWithSource = { ...event, source: 'nids' as const };
+    setNidsEvents(prev => {
+      const newEvents = [eventWithSource, ...prev].slice(0, 20000);
+      // Update NIDS-specific localStorage
+      localStorage.setItem('soc-nids-events', JSON.stringify(newEvents.map(e => ({
         ...e,
         timestamp: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
       }))));
@@ -81,20 +115,34 @@ export const useSOCData = (
     options?.onWebSocketEvent?.(event);
   }, [options]);
 
+  // Clear NIDS events
+  const clearNidsEvents = useCallback(() => {
+    setNidsEvents([]);
+    localStorage.removeItem('soc-nids-events');
+  }, []);
+
+  // Clear Mock events
+  const clearMockEvents = useCallback(() => {
+    setMockEventsState([]);
+    localStorage.removeItem('soc-mock-events');
+  }, []);
+
   // Listen for custom event to refresh data
   useEffect(() => {
     const handleDataUpdate = () => {
-      const stored = localStorage.getItem('soc-events');
-      if (stored) {
+      // Reload NIDS events
+      const storedNids = localStorage.getItem('soc-nids-events');
+      if (storedNids) {
         try {
-          const parsed = JSON.parse(stored);
+          const parsed = JSON.parse(storedNids);
           const eventsWithDates = parsed.map((e: Record<string, unknown>) => ({
             ...e,
             timestamp: new Date(e.timestamp as string),
+            source: 'nids' as const,
           }));
-          setEvents(eventsWithDates);
+          setNidsEvents(eventsWithDates);
         } catch (err) {
-          console.error('Failed to parse stored events:', err);
+          console.error('Failed to parse stored NIDS events:', err);
         }
       }
     };
@@ -112,8 +160,18 @@ export const useSOCData = (
     if (!isMockDataEnabled()) return;
 
     const interval = setInterval(() => {
-      const newEvents = generateMockEvents(Math.floor(Math.random() * 3) + 1);
-      setEvents(prev => [...newEvents, ...prev].slice(0, 20000));
+      const newEvents = generateMockEvents(Math.floor(Math.random() * 3) + 1).map(e => ({
+        ...e,
+        source: 'mock' as const,
+      }));
+      setMockEventsState(prev => {
+        const updated = [...newEvents, ...prev].slice(0, 20000);
+        localStorage.setItem('soc-mock-events', JSON.stringify(updated.map(e => ({
+          ...e,
+          timestamp: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
+        }))));
+        return updated;
+      });
       setLastUpdate(new Date());
     }, 3000);
 
@@ -288,5 +346,10 @@ export const useSOCData = (
     setWsConnected,
     wsEventCount,
     addEvent,
+    // Data source controls
+    clearNidsEvents,
+    clearMockEvents,
+    nidsEventCount: nidsEvents.length,
+    mockEventCount: mockEventsState.length,
   };
 };

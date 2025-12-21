@@ -13,6 +13,7 @@ export interface SOCEvent {
   community_id: string;
   raw_log?: string;
   action_taken?: string;
+  source?: 'nids' | 'mock'; // Data source identifier
 }
 
 export interface SOCMetrics {
