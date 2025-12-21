@@ -8,13 +8,60 @@
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 98%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 217 91% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 50%;
+
+    --radius: 0.25rem;
+
+    --font-sans: 'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-mono: 'Roboto Mono', monospace;
+    
+    /* SOC specific tokens */
+    --soc-bg: 0 0% 98%;
+    --soc-card: 0 0% 100%;
+    --soc-border: 220 13% 91%;
+    --soc-text-primary: 222 47% 11%;
+    --soc-text-secondary: 215 16% 47%;
+    --soc-text-muted: 215 20% 65%;
+    --soc-alert: 0 84% 60%;
+    --soc-warning: 38 92% 50%;
+    --soc-success: 142 76% 36%;
+    --soc-info: 217 91% 50%;
+  }
+
+  .dark {
+    --background: 0 0% 4%;
     --foreground: 220 9% 91%;
 
-    --card: 240 6% 4%;
+    --card: 0 0% 6%;
     --card-foreground: 220 9% 91%;
 
-    --popover: 240 6% 4%;
+    --popover: 0 0% 6%;
     --popover-foreground: 220 9% 91%;
 
     --primary: 217 91% 60%;
@@ -35,11 +82,18 @@
     --border: 240 4% 16%;
     --input: 240 4% 16%;
     --ring: 217 91% 60%;
-
-    --radius: 0.25rem;
-
-    --font-sans: 'Segoe UI', Helvetica, Arial, sans-serif;
-    --font-mono: 'Roboto Mono', monospace;
+    
+    /* SOC specific tokens - dark */
+    --soc-bg: 0 0% 4%;
+    --soc-card: 0 0% 6%;
+    --soc-border: 240 4% 16%;
+    --soc-text-primary: 220 9% 91%;
+    --soc-text-secondary: 240 4% 66%;
+    --soc-text-muted: 240 4% 46%;
+    --soc-alert: 0 84% 60%;
+    --soc-warning: 38 92% 50%;
+    --soc-success: 142 76% 36%;
+    --soc-info: 217 91% 60%;
   }
 }
 

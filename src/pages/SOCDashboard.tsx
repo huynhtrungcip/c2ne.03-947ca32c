@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSOCData } from '@/hooks/useSOCData';
 import { SOCEvent } from '@/types/soc';
-import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip } from 'recharts';
+import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
+import { Settings, Sun, Moon, X } from 'lucide-react';
 
+type Theme = 'light' | 'dark' | 'system';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
 
 // AI Chatbot Panel Component
@@ -77,11 +79,31 @@ const SOCDashboard = () => {
   const [viewMode, setViewMode] = useState<'all' | 'alerts'>('all');
   const [selectedEvent, setSelectedEvent] = useState<SOCEvent | null>(null);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [theme, setTheme] = useState<Theme>(() => {
+    const stored = localStorage.getItem('soc-theme') as Theme;
+    return stored || 'dark';
+  });
   
   const [verdictFocus, setVerdictFocus] = useState('All');
   const [ipFilter, setIpFilter] = useState('');
   const [sigFilter, setSigFilter] = useState('');
   const [minConfidence, setMinConfidence] = useState(0);
+
+  // Apply theme
+  useEffect(() => {
+    const root = document.documentElement;
+    localStorage.setItem('soc-theme', theme);
+    
+    if (theme === 'system') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.classList.toggle('dark', prefersDark);
+    } else {
+      root.classList.toggle('dark', theme === 'dark');
+    }
+  }, [theme]);
+
+  const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const { events, metrics, topSources, attackTypeData, trafficData, timeRanges } = useSOCData(
     timeRange,
@@ -322,102 +344,158 @@ const SOCDashboard = () => {
 
   const renderOverviewTab = () => (
     <>
-      {/* Metrics Row */}
-      <div className="grid grid-cols-5 gap-3 mb-4">
+      {/* Metrics Row - SIEM Professional Style */}
+      <div className="grid grid-cols-5 gap-2 mb-4">
         {[
-          { label: 'EVENTS', value: metrics.totalEvents, color: '#3b82f6' },
-          { label: 'CRITICAL', value: metrics.criticalAlerts, delta: `+${metrics.alertRate.toFixed(1)}%`, color: '#dc2626' },
-          { label: 'SUSPICIOUS', value: metrics.suspicious, color: '#d97706' },
-          { label: 'FALSE POS', value: metrics.falsePositives, color: '#16a34a' },
-          { label: 'SOURCES', value: metrics.uniqueSources, color: '#8b5cf6' },
+          { label: 'EVENTS', value: metrics.totalEvents, icon: '▤', color: 'hsl(217, 91%, 50%)' },
+          { label: 'CRITICAL', value: metrics.criticalAlerts, delta: `+${metrics.alertRate.toFixed(1)}%`, icon: '⬤', color: 'hsl(0, 84%, 60%)' },
+          { label: 'SUSPICIOUS', value: metrics.suspicious, icon: '◆', color: 'hsl(38, 92%, 50%)' },
+          { label: 'FALSE POS', value: metrics.falsePositives, icon: '◯', color: 'hsl(142, 76%, 36%)' },
+          { label: 'SOURCES', value: metrics.uniqueSources, icon: '◎', color: 'hsl(262, 83%, 58%)' },
         ].map((m, i) => (
-          <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] p-4 rounded" style={{ borderLeftColor: m.color, borderLeftWidth: 3 }}>
-            <div className="text-sm text-[#a1a1aa] uppercase tracking-wider font-semibold mb-1">{m.label}</div>
-            <div className="text-2xl font-bold font-mono text-[#e4e4e7]">{m.value.toLocaleString()}</div>
-            {m.delta && <div className="text-xs text-[#71717a] mt-1">{m.delta}</div>}
+          <div 
+            key={i} 
+            className={`relative overflow-hidden ${isDarkMode ? 'bg-[#0c0c0c]' : 'bg-white'} border-l-[3px] p-3`}
+            style={{ 
+              borderLeftColor: m.color,
+              borderTop: `1px solid ${isDarkMode ? '#1a1a1a' : '#e5e7eb'}`,
+              borderRight: `1px solid ${isDarkMode ? '#1a1a1a' : '#e5e7eb'}`,
+              borderBottom: `1px solid ${isDarkMode ? '#1a1a1a' : '#e5e7eb'}`,
+            }}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <div className={`text-[9px] font-semibold uppercase tracking-[0.15em] mb-1 ${isDarkMode ? 'text-[#6b7280]' : 'text-[#9ca3af]'}`}>
+                  {m.label}
+                </div>
+                <div className={`text-xl font-bold font-mono tabular-nums ${isDarkMode ? 'text-[#f5f5f5]' : 'text-[#111827]'}`}>
+                  {m.value.toLocaleString()}
+                </div>
+                {m.delta && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[9px] text-[#ef4444] font-mono">{m.delta}</span>
+                    <span className={`text-[8px] ${isDarkMode ? 'text-[#525252]' : 'text-[#9ca3af]'}`}>vs prev</span>
+                  </div>
+                )}
+              </div>
+              <span className={`text-sm opacity-30 ${isDarkMode ? 'text-[#fff]' : 'text-[#000]'}`}>{m.icon}</span>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Main Grid */}
       <div className="grid grid-cols-12 gap-4">
-        {/* Traffic Chart */}
-        <div className="col-span-8 bg-[#0a0a0a] border border-[#1f1f1f] rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold">Traffic & Alerts</div>
-            <div className="flex items-center gap-6 text-[11px]">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-0.5 bg-[#3b82f6] rounded"></span>
-                <span className="text-[#71717a]">Network Traffic</span>
+        {/* Traffic Chart - Professional SIEM Style */}
+        <div className={`col-span-8 ${isDarkMode ? 'bg-[#0c0c0c] border-[#1a1a1a]' : 'bg-white border-[#e5e7eb]'} border p-4`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>
+              Traffic & Alerts
+            </div>
+            <div className="flex items-center gap-4 text-[10px]">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: 'hsl(217, 91%, 50%)' }}></span>
+                <span className={isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}>Traffic</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-0.5 bg-[#dc2626] rounded"></span>
-                <span className="text-[#71717a]">Security Alerts</span>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: 'hsl(0, 84%, 60%)' }}></span>
+                <span className={isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}>Alerts</span>
               </div>
             </div>
           </div>
           {chartData.length === 0 ? (
-            <div className="h-44 flex items-center justify-center text-[#3f3f46] text-xs">No data available</div>
+            <div className={`h-44 flex items-center justify-center text-xs ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No data available</div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
               <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="trafficGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="time" tick={{ fill: '#71717a', fontSize: 10 }} axisLine={{ stroke: '#27272a' }} tickLine={false} />
-                <YAxis tick={{ fill: '#71717a', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: 6, fontSize: 11 }}
-                  labelStyle={{ color: '#e4e4e7', fontWeight: 600 }}
+                <CartesianGrid strokeDasharray="2 2" stroke={isDarkMode ? '#1f1f1f' : '#f3f4f6'} vertical={false} />
+                <XAxis 
+                  dataKey="time" 
+                  tick={{ fill: isDarkMode ? '#525252' : '#9ca3af', fontSize: 9 }} 
+                  axisLine={{ stroke: isDarkMode ? '#1a1a1a' : '#e5e7eb' }} 
+                  tickLine={false} 
                 />
-                <Area type="monotone" dataKey="Traffic" stroke="#3b82f6" strokeWidth={2} fill="url(#trafficGrad)" name="Network Traffic" />
-                <Line type="monotone" dataKey="Alerts" stroke="#dc2626" strokeWidth={2} dot={false} name="Security Alerts" />
+                <YAxis 
+                  tick={{ fill: isDarkMode ? '#525252' : '#9ca3af', fontSize: 9 }} 
+                  axisLine={false} 
+                  tickLine={false} 
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: isDarkMode ? '#1a1a1a' : '#fff', 
+                    border: `1px solid ${isDarkMode ? '#2a2a2a' : '#e5e7eb'}`, 
+                    borderRadius: 2, 
+                    fontSize: 10,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                  }}
+                  labelStyle={{ color: isDarkMode ? '#e4e4e7' : '#111827', fontWeight: 600, marginBottom: 4 }}
+                />
+                <Area 
+                  type="linear" 
+                  dataKey="Traffic" 
+                  stroke="hsl(217, 91%, 50%)" 
+                  strokeWidth={1.5} 
+                  fill="hsl(217, 91%, 50%)"
+                  fillOpacity={0.08}
+                  dot={{ fill: 'hsl(217, 91%, 50%)', strokeWidth: 0, r: 2 }}
+                  activeDot={{ fill: 'hsl(217, 91%, 50%)', strokeWidth: 2, stroke: isDarkMode ? '#fff' : '#000', r: 4 }}
+                />
+                <Line 
+                  type="linear" 
+                  dataKey="Alerts" 
+                  stroke="hsl(0, 84%, 60%)" 
+                  strokeWidth={1.5} 
+                  dot={{ fill: 'hsl(0, 84%, 60%)', strokeWidth: 0, r: 2 }}
+                  activeDot={{ fill: 'hsl(0, 84%, 60%)', strokeWidth: 2, stroke: isDarkMode ? '#fff' : '#000', r: 4 }}
+                />
               </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>
 
-        {/* Attack Types - Larger Pie Chart */}
-        <div className="col-span-4 bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
-          <div className="text-[11px] text-[#52525b] uppercase tracking-wider mb-2 font-semibold">Attack Distribution</div>
+        {/* Attack Types - Professional Style */}
+        <div className={`col-span-4 ${isDarkMode ? 'bg-[#0c0c0c] border-[#1a1a1a]' : 'bg-white border-[#e5e7eb]'} border p-4`}>
+          <div className={`text-[10px] font-semibold uppercase tracking-[0.12em] mb-2 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Attack Distribution</div>
           {pieData.length === 0 ? (
             <div className="h-48 flex flex-col items-center justify-center">
-              <span className="text-3xl mb-2">✓</span>
-              <span className="text-[#16a34a] text-sm font-medium">System Safe</span>
-              <span className="text-[10px] text-[#3f3f46]">No active threats</span>
+              <span className={`text-2xl mb-2 ${isDarkMode ? 'text-[#22c55e]' : 'text-[#16a34a]'}`}>✓</span>
+              <span className={`text-sm font-medium ${isDarkMode ? 'text-[#22c55e]' : 'text-[#16a34a]'}`}>System Safe</span>
+              <span className={`text-[9px] ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No active threats</span>
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={160}>
                 <PieChart>
                   <Pie 
                     data={pieData} 
                     cx="50%" 
                     cy="50%" 
-                    innerRadius={50} 
-                    outerRadius={80} 
-                    paddingAngle={2} 
+                    innerRadius={45} 
+                    outerRadius={70} 
+                    paddingAngle={1} 
                     dataKey="value" 
-                    stroke="#0a0a0a"
+                    stroke={isDarkMode ? '#0c0c0c' : '#fff'}
                     strokeWidth={2}
                   >
                     {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', borderRadius: 6, fontSize: 11 }}
-                    labelStyle={{ color: '#e4e4e7' }}
+                    contentStyle={{ 
+                      backgroundColor: isDarkMode ? '#1a1a1a' : '#fff', 
+                      border: `1px solid ${isDarkMode ? '#2a2a2a' : '#e5e7eb'}`, 
+                      borderRadius: 2, 
+                      fontSize: 10 
+                    }}
+                    labelStyle={{ color: isDarkMode ? '#e4e4e7' : '#111827' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="w-full grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
+              <div className="w-full grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
                 {pieData.slice(0, 6).map((d, i) => (
-                  <div key={d.name} className="flex items-center gap-2 text-[10px]">
-                    <span className="w-2.5 h-2.5 rounded" style={{ background: COLORS[i % COLORS.length] }} />
-                    <span className="text-[#a1a1aa] truncate flex-1">{d.name}</span>
-                    <span className="text-[#71717a] font-mono font-semibold">{d.value}</span>
+                  <div key={d.name} className="flex items-center gap-1.5 text-[9px]">
+                    <span className="w-2 h-2" style={{ background: COLORS[i % COLORS.length] }} />
+                    <span className={`truncate flex-1 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{d.name}</span>
+                    <span className={`font-mono font-medium ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{d.value}</span>
                   </div>
                 ))}
               </div>
@@ -768,13 +846,13 @@ const SOCDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e4e4e7] font-['Inter',system-ui,sans-serif]">
+    <div className={`min-h-screen font-['Inter',system-ui,sans-serif] transition-colors ${isDarkMode ? 'bg-[#0a0a0a] text-[#e4e4e7]' : 'bg-[#f8f9fa] text-[#111827]'}`}>
       {/* Top Bar */}
-      <header className="h-10 bg-[#0f0f0f] border-b border-[#1f1f1f] flex items-center justify-between px-4">
+      <header className={`h-10 flex items-center justify-between px-4 border-b ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
         <div className="flex items-center gap-6">
           <button 
             onClick={() => navigate('/')}
-            className="text-[11px] font-semibold tracking-[0.2em] text-[#a1a1aa] uppercase hover:text-[#e4e4e7] transition-colors"
+            className={`text-[11px] font-semibold tracking-[0.2em] uppercase transition-colors ${isDarkMode ? 'text-[#a1a1aa] hover:text-[#e4e4e7]' : 'text-[#6b7280] hover:text-[#111827]'}`}
           >
             Security Operations Center
           </button>
@@ -785,8 +863,12 @@ const SOCDashboard = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-3 py-1.5 text-[11px] font-medium tracking-wide rounded transition-colors ${
                   activeTab === tab.id 
-                    ? 'text-[#e4e4e7] bg-[#1a1a1a] border-b-2 border-[#3b82f6]' 
-                    : 'text-[#71717a] hover:text-[#a1a1aa] hover:bg-[#18181b]'
+                    ? isDarkMode 
+                      ? 'text-[#e4e4e7] bg-[#1a1a1a] border-b-2 border-[#3b82f6]' 
+                      : 'text-[#111827] bg-[#f3f4f6] border-b-2 border-[#3b82f6]'
+                    : isDarkMode 
+                      ? 'text-[#71717a] hover:text-[#a1a1aa] hover:bg-[#18181b]'
+                      : 'text-[#6b7280] hover:text-[#374151] hover:bg-[#f3f4f6]'
                 }`}
               >
                 {tab.label}
@@ -801,15 +883,81 @@ const SOCDashboard = () => {
           >
             ASSISTANT
           </button>
-          <div className="h-7 px-3 flex items-center text-[10px] text-[#71717a] font-mono bg-[#0a0a0a] border border-[#1f1f1f] rounded-md">
+          <div className={`h-7 px-3 flex items-center text-[10px] font-mono rounded-md ${isDarkMode ? 'text-[#71717a] bg-[#0a0a0a] border border-[#1f1f1f]' : 'text-[#6b7280] bg-white border border-[#e5e7eb]'}`}>
             {now}
           </div>
           <div className={`h-7 px-3 flex items-center text-[9px] font-semibold tracking-wider uppercase rounded-md transition-all ${
             isLive 
               ? 'bg-gradient-to-b from-[#166534] to-[#14532d] text-[#86efac] border border-[#22c55e]/30 shadow-sm shadow-[#22c55e]/10' 
-              : 'bg-[#18181b] text-[#71717a] border border-[#27272a]'
+              : isDarkMode ? 'bg-[#18181b] text-[#71717a] border border-[#27272a]' : 'bg-[#f3f4f6] text-[#6b7280] border border-[#e5e7eb]'
           }`}>
             {isLive ? '● LIVE' : 'PAUSED'}
+          </div>
+          
+          {/* Settings Button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className={`h-7 w-7 flex items-center justify-center rounded-md transition-all ${
+                isDarkMode 
+                  ? 'bg-[#18181b] text-[#71717a] border border-[#27272a] hover:bg-[#27272a] hover:text-[#a1a1aa]'
+                  : 'bg-white text-[#6b7280] border border-[#e5e7eb] hover:bg-[#f3f4f6] hover:text-[#374151]'
+              }`}
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+            
+            {/* Settings Dropdown */}
+            {showSettings && (
+              <div className={`absolute right-0 top-9 w-64 rounded-lg shadow-xl z-50 ${
+                isDarkMode ? 'bg-[#18181b] border border-[#27272a]' : 'bg-white border border-[#e5e7eb]'
+              }`}>
+                <div className={`flex items-center justify-between px-4 py-3 border-b ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
+                  <span className={`text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>Settings</span>
+                  <button onClick={() => setShowSettings(false)} className={`${isDarkMode ? 'text-[#71717a] hover:text-[#a1a1aa]' : 'text-[#9ca3af] hover:text-[#6b7280]'}`}>
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="p-4 space-y-4">
+                  {/* Theme Selection */}
+                  <div>
+                    <div className={`text-[10px] uppercase tracking-wider mb-2 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>Theme</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { value: 'light', icon: Sun, label: 'Light' },
+                        { value: 'dark', icon: Moon, label: 'Dark' },
+                      ].map(({ value, icon: Icon, label }) => (
+                        <button
+                          key={value}
+                          onClick={() => setTheme(value as Theme)}
+                          className={`flex flex-col items-center gap-1 py-2 px-3 rounded-md text-[10px] transition-all ${
+                            theme === value
+                              ? isDarkMode 
+                                ? 'bg-[#3b82f6]/20 text-[#60a5fa] border border-[#3b82f6]/40'
+                                : 'bg-[#3b82f6]/10 text-[#2563eb] border border-[#3b82f6]/30'
+                              : isDarkMode
+                                ? 'bg-[#27272a] text-[#a1a1aa] border border-transparent hover:border-[#3f3f46]'
+                                : 'bg-[#f3f4f6] text-[#6b7280] border border-transparent hover:border-[#d1d5db]'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4" />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Dashboard Info */}
+                  <div className={`pt-3 border-t ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
+                    <div className={`text-[10px] uppercase tracking-wider mb-2 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>Dashboard Info</div>
+                    <div className={`text-[11px] space-y-1 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+                      <div>Version: 2.0.0</div>
+                      <div>Engine: Hybrid NIDS</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
