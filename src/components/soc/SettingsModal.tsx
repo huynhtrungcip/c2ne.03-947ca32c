@@ -320,8 +320,22 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
 
       const configData = await configResponse.json().catch(() => ({}));
       
+      // Helper to extract error message from various response formats
+      const extractErrorMessage = (data: any): string => {
+        if (!data) return '';
+        if (typeof data === 'string') return data;
+        if (typeof data.detail === 'string') return data.detail;
+        if (typeof data.detail === 'object' && data.detail?.msg) return data.detail.msg;
+        if (Array.isArray(data.detail)) return data.detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ');
+        if (typeof data.error === 'string') return data.error;
+        if (typeof data.error === 'object') return JSON.stringify(data.error);
+        if (typeof data.message === 'string') return data.message;
+        if (typeof data.message === 'object') return JSON.stringify(data.message);
+        return '';
+      };
+      
       if (!configResponse.ok) {
-        const errorMsg = configData.detail || configData.error || configData.message || `Configure failed (${configResponse.status})`;
+        const errorMsg = extractErrorMessage(configData) || `Configure failed (${configResponse.status})`;
         throw new Error(errorMsg);
       }
 
@@ -347,13 +361,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         setTelegramTestMessage('Gửi tin nhắn test thành công!');
       } else {
         setTelegramTestStatus('error');
-        const errorMsg = data.detail || data.error || data.message || `Send failed (${response.status})`;
+        const errorMsg = extractErrorMessage(data) || `Send failed (${response.status})`;
         setTelegramTestMessage(errorMsg);
       }
     } catch (error: any) {
       console.error('Telegram test error:', error);
       setTelegramTestStatus('error');
-      setTelegramTestMessage(error.message || 'Không thể kết nối đến AI Engine. Kiểm tra URL.');
+      const errMsg = error?.message || '';
+      setTelegramTestMessage(typeof errMsg === 'string' ? errMsg : 'Không thể kết nối đến AI Engine. Kiểm tra URL.');
     }
 
     // Reset status after 5s
