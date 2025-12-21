@@ -5,9 +5,9 @@ WORKDIR /app
 # Install dependencies for better-sqlite3 and curl for healthcheck
 RUN apk add --no-cache python3 make g++ curl
 
-# Copy package files
-COPY package*.json ./
-RUN npm ci --only=production
+# Copy package files and install dependencies
+COPY package.json ./
+RUN npm install --omit=dev
 
 # Copy application code
 COPY index.js ./
