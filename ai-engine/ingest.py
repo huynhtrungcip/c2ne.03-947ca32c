@@ -9,6 +9,7 @@ import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from uuid import uuid4
+from collections import deque
 
 import requests
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -24,6 +25,28 @@ router = APIRouter()
 
 # WebSocket connections for real-time dashboard updates
 ws_clients: List[WebSocket] = []
+
+# In-memory log buffer for debugging (last 500 entries)
+ingest_logs: deque = deque(maxlen=500)
+
+def add_ingest_log(level: str, source: str, message: str, details: Dict[str, Any] = None):
+    """Add a log entry to the in-memory buffer for debugging"""
+    entry = {
+        "timestamp": datetime.now().isoformat(),
+        "level": level,
+        "source": source,
+        "message": message,
+        "details": details or {}
+    }
+    ingest_logs.append(entry)
+    
+    # Also log to standard logger
+    if level == "ERROR":
+        logger.error(f"[{source}] {message}")
+    elif level == "WARNING":
+        logger.warning(f"[{source}] {message}")
+    else:
+        logger.info(f"[{source}] {message}")
 
 
 class IngestRequest(BaseModel):
@@ -275,28 +298,47 @@ async def ingest_log(req: IngestRequest):
     5. Auto-block if critical Suricata ALERT (not Zeek)
     """
     try:
+        add_ingest_log("INFO", req.source.upper(), f"Received log from shipper", {
+            "has_data": bool(req.data),
+            "data_keys": list(req.data.keys())[:10] if req.data else []
+        })
+        
         # Parse based on source type
         event = None
         
         if req.source == "suricata":
             event = parse_suricata_alert(req.data)
+            if not event:
+                add_ingest_log("INFO", "SURICATA", "Ignored non-alert event", {
+                    "event_type": req.data.get("event_type", "unknown")
+                })
         elif req.source == "zeek":
             event = parse_zeek_conn(req.data)
         elif req.source == "zeek_http":
             event = parse_zeek_http(req.data)
+        else:
+            add_ingest_log("WARNING", "UNKNOWN", f"Unknown source type: {req.source}")
         
         if not event:
             return {"status": "ignored", "reason": "not a relevant event type"}
         
         # Skip events without valid IPs
         if not event.get("src_ip") or not event.get("dst_ip"):
+            add_ingest_log("WARNING", req.source.upper(), "Event missing IP addresses", {
+                "src_ip": event.get("src_ip"),
+                "dst_ip": event.get("dst_ip")
+            })
             return {"status": "ignored", "reason": "missing IP addresses"}
         
-        # Log community_id status for debugging
-        if event.get("community_id"):
-            logger.debug(f"[INGEST] Event has community_id: {event['community_id'][:20]}...")
-        else:
-            logger.warning(f"[INGEST] Event missing community_id - correlation may fail")
+        # Log successful parse
+        add_ingest_log("INFO", req.source.upper(), f"Parsed event: {event['verdict']}", {
+            "event_id": event["id"],
+            "src_ip": event["src_ip"],
+            "dst_ip": event["dst_ip"],
+            "attack_type": event.get("attack_type", "")[:50],
+            "confidence": event.get("confidence", 0),
+            "community_id": event.get("community_id", "")[:20] if event.get("community_id") else None
+        })
         
         # Store event in Node.js backend database
         try:
@@ -306,12 +348,15 @@ async def ingest_log(req: IngestRequest):
                 timeout=2,
             )
             if response.status_code != 200:
-                logger.warning(f"Failed to store event in backend: {response.status_code}")
+                add_ingest_log("WARNING", "BACKEND", f"Failed to store event: HTTP {response.status_code}")
+            else:
+                add_ingest_log("INFO", "BACKEND", "Event stored successfully")
         except Exception as e:
-            logger.warning(f"Backend unavailable: {e}")
+            add_ingest_log("ERROR", "BACKEND", f"Backend unavailable: {str(e)}")
         
         # Broadcast to connected dashboards (real-time)
         asyncio.create_task(broadcast_event(event))
+        add_ingest_log("INFO", "WEBSOCKET", f"Broadcasting to {len(ws_clients)} clients")
         
         # Auto-block CHỈ từ Suricata ALERT với critical signature
         # Zeek không có ALERT nên không trigger auto-block
@@ -321,9 +366,10 @@ async def ingest_log(req: IngestRequest):
             signature = event.get("attack_type", "")
             src_ip = event.get("src_ip", "")
             if src_ip and signature:
+                add_ingest_log("WARNING", "AUTO-BLOCK", f"Triggering auto-block for {src_ip}", {
+                    "signature": signature
+                })
                 asyncio.create_task(auto_block_from_ingest(src_ip, signature))
-        
-        logger.debug(f"[INGEST] {req.source}: {event['src_ip']} -> {event['dst_ip']} ({event['attack_type']}) [CID: {event.get('community_id', 'N/A')[:15]}]")
         
         return {
             "status": "ok",
@@ -333,7 +379,10 @@ async def ingest_log(req: IngestRequest):
         }
     
     except Exception as e:
-        logger.error(f"[INGEST] Error processing log: {e}")
+        add_ingest_log("ERROR", "INGEST", f"Error processing log: {str(e)}", {
+            "source": req.source,
+            "error": str(e)
+        })
         return {"status": "error", "message": str(e)}
 
 
@@ -345,3 +394,43 @@ async def ingest_status():
         "connected_clients": len(ws_clients),
         "timestamp": datetime.now().isoformat(),
     }
+
+
+@router.get("/ingest/logs")
+async def get_ingest_logs(limit: int = 100, level: str = None, source: str = None):
+    """
+    Get recent ingest logs for debugging.
+    
+    Query params:
+    - limit: Max number of logs to return (default 100, max 500)
+    - level: Filter by level (INFO, WARNING, ERROR)
+    - source: Filter by source (suricata, zeek, zeek_http)
+    """
+    limit = min(limit, 500)
+    
+    logs = list(ingest_logs)
+    
+    # Apply filters
+    if level:
+        logs = [l for l in logs if l["level"].upper() == level.upper()]
+    if source:
+        logs = [l for l in logs if source.lower() in l["source"].lower()]
+    
+    # Return most recent first
+    logs = logs[-limit:]
+    logs.reverse()
+    
+    return {
+        "logs": logs,
+        "total": len(ingest_logs),
+        "filtered": len(logs),
+        "connected_ws_clients": len(ws_clients),
+    }
+
+
+@router.delete("/ingest/logs")
+async def clear_ingest_logs():
+    """Clear all ingest logs"""
+    ingest_logs.clear()
+    add_ingest_log("INFO", "SYSTEM", "Logs cleared by user")
+    return {"status": "ok", "message": "Logs cleared"}
