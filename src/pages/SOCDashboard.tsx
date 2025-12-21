@@ -160,15 +160,15 @@ const SOCDashboard = () => {
     { id: 'reports', label: 'Reports' },
   ];
 
-  // Unified filter component - only show in Events tab
+  // Unified filter component - themed
   const renderFilters = () => (
-    <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3 mb-4">
+    <div className={`border p-3 mb-4 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="text-[10px] text-[#52525b] uppercase tracking-wider font-semibold">Filters</div>
+        <div className={`text-[10px] uppercase tracking-wider font-medium ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Filters</div>
         <select 
           value={verdictFocus} 
           onChange={(e) => setVerdictFocus(e.target.value)}
-          className="h-7 px-2 text-[11px] bg-[#0a0a0a] border border-[#27272a] rounded text-[#a1a1aa]"
+          className={`h-7 px-2 text-[11px] border ${isDarkMode ? 'bg-[#0a0a0a] border-[#27272a] text-[#a1a1aa]' : 'bg-white border-[#d1d5db] text-[#374151]'}`}
         >
           <option value="All">All Verdicts</option>
           <option value="ALERT">ALERT</option>
@@ -181,29 +181,29 @@ const SOCDashboard = () => {
           placeholder="Filter by IP..."
           value={ipFilter}
           onChange={(e) => setIpFilter(e.target.value)}
-          className="h-7 px-3 text-[11px] bg-[#0a0a0a] border border-[#27272a] rounded text-[#a1a1aa] placeholder-[#3f3f46] w-36"
+          className={`h-7 px-3 text-[11px] border w-36 ${isDarkMode ? 'bg-[#0a0a0a] border-[#27272a] text-[#a1a1aa] placeholder-[#3f3f46]' : 'bg-white border-[#d1d5db] text-[#374151] placeholder-[#9ca3af]'}`}
         />
         <input 
           type="text"
           placeholder="Filter by Signature..."
           value={sigFilter}
           onChange={(e) => setSigFilter(e.target.value)}
-          className="h-7 px-3 text-[11px] bg-[#0a0a0a] border border-[#27272a] rounded text-[#a1a1aa] placeholder-[#3f3f46] w-44"
+          className={`h-7 px-3 text-[11px] border w-44 ${isDarkMode ? 'bg-[#0a0a0a] border-[#27272a] text-[#a1a1aa] placeholder-[#3f3f46]' : 'bg-white border-[#d1d5db] text-[#374151] placeholder-[#9ca3af]'}`}
         />
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-[#52525b]">Min Confidence</span>
+          <span className={`text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Min Confidence</span>
           <input 
             type="range" min="0" max="1" step="0.05"
             value={minConfidence}
             onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
-            className="w-20 h-1.5 bg-[#27272a] rounded appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-[#3b82f6] [&::-webkit-slider-thumb]:rounded-full"
+            className="w-20 h-1.5 bg-[#3b82f6] rounded appearance-none cursor-pointer"
           />
-          <span className="text-[11px] text-[#71717a] font-mono w-8">{(minConfidence * 100).toFixed(0)}%</span>
+          <span className={`text-[11px] font-mono w-8 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>{(minConfidence * 100).toFixed(0)}%</span>
         </div>
         {(verdictFocus !== 'All' || ipFilter || sigFilter || minConfidence > 0) && (
           <button 
             onClick={() => { setVerdictFocus('All'); setIpFilter(''); setSigFilter(''); setMinConfidence(0); }}
-            className="text-[10px] text-[#71717a] hover:text-[#a1a1aa] underline"
+            className={`text-[10px] underline ${isDarkMode ? 'text-[#71717a] hover:text-[#a1a1aa]' : 'text-[#6b7280] hover:text-[#374151]'}`}
           >
             Clear filters
           </button>
@@ -213,17 +213,17 @@ const SOCDashboard = () => {
   );
 
   const renderEventTable = (eventList: SOCEvent[]) => (
-    <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded">
-      <div className="flex items-center justify-between p-3 border-b border-[#1f1f1f]">
-        <div className="text-[10px] text-[#52525b] uppercase tracking-wider">Event Stream ({eventList.length} events)</div>
-        {isLive && <span className="text-[9px] text-[#d97706]">Pause LIVE mode to inspect events</span>}
-        {!isLive && <span className="text-[9px] text-[#16a34a]">Click any row to inspect</span>}
+    <div className={`border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+      <div className={`flex items-center justify-between p-3 border-b ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#e5e7eb]'}`}>
+        <div className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Event Stream ({eventList.length} events)</div>
+        {isLive && <span className="text-[9px] text-[#f59e0b]">Pause LIVE mode to inspect events</span>}
+        {!isLive && <span className="text-[9px] text-[#22c55e]">Click any row to inspect</span>}
       </div>
 
       <div className="overflow-auto max-h-[400px]">
         <table className="w-full text-[10px]">
-          <thead className="sticky top-0 bg-[#0a0a0a]">
-            <tr className="text-[#52525b] uppercase tracking-wider border-b border-[#1f1f1f]">
+          <thead className={`sticky top-0 ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>
+            <tr className={`uppercase tracking-wider border-b ${isDarkMode ? 'text-[#52525b] border-[#1f1f1f]' : 'text-[#9ca3af] border-[#e5e7eb]'}`}>
               <th className="text-left py-2 px-3 font-medium">Time</th>
               <th className="text-left py-2 px-3 font-medium">Verdict</th>
               <th className="text-left py-2 px-3 font-medium">Source</th>
@@ -235,37 +235,39 @@ const SOCDashboard = () => {
           </thead>
           <tbody>
             {eventList.length === 0 ? (
-              <tr><td colSpan={7} className="text-center py-8 text-[#3f3f46]">No events</td></tr>
+              <tr><td colSpan={7} className={`text-center py-8 ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No events</td></tr>
             ) : eventList.map(event => (
               <tr 
                 key={event.id} 
                 onClick={() => handleEventClick(event)}
-                className={`border-b border-[#18181b] transition-colors ${
-                  isLive ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-[#18181b]'
-                } ${selectedEvent?.id === event.id ? 'bg-[#1e3a5f]/40 border-l-2 border-l-[#3b82f6]' : ''}`}
+                className={`border-b transition-colors ${
+                  isDarkMode ? 'border-[#18181b]' : 'border-[#f3f4f6]'
+                } ${
+                  isLive ? 'cursor-not-allowed opacity-70' : `cursor-pointer ${isDarkMode ? 'hover:bg-[#18181b]' : 'hover:bg-[#f9fafb]'}`
+                } ${selectedEvent?.id === event.id ? (isDarkMode ? 'bg-[#1e3a5f]/40 border-l-2 border-l-[#3b82f6]' : 'bg-[#eff6ff] border-l-2 border-l-[#3b82f6]') : ''}`}
               >
-                <td className="py-1.5 px-3 font-mono text-[#71717a]">
+                <td className={`py-1.5 px-3 font-mono ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
                   {event.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </td>
                 <td className={`py-1.5 px-3 font-semibold ${getVerdictClass(event.verdict)}`}>
                   {event.verdict}
                 </td>
-                <td className="py-1.5 px-3 font-mono text-[#60a5fa]">{event.src_ip}</td>
-                <td className="py-1.5 px-3 font-mono text-[#a1a1aa]">{event.dst_ip}</td>
-                <td className="py-1.5 px-3 font-mono text-[#71717a]">{event.dst_port || '-'}</td>
-                <td className="py-1.5 px-3 text-[#a1a1aa]">{event.attack_type}</td>
+                <td className="py-1.5 px-3 font-mono text-[#3b82f6]">{event.src_ip}</td>
+                <td className={`py-1.5 px-3 font-mono ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.dst_ip}</td>
+                <td className={`py-1.5 px-3 font-mono ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{event.dst_port || '-'}</td>
+                <td className={`py-1.5 px-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.attack_type}</td>
                 <td className="py-1.5 px-3 text-right">
                   <div className="inline-flex items-center gap-1">
-                    <div className="w-10 h-1 bg-[#27272a] rounded overflow-hidden">
+                    <div className={`w-10 h-1 rounded overflow-hidden ${isDarkMode ? 'bg-[#27272a]' : 'bg-[#e5e7eb]'}`}>
                       <div 
                         className="h-full rounded" 
                         style={{ 
                           width: `${event.confidence * 100}%`,
-                          background: event.confidence > 0.7 ? '#16a34a' : event.confidence > 0.4 ? '#d97706' : '#dc2626'
+                          background: event.confidence > 0.7 ? '#22c55e' : event.confidence > 0.4 ? '#f59e0b' : '#ef4444'
                         }} 
                       />
                     </div>
-                    <span className="font-mono text-[#52525b]">{event.confidence.toFixed(2)}</span>
+                    <span className={`font-mono ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{event.confidence.toFixed(2)}</span>
                   </div>
                 </td>
               </tr>
@@ -344,42 +346,29 @@ const SOCDashboard = () => {
 
   const renderOverviewTab = () => (
     <>
-      {/* Metrics Row - SIEM Professional Style */}
-      <div className="grid grid-cols-5 gap-2 mb-4">
+      {/* Metrics Row - Clean Professional Style without icons */}
+      <div className="grid grid-cols-5 gap-px mb-4" style={{ backgroundColor: isDarkMode ? '#1a1a1a' : '#e5e7eb' }}>
         {[
-          { label: 'EVENTS', value: metrics.totalEvents, icon: '▤', color: 'hsl(217, 91%, 50%)' },
-          { label: 'CRITICAL', value: metrics.criticalAlerts, delta: `+${metrics.alertRate.toFixed(1)}%`, icon: '⬤', color: 'hsl(0, 84%, 60%)' },
-          { label: 'SUSPICIOUS', value: metrics.suspicious, icon: '◆', color: 'hsl(38, 92%, 50%)' },
-          { label: 'FALSE POS', value: metrics.falsePositives, icon: '◯', color: 'hsl(142, 76%, 36%)' },
-          { label: 'SOURCES', value: metrics.uniqueSources, icon: '◎', color: 'hsl(262, 83%, 58%)' },
+          { label: 'EVENTS', value: metrics.totalEvents, accent: '#3b82f6' },
+          { label: 'CRITICAL', value: metrics.criticalAlerts, delta: `+${metrics.alertRate.toFixed(1)}%`, accent: '#ef4444' },
+          { label: 'SUSPICIOUS', value: metrics.suspicious, accent: '#f59e0b' },
+          { label: 'FALSE POS', value: metrics.falsePositives, accent: '#22c55e' },
+          { label: 'SOURCES', value: metrics.uniqueSources, accent: '#8b5cf6' },
         ].map((m, i) => (
           <div 
             key={i} 
-            className={`relative overflow-hidden ${isDarkMode ? 'bg-[#0c0c0c]' : 'bg-white'} border-l-[3px] p-3`}
-            style={{ 
-              borderLeftColor: m.color,
-              borderTop: `1px solid ${isDarkMode ? '#1a1a1a' : '#e5e7eb'}`,
-              borderRight: `1px solid ${isDarkMode ? '#1a1a1a' : '#e5e7eb'}`,
-              borderBottom: `1px solid ${isDarkMode ? '#1a1a1a' : '#e5e7eb'}`,
-            }}
+            className={`p-4 ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}
+            style={{ borderTop: `2px solid ${m.accent}` }}
           >
-            <div className="flex items-start justify-between">
-              <div>
-                <div className={`text-[9px] font-semibold uppercase tracking-[0.15em] mb-1 ${isDarkMode ? 'text-[#6b7280]' : 'text-[#9ca3af]'}`}>
-                  {m.label}
-                </div>
-                <div className={`text-xl font-bold font-mono tabular-nums ${isDarkMode ? 'text-[#f5f5f5]' : 'text-[#111827]'}`}>
-                  {m.value.toLocaleString()}
-                </div>
-                {m.delta && (
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className="text-[9px] text-[#ef4444] font-mono">{m.delta}</span>
-                    <span className={`text-[8px] ${isDarkMode ? 'text-[#525252]' : 'text-[#9ca3af]'}`}>vs prev</span>
-                  </div>
-                )}
-              </div>
-              <span className={`text-sm opacity-30 ${isDarkMode ? 'text-[#fff]' : 'text-[#000]'}`}>{m.icon}</span>
+            <div className={`text-[10px] font-medium uppercase tracking-wider mb-2 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+              {m.label}
             </div>
+            <div className={`text-2xl font-semibold font-mono tabular-nums ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+              {m.value.toLocaleString()}
+            </div>
+            {m.delta && (
+              <div className="text-[10px] text-[#ef4444] font-mono mt-1">{m.delta}</div>
+            )}
           </div>
         ))}
       </div>
@@ -508,23 +497,23 @@ const SOCDashboard = () => {
           {renderEventTable(sortedEvents)}
         </div>
 
-        {/* Top Sources */}
-        <div className="col-span-3 bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
-          <div className="text-[10px] text-[#52525b] uppercase tracking-wider mb-3">Top Sources</div>
+        {/* Top Sources - themed */}
+        <div className={`col-span-3 p-3 border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+          <div className={`text-[10px] uppercase tracking-wider mb-3 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Top Sources</div>
           {barData.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-[#3f3f46] text-xs">No data</div>
+            <div className={`h-40 flex items-center justify-center text-xs ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No data</div>
           ) : (
             <div className="space-y-2">
               {barData.slice(0, 8).map((d, i) => (
                 <div key={d.ip} className="flex items-center gap-2">
-                  <span className="text-[9px] font-mono text-[#71717a] w-24 truncate">{d.ip}</span>
-                  <div className="flex-1 h-3 bg-[#18181b] rounded overflow-hidden">
+                  <span className={`text-[9px] font-mono w-24 truncate ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>{d.ip}</span>
+                  <div className={`flex-1 h-2.5 overflow-hidden ${isDarkMode ? 'bg-[#18181b]' : 'bg-[#f3f4f6]'}`}>
                     <div 
-                      className="h-full bg-[#ea580c] rounded"
+                      className="h-full bg-[#f97316]"
                       style={{ width: `${(d.count / barData[0].count) * 100}%` }}
                     />
                   </div>
-                  <span className="text-[9px] font-mono text-[#52525b] w-6 text-right">{d.count}</span>
+                  <span className={`text-[9px] font-mono w-6 text-right ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{d.count}</span>
                 </div>
               ))}
             </div>
@@ -548,8 +537,8 @@ const SOCDashboard = () => {
     return (
       <>
         <div className="mb-4">
-          <h2 className="text-sm font-semibold text-[#e4e4e7] mb-1">Security Event Log</h2>
-          <p className="text-[10px] text-[#52525b]">Complete event stream with real-time filtering • {sortedEvents.length} events in selected range</p>
+          <h2 className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>Security Event Log</h2>
+          <p className={`text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Complete event stream with real-time filtering • {sortedEvents.length} events in selected range</p>
         </div>
         
         {/* Unified Filters */}
@@ -559,18 +548,18 @@ const SOCDashboard = () => {
           {/* Main Event Table */}
           <div className="col-span-9">
             {/* Event Statistics */}
-            <div className="grid grid-cols-6 gap-2 mb-4">
+            <div className="grid grid-cols-6 gap-px mb-4" style={{ backgroundColor: isDarkMode ? '#1a1a1a' : '#e5e7eb' }}>
               {[
                 { label: 'Total', value: sortedEvents.length, color: '#3b82f6' },
-                { label: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: '#dc2626' },
-                { label: 'Suspicious', value: sortedEvents.filter(e => e.verdict === 'SUSPICIOUS').length, color: '#d97706' },
-                { label: 'False Pos', value: sortedEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length, color: '#16a34a' },
+                { label: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: '#ef4444' },
+                { label: 'Suspicious', value: sortedEvents.filter(e => e.verdict === 'SUSPICIOUS').length, color: '#f59e0b' },
+                { label: 'False Pos', value: sortedEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length, color: '#22c55e' },
                 { label: 'Benign', value: sortedEvents.filter(e => e.verdict === 'BENIGN').length, color: '#71717a' },
                 { label: 'High Conf', value: sortedEvents.filter(e => e.confidence > 0.8).length, color: '#8b5cf6' },
               ].map((s, i) => (
-                <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] p-2 rounded text-center">
-                  <div className="text-lg font-bold font-mono" style={{ color: s.color }}>{s.value}</div>
-                  <div className="text-[9px] text-[#52525b] uppercase">{s.label}</div>
+                <div key={i} className={`p-2 text-center ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
+                  <div className="text-lg font-semibold font-mono" style={{ color: s.color }}>{s.value}</div>
+                  <div className={`text-[9px] uppercase ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -581,36 +570,36 @@ const SOCDashboard = () => {
           {/* Sidebar */}
           <div className="col-span-3 space-y-3">
             {/* Detection Engines */}
-            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
-              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Detection Engines</div>
+            <div className={`border p-3 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Detection Engines</div>
               <div className="space-y-2">
                 {topEngines.map(([engine, count]) => (
                   <div key={engine} className="flex items-center justify-between">
-                    <span className="text-[10px] text-[#71717a]">{engine}</span>
-                    <span className="text-[11px] font-mono text-[#a1a1aa]">{count}</span>
+                    <span className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>{engine}</span>
+                    <span className={`text-[11px] font-mono ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>{count}</span>
                   </div>
                 ))}
               </div>
             </div>
             
             {/* Recent Alerts */}
-            <div className="bg-[#0f0f0f] border border-[#dc2626]/20 rounded p-3">
-              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Recent Alerts</div>
+            <div className={`border p-3 ${isDarkMode ? 'bg-[#0a0a0a] border-[#ef4444]/20' : 'bg-white border-[#ef4444]/20'}`}>
+              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Recent Alerts</div>
               <div className="space-y-2">
                 {recentAlerts.length === 0 ? (
-                  <div className="text-[10px] text-[#3f3f46]">No alerts</div>
+                  <div className={`text-[10px] ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No alerts</div>
                 ) : recentAlerts.map((alert) => (
-                  <div key={alert.id} className="text-[10px] border-b border-[#1f1f1f] pb-2 last:border-0">
-                    <div className="text-[#dc2626] font-medium truncate">{alert.attack_type}</div>
-                    <div className="text-[#52525b] font-mono">{alert.src_ip}</div>
+                  <div key={alert.id} className={`text-[10px] border-b pb-2 last:border-0 ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#f3f4f6]'}`}>
+                    <div className="text-[#ef4444] font-medium truncate">{alert.attack_type}</div>
+                    <div className={`font-mono ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{alert.src_ip}</div>
                   </div>
                 ))}
               </div>
             </div>
             
             {/* Time Distribution */}
-            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
-              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Event Timeline</div>
+            <div className={`border p-3 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Event Timeline</div>
               <div className="h-16">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData.slice(-12)} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
@@ -649,22 +638,22 @@ const SOCDashboard = () => {
     return (
       <>
         <div className="mb-4">
-          <h2 className="text-sm font-semibold text-[#e4e4e7] mb-1">Threat Intelligence</h2>
-          <p className="text-[10px] text-[#52525b]">Active threats requiring attention • {criticalEvents.length} critical events from {uniqueSourceIPs.length} sources</p>
+          <h2 className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>Threat Intelligence</h2>
+          <p className={`text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Active threats requiring attention • {criticalEvents.length} critical events from {uniqueSourceIPs.length} sources</p>
         </div>
         
         {/* Threat Overview Cards */}
-        <div className="grid grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-4 gap-px mb-4" style={{ backgroundColor: isDarkMode ? '#1a1a1a' : '#e5e7eb' }}>
           {[
-            { label: 'Critical Alerts', value: alertEvents.length, color: '#dc2626', sub: 'Immediate action required' },
-            { label: 'Suspicious', value: criticalEvents.length - alertEvents.length, color: '#d97706', sub: 'Under investigation' },
-            { label: 'Attack Types', value: uniqueAttackTypes.length, color: '#8b5cf6', sub: 'Unique signatures' },
-            { label: 'High Confidence', value: highConfidenceThreats.length, color: '#3b82f6', sub: '>80% certainty' },
+            { label: 'Critical Alerts', value: alertEvents.length, accent: '#ef4444', sub: 'Immediate action required' },
+            { label: 'Suspicious', value: criticalEvents.length - alertEvents.length, accent: '#f59e0b', sub: 'Under investigation' },
+            { label: 'Attack Types', value: uniqueAttackTypes.length, accent: '#8b5cf6', sub: 'Unique signatures' },
+            { label: 'High Confidence', value: highConfidenceThreats.length, accent: '#3b82f6', sub: '>80% certainty' },
           ].map((card, i) => (
-            <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3" style={{ borderLeftColor: card.color, borderLeftWidth: 3 }}>
-              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold">{card.label}</div>
-              <div className="text-2xl font-bold font-mono text-[#e4e4e7] my-1">{card.value}</div>
-              <div className="text-[9px] text-[#52525b]">{card.sub}</div>
+            <div key={i} className={`p-3 ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`} style={{ borderTop: `2px solid ${card.accent}` }}>
+              <div className={`text-[10px] uppercase tracking-wider font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{card.label}</div>
+              <div className={`text-2xl font-semibold font-mono my-1 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>{card.value}</div>
+              <div className={`text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{card.sub}</div>
             </div>
           ))}
         </div>
@@ -673,30 +662,30 @@ const SOCDashboard = () => {
           {/* Left Panel - Threat Analysis */}
           <div className="col-span-4 space-y-3">
             {/* Attack Type Breakdown */}
-            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
-              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Attack Signatures</div>
+            <div className={`border p-4 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Attack Signatures</div>
               <div className="space-y-2 max-h-56 overflow-y-auto">
                 {attackCounts.map((attack, i) => (
                   <div key={attack.type} className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${attack.severity === 'critical' ? 'bg-[#dc2626]' : 'bg-[#d97706]'}`} />
-                    <span className="text-[10px] text-[#a1a1aa] flex-1 truncate">{attack.type}</span>
-                    <span className="text-[10px] font-mono text-[#71717a]">{attack.count}</span>
+                    <span className={`w-2 h-2 flex-shrink-0 ${attack.severity === 'critical' ? 'bg-[#ef4444]' : 'bg-[#f59e0b]'}`} />
+                    <span className={`text-[10px] flex-1 truncate ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{attack.type}</span>
+                    <span className={`text-[10px] font-mono ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{attack.count}</span>
                   </div>
                 ))}
               </div>
             </div>
             
             {/* Top Threat Sources */}
-            <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
-              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Top Threat Sources</div>
+            <div className={`border p-4 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Top Threat Sources</div>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {topThreatSources.slice(0, 6).map((source, i) => (
-                  <div key={source.ip} className="border-b border-[#1f1f1f] pb-2 last:border-0">
+                  <div key={source.ip} className={`border-b pb-2 last:border-0 ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#f3f4f6]'}`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-mono text-[#60a5fa]">{source.ip}</span>
-                      <span className="text-[10px] font-mono text-[#dc2626]">{source.count}</span>
+                      <span className="text-[11px] font-mono text-[#3b82f6]">{source.ip}</span>
+                      <span className="text-[10px] font-mono text-[#ef4444]">{source.count}</span>
                     </div>
-                    <div className="text-[9px] text-[#52525b] truncate">{source.attacks.slice(0, 2).join(', ')}</div>
+                    <div className={`text-[9px] truncate ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{source.attacks.slice(0, 2).join(', ')}</div>
                   </div>
                 ))}
               </div>
@@ -963,32 +952,32 @@ const SOCDashboard = () => {
       </header>
 
       <div className="p-4">
-        {/* Controls */}
+        {/* Controls - themed */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0f0f0f] border border-[#1f1f1f] rounded">
-            <span className="text-[10px] text-[#52525b] uppercase tracking-wider">Live</span>
+          <div className={`flex items-center gap-2 px-3 py-1.5 border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+            <span className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Live</span>
             <button 
               onClick={() => setIsLive(!isLive)}
-              className={`w-8 h-4 rounded-full transition-colors relative ${isLive ? 'bg-[#16a34a]' : 'bg-[#27272a]'}`}
+              className={`w-8 h-4 rounded-full transition-colors relative ${isLive ? 'bg-[#22c55e]' : isDarkMode ? 'bg-[#27272a]' : 'bg-[#d1d5db]'}`}
             >
-              <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform ${isLive ? 'left-4' : 'left-0.5'}`} />
+              <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${isLive ? 'left-4' : 'left-0.5'}`} />
             </button>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0f0f0f] border border-[#1f1f1f] rounded">
-            <span className="text-[10px] text-[#52525b] uppercase tracking-wider">Auto Block</span>
+          <div className={`flex items-center gap-2 px-3 py-1.5 border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+            <span className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Auto Block</span>
             <button 
               onClick={() => setAutoBlock(!autoBlock)}
-              className={`w-8 h-4 rounded-full transition-colors relative ${autoBlock ? 'bg-[#dc2626]' : 'bg-[#27272a]'}`}
+              className={`w-8 h-4 rounded-full transition-colors relative ${autoBlock ? 'bg-[#ef4444]' : isDarkMode ? 'bg-[#27272a]' : 'bg-[#d1d5db]'}`}
             >
-              <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-transform ${autoBlock ? 'left-4' : 'left-0.5'}`} />
+              <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${autoBlock ? 'left-4' : 'left-0.5'}`} />
             </button>
           </div>
 
           <select 
             value={timeRange} 
             onChange={(e) => setTimeRange(e.target.value)}
-            className="h-7 px-2 text-[11px] bg-[#0f0f0f] border border-[#1f1f1f] rounded text-[#a1a1aa] focus:outline-none focus:border-[#3b82f6]"
+            className={`h-7 px-2 text-[11px] border focus:outline-none focus:border-[#3b82f6] ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f] text-[#a1a1aa]' : 'bg-white border-[#e5e7eb] text-[#374151]'}`}
           >
             {timeRanges.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
@@ -996,14 +985,14 @@ const SOCDashboard = () => {
           <select 
             value={viewMode} 
             onChange={(e) => setViewMode(e.target.value as 'all' | 'alerts')}
-            className="h-7 px-2 text-[11px] bg-[#0f0f0f] border border-[#1f1f1f] rounded text-[#a1a1aa] focus:outline-none focus:border-[#3b82f6]"
+            className={`h-7 px-2 text-[11px] border focus:outline-none focus:border-[#3b82f6] ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f] text-[#a1a1aa]' : 'bg-white border-[#e5e7eb] text-[#374151]'}`}
           >
             <option value="all">All Events</option>
             <option value="alerts">Alerts Only</option>
           </select>
 
           <div className="flex-1" />
-          <span className="text-[10px] text-[#3f3f46]">Range: {timeRangeLabel}</span>
+          <span className={`text-[10px] ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>Range: {timeRangeLabel}</span>
         </div>
 
         {/* Tab Content */}
