@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { ConfirmDialog, useConfirmDialog, ConfirmActionType } from './ConfirmDialog';
 
 type Theme = 'light' | 'dark';
 
@@ -47,6 +48,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   const [timezone, setTimezone] = useState(() => localStorage.getItem('soc-timezone') || 'Asia/Ho_Chi_Minh');
   const [connectedSources, setConnectedSources] = useState<ConnectedSource[]>([]);
   const [loadingSources, setLoadingSources] = useState(false);
+  
+  // Confirmation dialog
+  const { dialogState, showConfirm, closeConfirm } = useConfirmDialog();
+  const [pendingAction, setPendingAction] = useState<{ action: () => Promise<void> | void; targetValue?: string; details?: string } | null>(null);
   
   // Blacklist state
   const [blacklist, setBlacklist] = useState<ListItem[]>(() => {
@@ -123,20 +128,53 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   const currentList = activeSection === 'blacklist' ? blacklist : whitelist;
   const setCurrentList = activeSection === 'blacklist' ? setBlacklist : setWhitelist;
   
+  // Helper to show confirmation for critical actions
+  const confirmAction = (
+    actionType: ConfirmActionType,
+    action: () => Promise<void> | void,
+    targetValue?: string,
+    details?: string
+  ) => {
+    showConfirm(actionType, action, targetValue, details);
+  };
+  
   const handleAddItem = () => {
     if (!newItem.value.trim()) return;
-    const item: ListItem = {
-      id: Date.now().toString(),
-      value: newItem.value.trim(),
-      type: newItem.type,
-      note: newItem.note.trim(),
+    
+    const executeAdd = () => {
+      const item: ListItem = {
+        id: Date.now().toString(),
+        value: newItem.value.trim(),
+        type: newItem.type,
+        note: newItem.note.trim(),
+      };
+      setCurrentList([...currentList, item]);
+      setNewItem({ value: '', type: 'ip', note: '' });
     };
-    setCurrentList([...currentList, item]);
-    setNewItem({ value: '', type: 'ip', note: '' });
+    
+    // Show confirmation for adding to lists
+    confirmAction(
+      activeSection === 'blacklist' ? 'add_blacklist' : 'add_whitelist',
+      executeAdd,
+      newItem.value.trim(),
+      newItem.note.trim() || undefined
+    );
   };
   
   const handleDeleteItem = (id: string) => {
-    setCurrentList(currentList.filter(item => item.id !== id));
+    const item = currentList.find(i => i.id === id);
+    if (!item) return;
+    
+    const executeDelete = () => {
+      setCurrentList(currentList.filter(i => i.id !== id));
+    };
+    
+    confirmAction(
+      activeSection === 'blacklist' ? 'remove_blacklist' : 'remove_whitelist',
+      executeDelete,
+      item.value,
+      item.note || undefined
+    );
   };
   
   const handleUpdateItem = (id: string, updates: Partial<ListItem>) => {
@@ -319,7 +357,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       }
     };
 
-    const handleUnblockIP = async (ip: string) => {
+    const executeUnblockIP = async (ip: string) => {
       setUnblockingIP(ip);
       try {
         if (apiUrl) {
@@ -342,10 +380,28 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       }
     };
 
-    const handleRemoveFromList = (ip: string) => {
+    const handleUnblockIP = (ip: string) => {
+      confirmAction(
+        'unblock_ip',
+        () => executeUnblockIP(ip),
+        ip,
+        'IP này sẽ được gỡ block khỏi pfSense Firewall'
+      );
+    };
+
+    const executeRemoveFromList = (ip: string) => {
       const updated = blockedIPsList.filter((i: string) => i !== ip);
       localStorage.setItem('soc-blocked-ips', JSON.stringify(updated));
       setBlockedIPsList(updated);
+    };
+
+    const handleRemoveFromList = (ip: string) => {
+      confirmAction(
+        'remove_blacklist',
+        () => executeRemoveFromList(ip),
+        ip,
+        'Chỉ xóa khỏi danh sách hiển thị, không ảnh hưởng đến firewall'
+      );
     };
 
     return (
@@ -904,6 +960,17 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </div>
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={dialogState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={dialogState.onConfirm}
+        actionType={dialogState.actionType}
+        targetValue={dialogState.targetValue}
+        details={dialogState.details}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 };
