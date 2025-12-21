@@ -29,7 +29,12 @@ export const useSOCData = (
   filters: Filters,
   options?: UseSOCDataOptions
 ) => {
-  // Initialize events - check localStorage first, then fallback to mockEvents
+  // Check if mock data is enabled (default: OFF)
+  const isMockDataEnabled = () => {
+    return localStorage.getItem('soc-mock-data-enabled') === 'true';
+  };
+
+  // Initialize events - check localStorage first, then start empty if mock disabled
   const [events, setEvents] = useState<SOCEvent[]>(() => {
     const stored = localStorage.getItem('soc-events');
     if (stored) {
@@ -40,15 +45,21 @@ export const useSOCData = (
           timestamp: new Date(e.timestamp as string),
         }));
       } catch {
-        // If parse fails, use mockEvents
+        // If parse fails, return empty or mockEvents based on setting
       }
     }
-    // Initialize localStorage with mockEvents on first load
-    localStorage.setItem('soc-events', JSON.stringify(mockEvents.map(e => ({
-      ...e,
-      timestamp: e.timestamp.toISOString(),
-    }))));
-    return mockEvents;
+    
+    // Only use mockEvents if mock data is enabled
+    if (isMockDataEnabled()) {
+      localStorage.setItem('soc-events', JSON.stringify(mockEvents.map(e => ({
+        ...e,
+        timestamp: e.timestamp.toISOString(),
+      }))));
+      return mockEvents;
+    }
+    
+    // Default: start with empty events
+    return [];
   });
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [wsConnected, setWsConnected] = useState(false);
@@ -92,12 +103,13 @@ export const useSOCData = (
     return () => window.removeEventListener('soc-data-updated', handleDataUpdate);
   }, []);
 
-  // Mock event generation (fallback when WebSocket is not connected)
+  // Mock event generation (only when enabled and WebSocket not connected)
   useEffect(() => {
     if (!isLive) return;
     
-    // If WebSocket is connected, don't generate mock events
+    // If WebSocket is connected OR mock data is disabled, don't generate mock events
     if (options?.useWebSocket && wsConnected) return;
+    if (!isMockDataEnabled()) return;
 
     const interval = setInterval(() => {
       const newEvents = generateMockEvents(Math.floor(Math.random() * 3) + 1);
