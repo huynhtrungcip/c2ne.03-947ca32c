@@ -1,6 +1,7 @@
 """
 AI-SOC Engine - Main FastAPI Application
 Hệ thống AI phân tích log để giảm thiểu False Positive
+Tích hợp MegaLLM cho AI Assistant
 """
 import logging
 from typing import Dict, Any, List, Optional
@@ -19,6 +20,14 @@ from config import (
 )
 from ai_analyzer import analyze_flow, analyze_ip_flows, load_models, AI_BRAIN
 from pfsense_client import block_ip_on_pfsense, unblock_ip_on_pfsense
+from megallm_client import (
+    chat_with_megallm,
+    generate_playbook,
+    analyze_ip_with_llm,
+    MEGALLM_MODELS,
+    MEGALLM_DEFAULT_MODEL,
+    MEGALLM_API_KEY,
+)
 
 # Logging setup
 logging.basicConfig(
@@ -31,7 +40,7 @@ logger = logging.getLogger("AI_ENGINE")
 # FastAPI app
 app = FastAPI(
     title="AI-SOC False Positive Reduction Engine",
-    description="Hệ thống AI phân tích log Suricata + Zeek để giảm thiểu cảnh báo giả",
+    description="Hệ thống AI phân tích log Suricata + Zeek với MegaLLM Assistant",
     version="2.2.0",
 )
 
@@ -68,6 +77,26 @@ class AutoBlockConfig(BaseModel):
     enabled: bool
 
 
+class ChatRequest(BaseModel):
+    prompt: str
+    events: Optional[List[Dict[str, Any]]] = None
+    zeek_flows: Optional[List[Dict[str, Any]]] = None
+    model: Optional[str] = None
+
+
+class PlaybookRequest(BaseModel):
+    event: Dict[str, Any]
+    zeek_flows: Optional[List[Dict[str, Any]]] = None
+    model: Optional[str] = None
+
+
+class IPAnalysisRequest(BaseModel):
+    ip: str
+    events: List[Dict[str, Any]]
+    zeek_flows: Optional[List[Dict[str, Any]]] = None
+    model: Optional[str] = None
+
+
 # ==================== ROUTES ====================
 
 @app.get("/health")
@@ -77,6 +106,7 @@ async def health_check():
         "status": "ok",
         "timestamp": datetime.now().isoformat(),
         "models_loaded": bool(AI_BRAIN),
+        "megallm_configured": bool(MEGALLM_API_KEY),
         "auto_block_enabled": get_auto_block_status(),
     }
 
@@ -89,6 +119,11 @@ async def get_status():
             "status": "running",
             "models_loaded": list(AI_BRAIN.keys()) if AI_BRAIN else [],
             "version": "2.2.0",
+        },
+        "megallm": {
+            "configured": bool(MEGALLM_API_KEY),
+            "default_model": MEGALLM_DEFAULT_MODEL,
+            "available_models": MEGALLM_MODELS,
         },
         "auto_block": {
             "enabled": get_auto_block_status(),
@@ -105,6 +140,49 @@ async def reload_models():
         "success": success,
         "models_loaded": list(AI_BRAIN.keys()) if AI_BRAIN else [],
     }
+
+
+# ==================== MEGALLM CHAT ====================
+
+@app.post("/chat")
+async def chat_endpoint(req: ChatRequest):
+    """
+    Chat với MegaLLM về SOC events
+    """
+    result = chat_with_megallm(
+        prompt=req.prompt,
+        events=req.events,
+        zeek_flows=req.zeek_flows,
+        model=req.model,
+    )
+    return result
+
+
+@app.post("/playbook")
+async def playbook_endpoint(req: PlaybookRequest):
+    """
+    Generate AI playbook cho một event
+    """
+    result = generate_playbook(
+        event=req.event,
+        zeek_flows=req.zeek_flows,
+        model=req.model,
+    )
+    return result
+
+
+@app.post("/analyze-ip-llm")
+async def analyze_ip_llm_endpoint(req: IPAnalysisRequest):
+    """
+    Phân tích IP với MegaLLM
+    """
+    result = analyze_ip_with_llm(
+        ip=req.ip,
+        events=req.events,
+        zeek_flows=req.zeek_flows,
+        model=req.model,
+    )
+    return result
 
 
 # ==================== ANALYSIS ====================
@@ -169,9 +247,7 @@ async def analyze_ip(req: AnalyzeIPRequest, background_tasks: BackgroundTasks):
 
 @app.post("/block")
 async def block_ip(req: BlockIPRequest):
-    """
-    Block một IP trên pfSense
-    """
+    """Block một IP trên pfSense"""
     success, message, debug = block_ip_on_pfsense(req.ip)
     return {
         "success": success,
@@ -183,9 +259,7 @@ async def block_ip(req: BlockIPRequest):
 
 @app.post("/unblock")
 async def unblock_ip(req: BlockIPRequest):
-    """
-    Unblock một IP trên pfSense
-    """
+    """Unblock một IP trên pfSense"""
     success, message, debug = unblock_ip_on_pfsense(req.ip)
     return {
         "success": success,
@@ -245,12 +319,18 @@ async def auto_block_ip(ip: str, analysis: Dict[str, Any]):
 async def startup_event():
     logger.info("=" * 60)
     logger.info("🧠 AI-SOC False Positive Reduction Engine v2.2.0")
+    logger.info("   With MegaLLM AI Assistant Integration")
     logger.info("=" * 60)
 
     if AI_BRAIN:
-        logger.info(f"✅ Models loaded: {list(AI_BRAIN.keys())}")
+        logger.info(f"✅ ML Models loaded: {list(AI_BRAIN.keys())}")
     else:
-        logger.warning("⚠️ No AI models loaded - using rule-based analysis only")
+        logger.warning("⚠️ No ML models loaded - using rule-based analysis only")
+
+    if MEGALLM_API_KEY:
+        logger.info(f"✅ MegaLLM configured: {MEGALLM_DEFAULT_MODEL}")
+    else:
+        logger.warning("⚠️ MegaLLM not configured - AI chat disabled")
 
     logger.info(f"Auto-block: {'ENABLED' if get_auto_block_status() else 'DISABLED'}")
     logger.info(f"Whitelist IPs: {len(WHITELIST_IPS)} entries")
