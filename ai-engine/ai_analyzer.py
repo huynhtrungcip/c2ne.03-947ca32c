@@ -261,13 +261,31 @@ def analyze_flow(
         },
     }
 
-    # Step 1: Check signature patterns
+    # Step 1: Check signature patterns - IMPROVED SCORING
+    # Critical attacks should have high confidence immediately
     for crit_sig in CRITICAL_SIGNATURES:
         if crit_sig.lower() in sig_lower:
             result["verdict"] = "ALERT"
-            result["confidence"] = 1.0
+            result["confidence"] = 0.95  # High confidence for critical signatures
             result["reasoning"] = f"Critical signature matched: {crit_sig}"
             result["should_block"] = True
+            return result
+
+    # Check for common attack patterns with high confidence
+    high_confidence_patterns = [
+        ("ddos", 0.90), ("dos", 0.85), ("flood", 0.85), ("hulk", 0.90),
+        ("sql injection", 0.90), ("sqli", 0.90), ("xss", 0.85),
+        ("exploit", 0.90), ("rce", 0.95), ("trojan", 0.95), ("malware", 0.95),
+        ("brute force", 0.80), ("port scan", 0.75), ("portscan", 0.75),
+        ("path traversal", 0.85), ("command injection", 0.90),
+    ]
+    
+    for pattern, conf in high_confidence_patterns:
+        if pattern in sig_lower:
+            result["verdict"] = "ALERT"
+            result["confidence"] = conf
+            result["reasoning"] = f"Attack pattern detected: {pattern}"
+            result["should_block"] = conf >= 0.8
             return result
 
     for benign_sig in BENIGN_FP_SIGNATURES:
