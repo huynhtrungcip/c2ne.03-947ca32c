@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Activity, Server, Shield, Bot, RefreshCw, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Activity, Shield, Bot, RefreshCw, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
 interface HealthStatus {
   status: 'checking' | 'healthy' | 'warning' | 'error' | 'unknown';
@@ -21,39 +21,59 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
   const [isRefreshing, setIsRefreshing] = useState(false);
   
   const [health, setHealth] = useState<{
-    backend: HealthStatus;
+    nids: HealthStatus;
     aiEngine: HealthStatus;
     pfsense: HealthStatus;
     telegram: HealthStatus;
   }>({
-    backend: { status: 'unknown', message: 'Chưa kiểm tra' },
+    nids: { status: 'unknown', message: 'Chưa kiểm tra' },
     aiEngine: { status: 'unknown', message: 'Chưa kiểm tra' },
     pfsense: { status: 'unknown', message: 'Chưa kiểm tra' },
     telegram: { status: 'unknown', message: 'Chưa kiểm tra' },
   });
 
-  const checkBackendHealth = useCallback(async () => {
+  const checkNidsHealth = useCallback(async () => {
     if (!apiUrl) {
       return { status: 'error' as const, message: 'API URL chưa được cấu hình' };
     }
+    const aiEngineUrl = apiUrl.replace(':3001', ':8000');
+
     try {
-      const response = await fetch(`${apiUrl}/health`, { 
+      const response = await fetch(`${aiEngineUrl}/ingest/health?max_age_seconds=120`, {
         method: 'GET',
         signal: AbortSignal.timeout(5000)
       });
-      if (response.ok) {
-        const data = await response.json();
-        return { 
-          status: 'healthy' as const, 
-          message: `Backend hoạt động - WebSocket: ${data.websocketClients || 0} clients`,
-          details: data
+
+      if (!response.ok) {
+        return { status: 'error' as const, message: `HTTP ${response.status}` };
+      }
+
+      const data = await response.json();
+      if (!data.shipper_seen) {
+        return {
+          status: 'warning' as const,
+          message: 'Chưa thấy NIDS shipper gửi log',
+          details: data,
         };
       }
-      return { status: 'error' as const, message: `HTTP ${response.status}` };
+
+      if (!data.shipper_is_recent) {
+        return {
+          status: 'warning' as const,
+          message: `NIDS shipper không gửi log gần đây (${data.shipper_age_seconds}s)` ,
+          details: data,
+        };
+      }
+
+      return {
+        status: 'healthy' as const,
+        message: `NIDS OK - last log ${data.shipper_age_seconds}s ago • WS clients: ${data.connected_ws_clients ?? 0}`,
+        details: data,
+      };
     } catch (error) {
-      return { 
-        status: 'error' as const, 
-        message: error instanceof Error ? error.message : 'Không thể kết nối'
+      return {
+        status: 'error' as const,
+        message: error instanceof Error ? error.message : 'Không thể kết nối',
       };
     }
   }, [apiUrl]);
@@ -135,29 +155,29 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
     }
     const aiEngineUrl = apiUrl.replace(':3001', ':8000');
     try {
-      const response = await fetch(`${aiEngineUrl}/telegram/status`, { 
+      const response = await fetch(`${aiEngineUrl}/telegram/status`, {
         method: 'GET',
         signal: AbortSignal.timeout(5000)
       });
       if (response.ok) {
         const data = await response.json();
-        if (data.configured) {
-          return { 
-            status: 'healthy' as const, 
-            message: `Telegram đã cấu hình - Chat ID: ${data.chat_id?.slice(-6) || '...'}`,
+        if (data.enabled) {
+          return {
+            status: 'healthy' as const,
+            message: `Telegram OK - threshold ${data.confidence_threshold}%`,
             details: data
           };
         }
-        return { 
-          status: 'warning' as const, 
-          message: 'Telegram chưa được cấu hình',
+        return {
+          status: 'warning' as const,
+          message: 'Telegram chưa cấu hình (token/chat_id)',
           details: data
         };
       }
       return { status: 'error' as const, message: `HTTP ${response.status}` };
     } catch (error) {
-      return { 
-        status: 'error' as const, 
+      return {
+        status: 'error' as const,
         message: error instanceof Error ? error.message : 'Không thể kết nối'
       };
     }
@@ -168,15 +188,15 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
     
     // Mark all as checking
     setHealth(prev => ({
-      backend: { ...prev.backend, status: 'checking', message: 'Đang kiểm tra...' },
+      nids: { ...prev.nids, status: 'checking', message: 'Đang kiểm tra...' },
       aiEngine: { ...prev.aiEngine, status: 'checking', message: 'Đang kiểm tra...' },
       pfsense: { ...prev.pfsense, status: 'checking', message: 'Đang kiểm tra...' },
       telegram: { ...prev.telegram, status: 'checking', message: 'Đang kiểm tra...' },
     }));
 
     // Run all checks in parallel
-    const [backend, aiEngine, pfsense, telegram] = await Promise.all([
-      checkBackendHealth(),
+    const [nids, aiEngine, pfsense, telegram] = await Promise.all([
+      checkNidsHealth(),
       checkAIEngineHealth(),
       checkPfSenseHealth(),
       checkTelegramHealth(),
@@ -184,7 +204,7 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
 
     const now = new Date();
     setHealth({
-      backend: { ...backend, lastCheck: now },
+      nids: { ...nids, lastCheck: now },
       aiEngine: { ...aiEngine, lastCheck: now },
       pfsense: { ...pfsense, lastCheck: now },
       telegram: { ...telegram, lastCheck: now },
@@ -192,7 +212,7 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
     
     setLastRefresh(now);
     setIsRefreshing(false);
-  }, [checkBackendHealth, checkAIEngineHealth, checkPfSenseHealth, checkTelegramHealth]);
+  }, [checkNidsHealth, checkAIEngineHealth, checkPfSenseHealth, checkTelegramHealth]);
 
   // Auto refresh
   useEffect(() => {
@@ -231,7 +251,7 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
   };
 
   const services = [
-    { key: 'backend', label: 'Backend Server', icon: Server, data: health.backend },
+    { key: 'nids', label: 'NIDS (Shipper)', icon: Activity, data: health.nids },
     { key: 'aiEngine', label: 'AI Engine', icon: Bot, data: health.aiEngine },
     { key: 'pfsense', label: 'pfSense Firewall', icon: Shield, data: health.pfsense },
     { key: 'telegram', label: 'Telegram Bot', icon: Activity, data: health.telegram },

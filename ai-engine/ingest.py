@@ -29,6 +29,10 @@ ws_clients: List[WebSocket] = []
 # In-memory log buffer for debugging (last 500 entries)
 ingest_logs: deque = deque(maxlen=500)
 
+# Last time the shipper sent us anything (even if ignored)
+last_shipper_seen: Optional[datetime] = None
+last_shipper_seen_by_source: Dict[str, datetime] = {}
+
 def add_ingest_log(level: str, source: str, message: str, details: Dict[str, Any] = None):
     """Add a log entry to the in-memory buffer for debugging"""
     entry = {
@@ -298,6 +302,11 @@ async def ingest_log(req: IngestRequest):
     5. Auto-block if critical Suricata ALERT (not Zeek)
     """
     try:
+        # Track shipper activity (used by healthcheck)
+        global last_shipper_seen, last_shipper_seen_by_source
+        last_shipper_seen = datetime.now()
+        last_shipper_seen_by_source[req.source] = last_shipper_seen
+
         add_ingest_log("INFO", req.source.upper(), f"Received log from shipper", {
             "has_data": bool(req.data),
             "data_keys": list(req.data.keys())[:10] if req.data else []
@@ -393,6 +402,32 @@ async def ingest_status():
         "status": "ok",
         "connected_clients": len(ws_clients),
         "timestamp": datetime.now().isoformat(),
+    }
+
+
+@router.get("/ingest/health")
+async def ingest_health(max_age_seconds: int = 120):
+    """Healthcheck for NIDS shipper activity (does not affect dashboard status indicator)."""
+    now = datetime.now()
+
+    if last_shipper_seen is None:
+        return {
+            "shipper_seen": False,
+            "shipper_last_seen": None,
+            "shipper_age_seconds": None,
+            "max_age_seconds": max_age_seconds,
+            "connected_ws_clients": len(ws_clients),
+        }
+
+    age = int((now - last_shipper_seen).total_seconds())
+    return {
+        "shipper_seen": True,
+        "shipper_last_seen": last_shipper_seen.isoformat(),
+        "shipper_age_seconds": age,
+        "max_age_seconds": max_age_seconds,
+        "shipper_is_recent": age <= max_age_seconds,
+        "by_source": {k: v.isoformat() for k, v in last_shipper_seen_by_source.items()},
+        "connected_ws_clients": len(ws_clients),
     }
 
 

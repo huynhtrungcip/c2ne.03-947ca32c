@@ -119,9 +119,28 @@ export const useWebSocket = ({
 }: WebSocketConfig) => {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<string | null>(null);
   const [eventCount, setEventCount] = useState(0);
+
+  const startHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) return;
+
+    // Keepalive to prevent server-side idle disconnect (NIDS logs may be sparse)
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send('ping');
+      }
+    }, 20000);
+  }, []);
+
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+  }, []);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -134,10 +153,14 @@ export const useWebSocket = ({
         console.log('[WebSocket] Connected');
         setIsConnected(true);
         onConnectionChange?.(true);
+        startHeartbeat();
       };
 
       ws.onmessage = (event) => {
         try {
+          // Ignore keepalive echoes
+          if (event.data === 'pong' || event.data === 'ping') return;
+
           const data = JSON.parse(event.data);
           setLastMessage(event.data);
 
@@ -167,6 +190,7 @@ export const useWebSocket = ({
         console.log('[WebSocket] Disconnected');
         setIsConnected(false);
         onConnectionChange?.(false);
+        stopHeartbeat();
 
         // Reconnect
         if (enabled) {
@@ -182,18 +206,19 @@ export const useWebSocket = ({
     } catch (err) {
       console.error('[WebSocket] Connection error:', err);
     }
-  }, [url, enabled, onEvent, onConnectionChange, reconnectInterval]);
+  }, [url, enabled, onEvent, onConnectionChange, reconnectInterval, startHeartbeat, stopHeartbeat]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
     }
+    stopHeartbeat();
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
     setIsConnected(false);
-  }, []);
+  }, [stopHeartbeat]);
 
   const sendMessage = useCallback((message: unknown) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
