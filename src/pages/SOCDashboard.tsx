@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useSOCData } from '@/hooks/useSOCData';
 import { SOCEvent } from '@/types/soc';
 import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
-import { Settings, Sun, Moon, X } from 'lucide-react';
+import { Settings } from 'lucide-react';
+import SettingsModal from '@/components/soc/SettingsModal';
 
-type Theme = 'light' | 'dark' | 'system';
+type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
 
 // AI Chatbot Panel Component
@@ -94,16 +95,10 @@ const SOCDashboard = () => {
   useEffect(() => {
     const root = document.documentElement;
     localStorage.setItem('soc-theme', theme);
-    
-    if (theme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      root.classList.toggle('dark', prefersDark);
-    } else {
-      root.classList.toggle('dark', theme === 'dark');
-    }
+    root.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
-  const isDarkMode = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const isDarkMode = theme === 'dark';
 
   const { events, metrics, topSources, attackTypeData, trafficData, timeRanges } = useSOCData(
     timeRange,
@@ -694,9 +689,9 @@ const SOCDashboard = () => {
           
           {/* Right Panel - Threat Events */}
           <div className="col-span-8">
-            <div className="bg-[#0f0f0f] border border-[#dc2626]/30 rounded">
-              <div className="p-3 border-b border-[#1f1f1f] flex items-center justify-between">
-                <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold">Active Threats</div>
+            <div className={`rounded ${isDarkMode ? 'bg-[#0f0f0f] border border-[#dc2626]/30' : 'bg-white border border-[#dc2626]/30'}`}>
+              <div className={`p-3 border-b flex items-center justify-between ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#fee2e2]'}`}>
+                <div className={`text-xs uppercase tracking-wider font-semibold ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Active Threats</div>
                 <span className="text-[9px] text-[#dc2626]">{criticalEvents.length} threats detected</span>
               </div>
               {renderEventTable(criticalEvents.slice(0, 50))}
@@ -736,8 +731,8 @@ const SOCDashboard = () => {
     return (
       <>
         <div className="mb-4">
-          <h2 className="text-sm font-semibold text-[#e4e4e7] mb-1">Security Reports</h2>
-          <p className="text-[10px] text-[#52525b]">Analytics dashboard for {timeRangeLabel} • Generated at {now}</p>
+          <h2 className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>Security Reports</h2>
+          <p className={`text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Analytics dashboard for {timeRangeLabel} • Generated at {now}</p>
         </div>
         
         {/* Summary Cards */}
@@ -749,20 +744,20 @@ const SOCDashboard = () => {
             { label: 'Unique Sources', value: metrics.uniqueSources, sub: 'Distinct IPs' },
             { label: 'Peak Hour', value: peakHour ? `${peakHour[0]}:00` : '-', sub: peakHour ? `${peakHour[1].traffic} events` : '' },
           ].map((card, i) => (
-            <div key={i} className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-3">
-              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold">{card.label}</div>
-              <div className="text-xl font-bold font-mono text-[#e4e4e7] my-1">{card.value}</div>
-              <div className="text-[9px] text-[#52525b]">{card.sub}</div>
+            <div key={i} className={`border rounded p-3 ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+              <div className={`text-xs uppercase tracking-wider font-semibold ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{card.label}</div>
+              <div className={`text-xl font-bold font-mono my-1 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>{card.value}</div>
+              <div className={`text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{card.sub}</div>
             </div>
           ))}
         </div>
 
         <div className="grid grid-cols-12 gap-4 mb-4">
           {/* Traffic Trend */}
-          <div className="col-span-8 bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
+          <div className={`col-span-8 border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
             <div className="flex items-center justify-between mb-3">
-              <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold">Traffic Trend</div>
-              <div className="flex items-center gap-4 text-[10px]">
+              <div className={`text-xs uppercase tracking-wider font-semibold ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Traffic Trend</div>
+              <div className={`flex items-center gap-4 text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
                 <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-[#3b82f6]"></span> Traffic</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-[#dc2626]"></span> Alerts</span>
               </div>
@@ -775,9 +770,10 @@ const SOCDashboard = () => {
                     <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="time" tick={{ fill: '#71717a', fontSize: 9 }} axisLine={{ stroke: '#27272a' }} tickLine={false} />
-                <YAxis tick={{ fill: '#71717a', fontSize: 9 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: 6, fontSize: 10 }} />
+                <CartesianGrid strokeDasharray="2 2" stroke={isDarkMode ? '#1f1f1f' : '#f3f4f6'} vertical={false} />
+                <XAxis dataKey="time" tick={{ fill: isDarkMode ? '#71717a' : '#9ca3af', fontSize: 9 }} axisLine={{ stroke: isDarkMode ? '#27272a' : '#e5e7eb' }} tickLine={false} />
+                <YAxis tick={{ fill: isDarkMode ? '#71717a' : '#9ca3af', fontSize: 9 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#18181b' : '#fff', border: `1px solid ${isDarkMode ? '#3f3f46' : '#e5e7eb'}`, borderRadius: 6, fontSize: 10 }} />
                 <Area type="monotone" dataKey="Traffic" stroke="#3b82f6" strokeWidth={2} fill="url(#trafficGrad2)" />
                 <Line type="monotone" dataKey="Alerts" stroke="#dc2626" strokeWidth={2} dot={false} />
               </ComposedChart>
@@ -785,16 +781,16 @@ const SOCDashboard = () => {
           </div>
           
           {/* Verdict Breakdown */}
-          <div className="col-span-4 bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
-            <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Verdict Distribution</div>
+          <div className={`col-span-4 border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+            <div className={`text-xs uppercase tracking-wider font-semibold mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Verdict Distribution</div>
             <div className="space-y-3">
               {verdictBreakdown.map((v) => (
                 <div key={v.name}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-[#71717a]">{v.name}</span>
+                    <span className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>{v.name}</span>
                     <span className="text-[11px] font-mono" style={{ color: v.color }}>{v.value}</span>
                   </div>
-                  <div className="w-full h-1.5 bg-[#1f1f1f] rounded">
+                  <div className={`w-full h-1.5 rounded ${isDarkMode ? 'bg-[#1f1f1f]' : 'bg-[#e5e7eb]'}`}>
                     <div className="h-full rounded" style={{ width: `${Math.min((v.value / Math.max(sortedEvents.length, 1)) * 100, 100)}%`, backgroundColor: v.color }} />
                   </div>
                 </div>
@@ -805,26 +801,26 @@ const SOCDashboard = () => {
         
         <div className="grid grid-cols-2 gap-4">
           {/* Top Attack Sources */}
-          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
-            <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Top Attack Sources</div>
+          <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+            <div className={`text-xs uppercase tracking-wider font-semibold mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Top Attack Sources</div>
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={barData.slice(0, 6)} layout="vertical" margin={{ top: 5, right: 30, left: 70, bottom: 5 }}>
-                <XAxis type="number" tick={{ fill: '#71717a', fontSize: 9 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="ip" tick={{ fill: '#a1a1aa', fontSize: 10 }} axisLine={false} tickLine={false} width={65} />
-                <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #3f3f46', borderRadius: 6, fontSize: 10 }} />
+                <XAxis type="number" tick={{ fill: isDarkMode ? '#71717a' : '#9ca3af', fontSize: 9 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="ip" tick={{ fill: isDarkMode ? '#a1a1aa' : '#6b7280', fontSize: 10 }} axisLine={false} tickLine={false} width={65} />
+                <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#18181b' : '#fff', border: `1px solid ${isDarkMode ? '#3f3f46' : '#e5e7eb'}`, borderRadius: 6, fontSize: 10 }} />
                 <Bar dataKey="count" fill="#ea580c" radius={2} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           {/* Protocol Distribution */}
-          <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded p-4">
-            <div className="text-xs text-[#a1a1aa] uppercase tracking-wider font-semibold mb-3">Protocol Distribution</div>
+          <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+            <div className={`text-xs uppercase tracking-wider font-semibold mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Protocol Distribution</div>
             <div className="flex gap-3 flex-wrap">
               {topProtocols.map(([proto, count]) => (
-                <div key={proto} className="bg-[#0a0a0a] border border-[#27272a] rounded px-4 py-3 text-center min-w-[80px]">
-                  <div className="text-xl font-bold font-mono text-[#e4e4e7]">{count}</div>
-                  <div className="text-[10px] text-[#71717a] uppercase">{proto}</div>
+                <div key={proto} className={`border rounded px-4 py-3 text-center min-w-[80px] ${isDarkMode ? 'bg-[#0a0a0a] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+                  <div className={`text-xl font-bold font-mono ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>{count}</div>
+                  <div className={`text-[10px] uppercase ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>{proto}</div>
                 </div>
               ))}
             </div>
@@ -884,70 +880,16 @@ const SOCDashboard = () => {
           </div>
           
           {/* Settings Button */}
-          <div className="relative">
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className={`h-7 w-7 flex items-center justify-center rounded-md transition-all ${
-                isDarkMode 
-                  ? 'bg-[#18181b] text-[#71717a] border border-[#27272a] hover:bg-[#27272a] hover:text-[#a1a1aa]'
-                  : 'bg-white text-[#6b7280] border border-[#e5e7eb] hover:bg-[#f3f4f6] hover:text-[#374151]'
-              }`}
-            >
-              <Settings className="w-3.5 h-3.5" />
-            </button>
-            
-            {/* Settings Dropdown */}
-            {showSettings && (
-              <div className={`absolute right-0 top-9 w-64 rounded-lg shadow-xl z-50 ${
-                isDarkMode ? 'bg-[#18181b] border border-[#27272a]' : 'bg-white border border-[#e5e7eb]'
-              }`}>
-                <div className={`flex items-center justify-between px-4 py-3 border-b ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
-                  <span className={`text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>Settings</span>
-                  <button onClick={() => setShowSettings(false)} className={`${isDarkMode ? 'text-[#71717a] hover:text-[#a1a1aa]' : 'text-[#9ca3af] hover:text-[#6b7280]'}`}>
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="p-4 space-y-4">
-                  {/* Theme Selection */}
-                  <div>
-                    <div className={`text-[10px] uppercase tracking-wider mb-2 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>Theme</div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { value: 'light', icon: Sun, label: 'Light' },
-                        { value: 'dark', icon: Moon, label: 'Dark' },
-                      ].map(({ value, icon: Icon, label }) => (
-                        <button
-                          key={value}
-                          onClick={() => setTheme(value as Theme)}
-                          className={`flex flex-col items-center gap-1 py-2 px-3 rounded-md text-[10px] transition-all ${
-                            theme === value
-                              ? isDarkMode 
-                                ? 'bg-[#3b82f6]/20 text-[#60a5fa] border border-[#3b82f6]/40'
-                                : 'bg-[#3b82f6]/10 text-[#2563eb] border border-[#3b82f6]/30'
-                              : isDarkMode
-                                ? 'bg-[#27272a] text-[#a1a1aa] border border-transparent hover:border-[#3f3f46]'
-                                : 'bg-[#f3f4f6] text-[#6b7280] border border-transparent hover:border-[#d1d5db]'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4" />
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Dashboard Info */}
-                  <div className={`pt-3 border-t ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
-                    <div className={`text-[10px] uppercase tracking-wider mb-2 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>Dashboard Info</div>
-                    <div className={`text-[11px] space-y-1 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
-                      <div>Version: 2.0.0</div>
-                      <div>Engine: Hybrid NIDS</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <button
+            onClick={() => setShowSettings(true)}
+            className={`h-7 w-7 flex items-center justify-center rounded-md transition-all ${
+              isDarkMode 
+                ? 'bg-[#18181b] text-[#71717a] border border-[#27272a] hover:bg-[#27272a] hover:text-[#a1a1aa]'
+                : 'bg-white text-[#6b7280] border border-[#e5e7eb] hover:bg-[#f3f4f6] hover:text-[#374151]'
+            }`}
+          >
+            <Settings className="w-3.5 h-3.5" />
+          </button>
         </div>
       </header>
 
@@ -1002,13 +944,22 @@ const SOCDashboard = () => {
         {activeTab === 'reports' && renderReportsTab()}
 
         {/* Footer */}
-        <div className="mt-6 text-center text-[9px] text-[#27272a]">
-          SOC Dashboard v22 — Hybrid NIDS Engine
+        <div className={`mt-6 text-center text-[9px] ${isDarkMode ? 'text-[#27272a]' : 'text-[#d1d5db]'}`}>
+          SOC Dashboard v2.0 — Nhóm C1NE.03 — An ninh mạng K28 — Đại học Duy Tân
         </div>
       </div>
       
       {/* AI Chat Panel */}
       <AIChatPanel isOpen={showAIChat} onClose={() => setShowAIChat(false)} />
+      
+      {/* Settings Modal */}
+      <SettingsModal 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)} 
+        theme={theme}
+        setTheme={setTheme}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 };
