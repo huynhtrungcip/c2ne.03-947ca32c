@@ -91,6 +91,11 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     intervalId: NodeJS.Timeout | null;
   } | null>(null);
   const [addingMockData, setAddingMockData] = useState(false);
+  
+  // Mock data toggle state - must be before any early returns
+  const [mockDataEnabled, setMockDataEnabled] = useState(() => {
+    return localStorage.getItem('soc-mock-data-enabled') === 'true';
+  });
 
   // API URL for backend
   const apiUrl = localStorage.getItem('soc-api-url') || '';
@@ -736,11 +741,6 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       'Dữ liệu có thể khôi phục trong vòng 2 phút'
     );
   };
-
-  // Mock data toggle state
-  const [mockDataEnabled, setMockDataEnabled] = useState(() => {
-    return localStorage.getItem('soc-mock-data-enabled') === 'true';
-  });
 
   const handleToggleMockData = (enabled: boolean) => {
     setMockDataEnabled(enabled);
