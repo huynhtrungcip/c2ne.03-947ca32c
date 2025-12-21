@@ -14,7 +14,8 @@ import requests
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
-from config import NODEJS_BACKEND_URL
+from config import NODEJS_BACKEND_URL, WHITELIST_IPS, should_auto_block, get_auto_block_status
+from pfsense_client import block_ip_on_pfsense
 
 logger = logging.getLogger("INGEST")
 
@@ -174,6 +175,31 @@ def parse_zeek_http(data: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+async def auto_block_from_ingest(ip: str, signature: str):
+    """
+    Auto-block IP directly from ingest if enabled and signature matches dangerous patterns.
+    This is called in real-time when critical events are received.
+    """
+    if not get_auto_block_status():
+        return
+    
+    if ip in WHITELIST_IPS:
+        logger.info(f"[AUTO-BLOCK] IP {ip} is whitelisted, skipping")
+        return
+    
+    if not should_auto_block(signature):
+        logger.debug(f"[AUTO-BLOCK] Signature '{signature}' is not critical, skipping")
+        return
+    
+    logger.warning(f"🚨 [AUTO-BLOCK] Critical signature detected: '{signature}' from IP {ip}")
+    
+    success, message, _ = block_ip_on_pfsense(ip)
+    if success:
+        logger.info(f"🔒 [AUTO-BLOCK] Blocked IP {ip}: {message}")
+    else:
+        logger.warning(f"[AUTO-BLOCK] Failed to block IP {ip}: {message}")
+
+
 # ==================== INGEST ENDPOINT ====================
 
 @router.post("/ingest")
@@ -216,6 +242,13 @@ async def ingest_log(req: IngestRequest):
         
         # Broadcast to connected dashboards (real-time)
         asyncio.create_task(broadcast_event(event))
+        
+        # Auto-block if critical signature and auto-block is enabled
+        if event.get("verdict") == "ALERT" and event.get("confidence", 0) >= 0.7:
+            signature = event.get("attack_type", "")
+            src_ip = event.get("src_ip", "")
+            if src_ip and signature:
+                asyncio.create_task(auto_block_from_ingest(src_ip, signature))
         
         logger.debug(f"[INGEST] {req.source}: {event['src_ip']} -> {event['dst_ip']} ({event['attack_type']})")
         

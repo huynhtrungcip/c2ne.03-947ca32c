@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw, Database, RotateCcw, AlertTriangle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ConfirmDialog, useConfirmDialog, ConfirmActionType } from './ConfirmDialog';
 
@@ -44,7 +44,7 @@ const TIMEZONES = [
 
 const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: SettingsModalProps) => {
   const { language, setLanguage, t } = useLanguage();
-  const [activeSection, setActiveSection] = useState<'general' | 'sources' | 'blacklist' | 'whitelist' | 'blocked' | 'help'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'data' | 'sources' | 'blacklist' | 'whitelist' | 'blocked' | 'help'>('general');
   const [timezone, setTimezone] = useState(() => localStorage.getItem('soc-timezone') || 'Asia/Ho_Chi_Minh');
   const [connectedSources, setConnectedSources] = useState<ConnectedSource[]>([]);
   const [loadingSources, setLoadingSources] = useState(false);
@@ -82,6 +82,15 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   const [blockedIPsList, setBlockedIPsList] = useState<string[]>(() => {
     return JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
   });
+
+  // Data management state
+  const [pendingDelete, setPendingDelete] = useState<{ 
+    timeRange: string; 
+    deletedData: any[] | null; 
+    countdown: number;
+    intervalId: NodeJS.Timeout | null;
+  } | null>(null);
+  const [addingMockData, setAddingMockData] = useState(false);
 
   // API URL for backend
   const apiUrl = localStorage.getItem('soc-api-url') || '';
@@ -189,12 +198,252 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   
   const sections = [
     { id: 'general', label: t('settings.general'), icon: Settings },
+    { id: 'data', label: 'Data Management', icon: Database },
     { id: 'sources', label: 'NIDS Sources', icon: Server },
     { id: 'blocked', label: 'Blocked IPs', icon: Ban },
     { id: 'blacklist', label: t('settings.blacklist'), icon: Shield },
     { id: 'whitelist', label: t('settings.whitelist'), icon: List },
     { id: 'help', label: t('settings.help'), icon: HelpCircle },
   ];
+
+  // Data Management Functions
+  const TIME_RANGES = [
+    { value: '5m', label: '5 phút', ms: 5 * 60 * 1000 },
+    { value: '15m', label: '15 phút', ms: 15 * 60 * 1000 },
+    { value: '30m', label: '30 phút', ms: 30 * 60 * 1000 },
+    { value: '1h', label: '1 giờ', ms: 60 * 60 * 1000 },
+    { value: '1d', label: '1 ngày', ms: 24 * 60 * 60 * 1000 },
+    { value: 'all', label: 'Tất cả', ms: Infinity },
+  ];
+
+  const executeDeleteData = useCallback(async (timeRange: string) => {
+    const range = TIME_RANGES.find(r => r.value === timeRange);
+    if (!range) return;
+
+    // Store current data for potential recovery
+    const currentEvents = localStorage.getItem('soc-events') || '[]';
+    const parsedEvents = JSON.parse(currentEvents);
+    
+    let deletedData: any[] = [];
+    let remainingData: any[] = [];
+    const now = Date.now();
+    
+    if (timeRange === 'all') {
+      deletedData = parsedEvents;
+      remainingData = [];
+    } else {
+      parsedEvents.forEach((event: any) => {
+        const eventTime = new Date(event.timestamp).getTime();
+        if (now - eventTime <= range.ms) {
+          deletedData.push(event);
+        } else {
+          remainingData.push(event);
+        }
+      });
+    }
+
+    // Save remaining data
+    localStorage.setItem('soc-events', JSON.stringify(remainingData));
+    
+    // Start countdown for recovery
+    const intervalId = setInterval(() => {
+      setPendingDelete(prev => {
+        if (!prev) return null;
+        if (prev.countdown <= 1) {
+          clearInterval(prev.intervalId!);
+          // Permanent delete - clear backup
+          return null;
+        }
+        return { ...prev, countdown: prev.countdown - 1 };
+      });
+    }, 1000);
+
+    setPendingDelete({
+      timeRange,
+      deletedData,
+      countdown: 120, // 2 minutes
+      intervalId,
+    });
+
+    // Call backend API if available
+    if (apiUrl) {
+      try {
+        await fetch(`${apiUrl}/api/events/delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ timeRange, deleteBefore: now - range.ms }),
+        });
+      } catch (error) {
+        console.error('Failed to delete from backend:', error);
+      }
+    }
+  }, [apiUrl]);
+
+  const handleRecoverData = useCallback(() => {
+    if (!pendingDelete?.deletedData) return;
+    
+    // Restore data
+    const currentEvents = JSON.parse(localStorage.getItem('soc-events') || '[]');
+    const restoredEvents = [...currentEvents, ...pendingDelete.deletedData];
+    localStorage.setItem('soc-events', JSON.stringify(restoredEvents));
+    
+    // Clear countdown
+    if (pendingDelete.intervalId) {
+      clearInterval(pendingDelete.intervalId);
+    }
+    setPendingDelete(null);
+  }, [pendingDelete]);
+
+  const handleAddMockData = useCallback(async () => {
+    setAddingMockData(true);
+    try {
+      // Import mock data generator
+      const { generateMockEvents } = await import('@/data/mockEvents');
+      const mockEvents = generateMockEvents(50);
+      
+      // Add to localStorage
+      const currentEvents = JSON.parse(localStorage.getItem('soc-events') || '[]');
+      const newEvents = [...mockEvents.map(e => ({
+        ...e,
+        timestamp: e.timestamp.toISOString(),
+      })), ...currentEvents];
+      localStorage.setItem('soc-events', JSON.stringify(newEvents));
+      
+      // Trigger refresh by dispatching custom event
+      window.dispatchEvent(new CustomEvent('soc-data-updated'));
+    } catch (error) {
+      console.error('Failed to add mock data:', error);
+    } finally {
+      setAddingMockData(false);
+    }
+  }, []);
+
+  const handleDeleteData = (timeRange: string) => {
+    const range = TIME_RANGES.find(r => r.value === timeRange);
+    confirmAction(
+      'delete_data',
+      () => executeDeleteData(timeRange),
+      range?.label || timeRange,
+      'Dữ liệu có thể khôi phục trong vòng 2 phút'
+    );
+  };
+
+  const renderDataManagementSection = () => (
+    <div className="space-y-6">
+      <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+        Data Management
+      </div>
+      <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+        Quản lý dữ liệu sự kiện trong dashboard. Xóa dữ liệu cũ hoặc thêm dữ liệu demo.
+      </p>
+
+      {/* Recovery Banner */}
+      {pendingDelete && (
+        <div className={`p-4 rounded-lg border-2 animate-pulse ${isDarkMode ? 'bg-[#422006] border-[#f59e0b]' : 'bg-[#fef3c7] border-[#f59e0b]'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-[#f59e0b]" />
+              <div>
+                <div className={`text-[12px] font-semibold ${isDarkMode ? 'text-[#fbbf24]' : 'text-[#92400e]'}`}>
+                  Dữ liệu đã xóa - Có thể khôi phục
+                </div>
+                <div className={`text-[10px] ${isDarkMode ? 'text-[#fcd34d]' : 'text-[#a16207]'}`}>
+                  {pendingDelete.deletedData?.length || 0} sự kiện đã bị xóa. Còn {pendingDelete.countdown}s để khôi phục.
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={handleRecoverData}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#22c55e] text-white text-[11px] font-semibold hover:bg-[#16a34a] transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Khôi phục ({pendingDelete.countdown}s)
+            </button>
+          </div>
+          <div className="mt-3 h-1 bg-[#fcd34d]/30 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-[#f59e0b] transition-all duration-1000"
+              style={{ width: `${(pendingDelete.countdown / 120) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Delete Data Section */}
+      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+        <div className={`text-[11px] font-semibold mb-3 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+          <Trash2 className="w-4 h-4 text-[#dc2626]" />
+          Xóa Dữ Liệu Sự Kiện
+        </div>
+        <p className={`text-[10px] mb-4 ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+          Xóa các sự kiện trong khoảng thời gian. Dữ liệu có thể khôi phục trong vòng 2 phút sau khi xóa.
+        </p>
+        
+        <div className="grid grid-cols-3 gap-2">
+          {TIME_RANGES.map((range) => (
+            <button
+              key={range.value}
+              onClick={() => handleDeleteData(range.value)}
+              disabled={!!pendingDelete}
+              className={`p-3 rounded-lg border text-center transition-all ${
+                isDarkMode
+                  ? 'bg-[#18181b] border-[#27272a] text-[#a1a1aa] hover:border-[#dc2626] hover:text-[#f87171] disabled:opacity-50'
+                  : 'bg-white border-[#e5e7eb] text-[#6b7280] hover:border-[#dc2626] hover:text-[#dc2626] disabled:opacity-50'
+              }`}
+            >
+              <div className={`text-[12px] font-medium ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+                {range.label}
+              </div>
+              <div className={`text-[9px] mt-0.5 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+                {range.value === 'all' ? 'Xóa toàn bộ' : `Trong ${range.label} qua`}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Add Mock Data Section */}
+      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+        <div className={`text-[11px] font-semibold mb-3 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+          <Plus className="w-4 h-4 text-[#3b82f6]" />
+          Thêm Dữ Liệu Demo
+        </div>
+        <p className={`text-[10px] mb-4 ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+          Thêm 50 sự kiện giả lập để demo dashboard. Dữ liệu này có thể xóa bằng chức năng xóa ở trên.
+        </p>
+        
+        <button
+          onClick={handleAddMockData}
+          disabled={addingMockData}
+          className={`w-full p-3 rounded-lg border flex items-center justify-center gap-2 transition-all ${
+            isDarkMode
+              ? 'bg-[#1e3a5f] border-[#3b82f6] text-[#60a5fa] hover:bg-[#1e40af] disabled:opacity-50'
+              : 'bg-[#eff6ff] border-[#3b82f6] text-[#2563eb] hover:bg-[#dbeafe] disabled:opacity-50'
+          }`}
+        >
+          {addingMockData ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              Đang thêm...
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4" />
+              Thêm 50 Sự Kiện Demo
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Warning */}
+      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#450a0a] border-[#dc2626]/30' : 'bg-[#fef2f2] border-[#fecaca]'}`}>
+        <div className={`text-[10px] ${isDarkMode ? 'text-[#fca5a5]' : 'text-[#b91c1c]'}`}>
+          <strong>Lưu ý:</strong> Sau 2 phút, dữ liệu sẽ bị xóa vĩnh viễn và không thể khôi phục. 
+          Hãy đảm bảo bạn đã sao lưu dữ liệu quan trọng trước khi xóa.
+        </div>
+      </div>
+    </div>
+  );
 
   const renderSourcesSection = () => (
     <div className="space-y-6">
@@ -953,6 +1202,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           
           <div className="flex-1 overflow-y-auto p-6">
             {activeSection === 'general' && renderGeneralSection()}
+            {activeSection === 'data' && renderDataManagementSection()}
             {activeSection === 'sources' && renderSourcesSection()}
             {activeSection === 'blocked' && renderBlockedIPsSection()}
             {(activeSection === 'blacklist' || activeSection === 'whitelist') && renderListSection()}

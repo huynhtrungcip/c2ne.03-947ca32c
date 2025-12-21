@@ -9,7 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, AlertTriangle, Shield, ShieldAlert, ShieldCheck, Ban, Plus, Trash2 } from 'lucide-react';
+import { Loader2, AlertTriangle, Shield, ShieldAlert, ShieldCheck, Ban, Plus, Trash2, Database } from 'lucide-react';
 
 export type ConfirmActionType = 
   | 'block_ip'
@@ -20,7 +20,8 @@ export type ConfirmActionType =
   | 'remove_whitelist'
   | 'enable_auto_block'
   | 'disable_auto_block'
-  | 'analyze_ip';
+  | 'analyze_ip'
+  | 'delete_data';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -111,6 +112,14 @@ const ACTION_CONFIG: Record<ConfirmActionType, {
     confirmText: 'Phân tích',
     confirmClass: 'bg-blue-600 hover:bg-blue-700 text-white',
     severity: 'info',
+  },
+  delete_data: {
+    title: 'Xóa Dữ Liệu',
+    description: 'Bạn có chắc muốn xóa dữ liệu sự kiện? Dữ liệu có thể khôi phục trong vòng 2 phút sau khi xóa.',
+    icon: <Database className="w-6 h-6 text-red-500" />,
+    confirmText: 'Xóa Dữ Liệu',
+    confirmClass: 'bg-red-600 hover:bg-red-700 text-white',
+    severity: 'danger',
   },
 };
 

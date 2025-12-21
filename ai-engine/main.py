@@ -17,6 +17,8 @@ from config import (
     set_auto_block_status,
     NODEJS_BACKEND_URL,
     WHITELIST_IPS,
+    should_auto_block,
+    get_attack_severity,
 )
 from ai_analyzer import analyze_flow, analyze_ip_flows, load_models, AI_BRAIN
 from pfsense_client import block_ip_on_pfsense, unblock_ip_on_pfsense
@@ -211,8 +213,9 @@ async def analyze_single_flow(req: AnalyzeFlowRequest, background_tasks: Backgro
         # Auto-block if enabled and recommended
         if result["should_block"] and get_auto_block_status():
             src_ip = req.suricata_alert.get("src_ip")
+            signature = req.suricata_alert.get("alert", {}).get("signature", "")
             if src_ip:
-                background_tasks.add_task(auto_block_ip, src_ip, result)
+                background_tasks.add_task(auto_block_ip, src_ip, signature, result)
 
         return {
             "success": True,
@@ -235,7 +238,10 @@ async def analyze_ip(req: AnalyzeIPRequest, background_tasks: BackgroundTasks):
 
         # Auto-block if high risk and enabled
         if result.get("should_block") and get_auto_block_status():
-            background_tasks.add_task(auto_block_ip, req.ip, result)
+            # Get the most critical signature from events
+            signatures = [e.get("alert", {}).get("signature", "") for e in req.events if e.get("alert")]
+            critical_sig = next((s for s in signatures if should_auto_block(s)), signatures[0] if signatures else "Unknown")
+            background_tasks.add_task(auto_block_ip, req.ip, critical_sig, result)
 
         return {
             "success": True,
@@ -304,11 +310,23 @@ async def update_event_verdict(event_id: str, verdict: str, analysis: Dict[str, 
         logger.error(f"Error updating event verdict: {e}")
 
 
-async def auto_block_ip(ip: str, analysis: Dict[str, Any]):
-    """Auto-block IP based on analysis result"""
+async def auto_block_ip(ip: str, signature: str, analysis: Dict[str, Any]):
+    """
+    Auto-block IP based on analysis result and signature patterns.
+    Uses pattern-based detection instead of hardcoded signature names.
+    """
     if ip in WHITELIST_IPS:
         logger.info(f"IP {ip} is whitelisted, skipping auto-block")
         return
+    
+    # Check if signature matches dangerous patterns
+    if not should_auto_block(signature):
+        severity = get_attack_severity(signature)
+        logger.info(f"IP {ip} signature '{signature}' is not critical (severity: {severity}), skipping auto-block")
+        return
+    
+    severity = get_attack_severity(signature)
+    logger.info(f"🚨 Auto-blocking IP {ip} - Signature: '{signature}' (severity: {severity})")
 
     success, message, _ = block_ip_on_pfsense(ip)
     if success:
