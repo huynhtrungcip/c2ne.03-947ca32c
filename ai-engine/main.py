@@ -316,11 +316,37 @@ class TelegramConfigRequest(BaseModel):
     confidence_threshold: int = 80
 
 
+class TelegramSendAlertRequest(BaseModel):
+    event_id: str
+    verdict: str
+    confidence: float
+    src_ip: str = "Unknown"
+    dst_ip: str = "Unknown"
+    attack_type: str = "Unknown"
+    description: str = ""
+
+
+class TelegramSendMessageRequest(BaseModel):
+    message: str
+    chat_id: Optional[str] = None
+
+
 @app.post("/telegram/configure")
 async def configure_telegram(req: TelegramConfigRequest):
     """Configure Telegram bot"""
     configure_bot(req.bot_token, req.chat_id, req.confidence_threshold)
     return {"success": True, "enabled": telegram_bot.enabled}
+
+
+@app.get("/telegram/status")
+async def get_telegram_status():
+    """Get Telegram bot configuration status"""
+    return {
+        "enabled": telegram_bot.enabled,
+        "chat_id_configured": bool(telegram_bot.chat_id),
+        "token_configured": bool(telegram_bot.token),
+        "confidence_threshold": telegram_bot.confidence_threshold,
+    }
 
 
 @app.post("/telegram/webhook")
@@ -339,10 +365,76 @@ async def telegram_webhook(update: dict):
 
 
 @app.post("/telegram/send-alert")
-async def send_telegram_alert(event: dict, verdict: str, confidence: float):
-    """Manually send alert via Telegram"""
-    success = await telegram_bot.send_alert(event, verdict, confidence)
-    return {"success": success}
+async def send_telegram_alert(req: TelegramSendAlertRequest):
+    """
+    Send an alert via Telegram.
+    Called from frontend to proxy Telegram API (avoids CORS issues).
+    """
+    if not telegram_bot.enabled:
+        return {"success": False, "error": "Telegram not configured"}
+    
+    try:
+        # Build event object for send_alert
+        event = {
+            "event_id": req.event_id,
+            "src_ip": req.src_ip,
+            "dest_ip": req.dst_ip,
+            "alert": {
+                "signature": req.attack_type,
+            },
+            "timestamp": datetime.now().isoformat(),
+        }
+        
+        # If description provided, send as custom message instead
+        if req.description:
+            message = f"""
+🔔 *SOC Dashboard Alert*
+
+📊 *Verdict:* {req.verdict}
+📈 *Confidence:* {req.confidence * 100:.1f}%
+
+🔍 *Attack Type:* {req.attack_type}
+📌 *Source IP:* `{req.src_ip}`
+📌 *Dest IP:* `{req.dst_ip}`
+
+📝 *Details:*
+{req.description}
+
+⏰ Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+"""
+            success = await telegram_bot.send_message(message)
+        else:
+            success = await telegram_bot.send_alert(
+                event=event,
+                verdict=req.verdict,
+                confidence=req.confidence * 100,  # Convert to percentage
+                alert_types=["ALERT", "SUSPICIOUS", "INFO"],  # Allow all for manual sends
+            )
+        
+        return {"success": success}
+    except Exception as e:
+        logger.error(f"Failed to send Telegram alert: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/telegram/send-message")
+async def send_telegram_message(req: TelegramSendMessageRequest):
+    """
+    Send a custom message via Telegram.
+    Used for notifications like block IP, whitelist changes, etc.
+    """
+    if not telegram_bot.enabled:
+        return {"success": False, "error": "Telegram not configured"}
+    
+    try:
+        success = await telegram_bot.send_message(
+            text=req.message,
+            chat_id=req.chat_id,
+        )
+        return {"success": success}
+    except Exception as e:
+        logger.error(f"Failed to send Telegram message: {e}")
+        return {"success": False, "error": str(e)}
 
 
 # ==================== BACKGROUND TASKS ====================
