@@ -4,6 +4,7 @@ import { useSOCData } from '@/hooks/useSOCData';
 import { SOCEvent } from '@/types/soc';
 import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
 import { Settings } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import SettingsModal from '@/components/soc/SettingsModal';
 import VirtualizedEventTable from '@/components/soc/VirtualizedEventTable';
 
@@ -186,12 +187,18 @@ Kiểm tra:
       <div className="h-80 overflow-y-auto p-3 space-y-3">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] px-3 py-2 rounded-lg text-[11px] whitespace-pre-wrap ${
+            <div className={`max-w-[85%] px-3 py-2 rounded-lg text-[11px] ${
               msg.role === 'user' 
-                ? 'bg-[#1e3a5f] text-[#93c5fd]' 
+                ? 'bg-[#1e3a5f] text-[#93c5fd] whitespace-pre-wrap' 
                 : 'bg-[#18181b] text-[#a1a1aa]'
             }`}>
-              {msg.content}
+              {msg.role === 'assistant' ? (
+                <div className="prose prose-invert prose-xs max-w-none [&_table]:w-full [&_table]:text-[10px] [&_table]:border-collapse [&_th]:border [&_th]:border-[#3f3f46] [&_th]:bg-[#27272a] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_th]:text-[#e4e4e7] [&_td]:border [&_td]:border-[#3f3f46] [&_td]:px-2 [&_td]:py-1 [&_td]:text-[#a1a1aa] [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_strong]:text-[#e4e4e7] [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-[#e4e4e7] [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-xs [&_h2]:font-bold [&_h2]:text-[#e4e4e7] [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-[11px] [&_h3]:font-semibold [&_h3]:text-[#e4e4e7] [&_h3]:mt-2 [&_h3]:mb-1 [&_code]:bg-[#27272a] [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#60a5fa] [&_pre]:bg-[#0a0a0a] [&_pre]:p-2 [&_pre]:rounded [&_pre]:overflow-x-auto [&_blockquote]:border-l-2 [&_blockquote]:border-[#3b82f6] [&_blockquote]:pl-2 [&_blockquote]:italic [&_blockquote]:text-[#71717a]">
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                </div>
+              ) : (
+                msg.content
+              )}
             </div>
           </div>
         ))}

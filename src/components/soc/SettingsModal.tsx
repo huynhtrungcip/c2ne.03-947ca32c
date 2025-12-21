@@ -353,8 +353,20 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
           Blocked IP Addresses
         </div>
+        
+        {/* Explanation box */}
+        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#fef3c7] border-[#fcd34d]'}`}>
+          <div className={`text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-[#fbbf24]' : 'text-[#92400e]'}`}>
+            Blocked IPs vs Blacklist - Sự khác biệt:
+          </div>
+          <div className={`text-[10px] space-y-1 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#78350f]'}`}>
+            <p><strong className={isDarkMode ? 'text-[#f87171]' : 'text-[#dc2626]'}>Blocked IPs:</strong> IP đã bị chặn THỰC SỰ trên Firewall (pfSense). Các IP này không thể truy cập hệ thống.</p>
+            <p><strong className={isDarkMode ? 'text-[#fbbf24]' : 'text-[#d97706]'}>Blacklist:</strong> Danh sách IP/Domain đánh dấu là độc hại để THAM KHẢO. Chưa bị block, dùng để cảnh báo khi xuất hiện.</p>
+          </div>
+        </div>
+
         <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
-          Danh sách các IP đã bị block thông qua hệ thống AI-SOC hoặc pfSense firewall.
+          Các IP bên dưới đã bị chặn trên Firewall thông qua AI-SOC hoặc pfSense. Chúng không thể kết nối đến hệ thống của bạn.
         </p>
 
         {/* Local Blocked IPs */}
@@ -451,6 +463,31 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
         {activeSection === 'blacklist' ? t('list.blacklistTitle') : t('list.whitelistTitle')}
       </div>
+      
+      {/* Blacklist specific explanation */}
+      {activeSection === 'blacklist' && (
+        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#18181b] border-[#27272a]' : 'bg-[#fef9c3] border-[#facc15]'}`}>
+          <div className={`text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-[#fbbf24]' : 'text-[#a16207]'}`}>
+            Blacklist vs Blocked IPs:
+          </div>
+          <div className={`text-[10px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#713f12]'}`}>
+            Blacklist là danh sách <strong>THAM KHẢO</strong> các IP/Domain độc hại đã biết. Khi traffic từ các địa chỉ này xuất hiện, hệ thống sẽ cảnh báo ưu tiên cao hơn. Để CHẶN hoàn toàn IP trên firewall, hãy sử dụng tính năng "Block IP" trong Event Inspector.
+          </div>
+        </div>
+      )}
+      
+      {/* Whitelist specific explanation */}
+      {activeSection === 'whitelist' && (
+        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#052e16] border-[#166534]' : 'bg-[#dcfce7] border-[#22c55e]'}`}>
+          <div className={`text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-[#4ade80]' : 'text-[#166534]'}`}>
+            Lưu ý về Whitelist:
+          </div>
+          <div className={`text-[10px] ${isDarkMode ? 'text-[#86efac]' : 'text-[#14532d]'}`}>
+            Whitelist là danh sách IP/Domain được tin cậy. Traffic từ các địa chỉ này sẽ có mức cảnh báo thấp hơn. Các IP nội bộ, Gateway, DNS server nên được thêm vào đây.
+          </div>
+        </div>
+      )}
+      
       <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
         {activeSection === 'blacklist' ? t('list.blacklistDesc') : t('list.whitelistDesc')}
       </p>
