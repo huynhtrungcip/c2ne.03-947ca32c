@@ -1,0 +1,523 @@
+/**
+ * SOC Dashboard Backend Server
+ * Receives logs from Suricata/Zeek and serves them to the dashboard
+ * 
+ * Author: C1NE.03 Team - Cybersecurity K28 - Duy Tan University
+ */
+
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const Database = require('better-sqlite3');
+const { WebSocketServer } = require('ws');
+const { v4: uuidv4 } = require('uuid');
+const http = require('http');
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+const WS_PORT = process.env.WS_PORT || 3002;
+
+// Middleware
+app.use(cors());
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.text({ type: 'text/plain', limit: '50mb' }));
+
+// Initialize SQLite Database
+const db = new Database(path.join(__dirname, 'soc_events.db'));
+
+// Create tables
+db.exec(`
+  CREATE TABLE IF NOT EXISTS events (
+    id TEXT PRIMARY KEY,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    src_ip TEXT,
+    dst_ip TEXT,
+    src_port INTEGER,
+    dst_port INTEGER,
+    protocol TEXT,
+    attack_type TEXT,
+    verdict TEXT DEFAULT 'SUSPICIOUS',
+    confidence REAL DEFAULT 0.5,
+    source_engine TEXT,
+    community_id TEXT,
+    raw_log TEXT,
+    action_taken TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS config (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_timestamp ON events(timestamp);
+  CREATE INDEX IF NOT EXISTS idx_src_ip ON events(src_ip);
+  CREATE INDEX IF NOT EXISTS idx_verdict ON events(verdict);
+`);
+
+// WebSocket Server for real-time updates
+const wss = new WebSocketServer({ port: WS_PORT });
+const clients = new Set();
+
+wss.on('connection', (ws) => {
+  clients.add(ws);
+  console.log(`[WS] Client connected. Total: ${clients.size}`);
+  
+  ws.on('close', () => {
+    clients.delete(ws);
+    console.log(`[WS] Client disconnected. Total: ${clients.size}`);
+  });
+});
+
+// Broadcast event to all connected clients
+function broadcastEvent(event) {
+  const message = JSON.stringify({ type: 'NEW_EVENT', data: event });
+  clients.forEach((client) => {
+    if (client.readyState === 1) { // WebSocket.OPEN
+      client.send(message);
+    }
+  });
+}
+
+// ==================== API ENDPOINTS ====================
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    connections: clients.size,
+    version: '1.0.0'
+  });
+});
+
+// Get server configuration info
+app.get('/api/config', (req, res) => {
+  const serverIP = req.socket.localAddress || '0.0.0.0';
+  res.json({
+    ingest_endpoint: `http://${req.headers.host}/api/ingest`,
+    suricata_endpoint: `http://${req.headers.host}/api/ingest/suricata`,
+    zeek_endpoint: `http://${req.headers.host}/api/ingest/zeek`,
+    websocket: `ws://${req.headers.host.replace(`:${PORT}`, `:${WS_PORT}`)}`,
+    server_ip: serverIP,
+    port: PORT,
+    ws_port: WS_PORT
+  });
+});
+
+// Get all events with filtering
+app.get('/api/events', (req, res) => {
+  try {
+    const { 
+      limit = 500, 
+      offset = 0, 
+      verdict, 
+      src_ip, 
+      time_range,
+      attack_type 
+    } = req.query;
+
+    let query = 'SELECT * FROM events WHERE 1=1';
+    const params = [];
+
+    if (verdict && verdict !== 'All') {
+      query += ' AND verdict = ?';
+      params.push(verdict);
+    }
+
+    if (src_ip) {
+      query += ' AND src_ip LIKE ?';
+      params.push(`%${src_ip}%`);
+    }
+
+    if (attack_type) {
+      query += ' AND attack_type LIKE ?';
+      params.push(`%${attack_type}%`);
+    }
+
+    if (time_range) {
+      const now = new Date();
+      let startTime;
+      switch (time_range) {
+        case '1h': startTime = new Date(now - 3600000); break;
+        case '6h': startTime = new Date(now - 21600000); break;
+        case '24h': startTime = new Date(now - 86400000); break;
+        case '7d': startTime = new Date(now - 604800000); break;
+        default: startTime = null;
+      }
+      if (startTime) {
+        query += ' AND timestamp >= ?';
+        params.push(startTime.toISOString());
+      }
+    }
+
+    query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), parseInt(offset));
+
+    const events = db.prepare(query).all(...params);
+    res.json(events);
+  } catch (error) {
+    console.error('[API] Error fetching events:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get metrics
+app.get('/api/metrics', (req, res) => {
+  try {
+    const timeRange = req.query.time_range || '1h';
+    const now = new Date();
+    let startTime;
+    
+    switch (timeRange) {
+      case '1h': startTime = new Date(now - 3600000); break;
+      case '6h': startTime = new Date(now - 21600000); break;
+      case '24h': startTime = new Date(now - 86400000); break;
+      case '7d': startTime = new Date(now - 604800000); break;
+      default: startTime = new Date(now - 3600000);
+    }
+
+    const total = db.prepare(`
+      SELECT COUNT(*) as count FROM events WHERE timestamp >= ?
+    `).get(startTime.toISOString());
+
+    const byVerdict = db.prepare(`
+      SELECT verdict, COUNT(*) as count FROM events 
+      WHERE timestamp >= ? GROUP BY verdict
+    `).all(startTime.toISOString());
+
+    const uniqueSources = db.prepare(`
+      SELECT COUNT(DISTINCT src_ip) as count FROM events WHERE timestamp >= ?
+    `).get(startTime.toISOString());
+
+    const topSources = db.prepare(`
+      SELECT src_ip as ip, COUNT(*) as count FROM events 
+      WHERE timestamp >= ? 
+      GROUP BY src_ip ORDER BY count DESC LIMIT 10
+    `).all(startTime.toISOString());
+
+    const attackTypes = db.prepare(`
+      SELECT attack_type as type, COUNT(*) as count FROM events 
+      WHERE timestamp >= ? AND attack_type IS NOT NULL
+      GROUP BY attack_type ORDER BY count DESC LIMIT 10
+    `).all(startTime.toISOString());
+
+    const verdictMap = {};
+    byVerdict.forEach(v => verdictMap[v.verdict] = v.count);
+
+    res.json({
+      totalEvents: total.count,
+      criticalAlerts: verdictMap['ALERT'] || 0,
+      suspicious: verdictMap['SUSPICIOUS'] || 0,
+      falsePositives: verdictMap['FALSE_POSITIVE'] || 0,
+      benign: verdictMap['BENIGN'] || 0,
+      uniqueSources: uniqueSources.count,
+      topSources,
+      attackTypes
+    });
+  } catch (error) {
+    console.error('[API] Error fetching metrics:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get traffic data for charts
+app.get('/api/traffic', (req, res) => {
+  try {
+    const timeRange = req.query.time_range || '1h';
+    const now = new Date();
+    let startTime, interval;
+    
+    switch (timeRange) {
+      case '1h': 
+        startTime = new Date(now - 3600000); 
+        interval = 5; // 5 minutes
+        break;
+      case '6h': 
+        startTime = new Date(now - 21600000); 
+        interval = 30; // 30 minutes
+        break;
+      case '24h': 
+        startTime = new Date(now - 86400000); 
+        interval = 60; // 1 hour
+        break;
+      default: 
+        startTime = new Date(now - 3600000);
+        interval = 5;
+    }
+
+    const data = db.prepare(`
+      SELECT 
+        strftime('%Y-%m-%d %H:%M', datetime(timestamp, 'unixepoch')) as time_bucket,
+        COUNT(*) as total,
+        SUM(CASE WHEN verdict = 'ALERT' THEN 1 ELSE 0 END) as alerts
+      FROM events 
+      WHERE timestamp >= ?
+      GROUP BY time_bucket
+      ORDER BY time_bucket
+    `).all(startTime.toISOString());
+
+    res.json(data);
+  } catch (error) {
+    console.error('[API] Error fetching traffic:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== LOG INGESTION ====================
+
+// Generic log ingestion endpoint
+app.post('/api/ingest', (req, res) => {
+  try {
+    const logs = Array.isArray(req.body) ? req.body : [req.body];
+    let inserted = 0;
+
+    const insertStmt = db.prepare(`
+      INSERT INTO events (id, timestamp, src_ip, dst_ip, src_port, dst_port, protocol, 
+        attack_type, verdict, confidence, source_engine, community_id, raw_log)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertMany = db.transaction((logs) => {
+      for (const log of logs) {
+        const event = {
+          id: uuidv4(),
+          timestamp: log.timestamp || new Date().toISOString(),
+          src_ip: log.src_ip || log.source_ip || 'unknown',
+          dst_ip: log.dst_ip || log.dest_ip || 'unknown',
+          src_port: log.src_port || log.source_port || null,
+          dst_port: log.dst_port || log.dest_port || null,
+          protocol: log.protocol || log.proto || 'unknown',
+          attack_type: log.attack_type || log.alert?.signature || log.signature || 'Unknown',
+          verdict: log.verdict || classifyVerdict(log),
+          confidence: log.confidence || 0.5,
+          source_engine: log.source_engine || 'generic',
+          community_id: log.community_id || null,
+          raw_log: JSON.stringify(log)
+        };
+
+        insertStmt.run(
+          event.id, event.timestamp, event.src_ip, event.dst_ip,
+          event.src_port, event.dst_port, event.protocol, event.attack_type,
+          event.verdict, event.confidence, event.source_engine,
+          event.community_id, event.raw_log
+        );
+
+        broadcastEvent(event);
+        inserted++;
+      }
+    });
+
+    insertMany(logs);
+    console.log(`[INGEST] Inserted ${inserted} events`);
+    res.json({ success: true, inserted });
+  } catch (error) {
+    console.error('[INGEST] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Suricata EVE JSON ingestion
+app.post('/api/ingest/suricata', (req, res) => {
+  try {
+    // Handle both single event and batch
+    let logs = [];
+    
+    if (typeof req.body === 'string') {
+      // NDJSON format (one JSON per line)
+      logs = req.body.split('\n')
+        .filter(line => line.trim())
+        .map(line => JSON.parse(line));
+    } else {
+      logs = Array.isArray(req.body) ? req.body : [req.body];
+    }
+
+    let inserted = 0;
+    const insertStmt = db.prepare(`
+      INSERT INTO events (id, timestamp, src_ip, dst_ip, src_port, dst_port, protocol, 
+        attack_type, verdict, confidence, source_engine, community_id, raw_log)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertMany = db.transaction((logs) => {
+      for (const log of logs) {
+        // Only process alert events
+        if (log.event_type !== 'alert') continue;
+
+        const event = {
+          id: uuidv4(),
+          timestamp: log.timestamp || new Date().toISOString(),
+          src_ip: log.src_ip || 'unknown',
+          dst_ip: log.dest_ip || 'unknown',
+          src_port: log.src_port || null,
+          dst_port: log.dest_port || null,
+          protocol: log.proto || 'unknown',
+          attack_type: log.alert?.signature || 'Unknown Suricata Alert',
+          verdict: classifySuricataVerdict(log),
+          confidence: (log.alert?.severity ? (4 - log.alert.severity) / 3 : 0.5),
+          source_engine: 'Suricata',
+          community_id: log.community_id || null,
+          raw_log: JSON.stringify(log)
+        };
+
+        insertStmt.run(
+          event.id, event.timestamp, event.src_ip, event.dst_ip,
+          event.src_port, event.dst_port, event.protocol, event.attack_type,
+          event.verdict, event.confidence, event.source_engine,
+          event.community_id, event.raw_log
+        );
+
+        broadcastEvent(event);
+        inserted++;
+      }
+    });
+
+    insertMany(logs);
+    console.log(`[SURICATA] Inserted ${inserted} alerts`);
+    res.json({ success: true, inserted });
+  } catch (error) {
+    console.error('[SURICATA] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Zeek log ingestion
+app.post('/api/ingest/zeek', (req, res) => {
+  try {
+    let logs = [];
+    
+    if (typeof req.body === 'string') {
+      // TSV or JSON format
+      const lines = req.body.split('\n').filter(line => line.trim() && !line.startsWith('#'));
+      logs = lines.map(line => {
+        try {
+          return JSON.parse(line);
+        } catch {
+          // Parse TSV format
+          const fields = line.split('\t');
+          return { raw: line, fields };
+        }
+      });
+    } else {
+      logs = Array.isArray(req.body) ? req.body : [req.body];
+    }
+
+    let inserted = 0;
+    const insertStmt = db.prepare(`
+      INSERT INTO events (id, timestamp, src_ip, dst_ip, src_port, dst_port, protocol, 
+        attack_type, verdict, confidence, source_engine, community_id, raw_log)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertMany = db.transaction((logs) => {
+      for (const log of logs) {
+        const event = {
+          id: uuidv4(),
+          timestamp: log.ts ? new Date(parseFloat(log.ts) * 1000).toISOString() : new Date().toISOString(),
+          src_ip: log['id.orig_h'] || log.src_ip || 'unknown',
+          dst_ip: log['id.resp_h'] || log.dst_ip || 'unknown',
+          src_port: log['id.orig_p'] || log.src_port || null,
+          dst_port: log['id.resp_p'] || log.dst_port || null,
+          protocol: log.proto || log.service || 'unknown',
+          attack_type: log.note || log.msg || 'Zeek Connection',
+          verdict: classifyZeekVerdict(log),
+          confidence: 0.5,
+          source_engine: 'Zeek',
+          community_id: log.community_id || log.uid || null,
+          raw_log: JSON.stringify(log)
+        };
+
+        insertStmt.run(
+          event.id, event.timestamp, event.src_ip, event.dst_ip,
+          event.src_port, event.dst_port, event.protocol, event.attack_type,
+          event.verdict, event.confidence, event.source_engine,
+          event.community_id, event.raw_log
+        );
+
+        broadcastEvent(event);
+        inserted++;
+      }
+    });
+
+    insertMany(logs);
+    console.log(`[ZEEK] Inserted ${inserted} events`);
+    res.json({ success: true, inserted });
+  } catch (error) {
+    console.error('[ZEEK] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== VERDICT CLASSIFICATION ====================
+
+function classifyVerdict(log) {
+  const severity = log.severity || log.alert?.severity;
+  if (severity === 1) return 'ALERT';
+  if (severity === 2) return 'SUSPICIOUS';
+  if (severity >= 3) return 'BENIGN';
+  return 'SUSPICIOUS';
+}
+
+function classifySuricataVerdict(log) {
+  const severity = log.alert?.severity;
+  const action = log.alert?.action;
+  
+  if (action === 'blocked' || severity === 1) return 'ALERT';
+  if (severity === 2) return 'SUSPICIOUS';
+  if (severity >= 3) return 'BENIGN';
+  return 'SUSPICIOUS';
+}
+
+function classifyZeekVerdict(log) {
+  // Zeek notice.log events
+  if (log.note) {
+    if (log.note.includes('Attack') || log.note.includes('Exploit')) return 'ALERT';
+    if (log.note.includes('Scan') || log.note.includes('Suspicious')) return 'SUSPICIOUS';
+  }
+  return 'BENIGN';
+}
+
+// ==================== GET EVENTS BY IP (for AI analysis) ====================
+
+app.get('/api/events/by-ip/:ip', (req, res) => {
+  try {
+    const { ip } = req.params;
+    const { limit = 100 } = req.query;
+    
+    const events = db.prepare(`
+      SELECT * FROM events 
+      WHERE src_ip = ? OR dst_ip = ?
+      ORDER BY timestamp DESC 
+      LIMIT ?
+    `).all(ip, ip, parseInt(limit));
+    
+    res.json(events);
+  } catch (error) {
+    console.error('[API] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Start server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`
+╔══════════════════════════════════════════════════════════════╗
+║           SOC Dashboard Backend Server v1.0.0                ║
+║          C1NE.03 Team - Cybersecurity K28 - DTU              ║
+╠══════════════════════════════════════════════════════════════╣
+║  REST API:    http://0.0.0.0:${PORT}                            ║
+║  WebSocket:   ws://0.0.0.0:${WS_PORT}                             ║
+╠══════════════════════════════════════════════════════════════╣
+║  Endpoints:                                                  ║
+║    GET  /api/health         - Health check                   ║
+║    GET  /api/config         - Get server config              ║
+║    GET  /api/events         - Get all events                 ║
+║    GET  /api/metrics        - Get metrics                    ║
+║    GET  /api/traffic        - Get traffic data               ║
+║    POST /api/ingest         - Generic log ingestion          ║
+║    POST /api/ingest/suricata - Suricata EVE JSON             ║
+║    POST /api/ingest/zeek    - Zeek logs                      ║
+╚══════════════════════════════════════════════════════════════╝
+  `);
+});
