@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SOCEvent } from '@/types/soc';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Loader2, Brain, Shield, ShieldAlert } from 'lucide-react';
+import { Loader2, Brain, Shield, ShieldAlert, Ban, CheckCircle } from 'lucide-react';
 import { ConfirmDialog, useConfirmDialog } from './ConfirmDialog';
 
 interface EventInspectorProps {
@@ -24,7 +24,16 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
   const [analyzingIP, setAnalyzingIP] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [aiResult, setAiResult] = useState<AIAnalysis | null>(null);
+  const [isIPBlocked, setIsIPBlocked] = useState(false);
   const { dialogState, showConfirm, closeConfirm } = useConfirmDialog();
+
+  // Check if the IP is already blocked
+  useEffect(() => {
+    if (event?.src_ip) {
+      const blockedIPs = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
+      setIsIPBlocked(blockedIPs.includes(event.src_ip));
+    }
+  }, [event?.src_ip]);
 
   if (!event) return null;
 
@@ -119,6 +128,13 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
       
       if (result.success) {
         toast.success(result.message);
+        // Update local blocked IPs list
+        const blockedIPs = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
+        if (!blockedIPs.includes(event.src_ip)) {
+          blockedIPs.push(event.src_ip);
+          localStorage.setItem('soc-blocked-ips', JSON.stringify(blockedIPs));
+        }
+        setIsIPBlocked(true);
       } else {
         toast.error(result.message);
       }
@@ -158,9 +174,17 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
             <div className="inspector-label">Engine</div>
             <div className="inspector-value">{event.source_engine}</div>
           </div>
-          <div>
+        <div>
             <div className="inspector-label">Source</div>
-            <div className="inspector-value text-blue-400">{event.src_ip}</div>
+            <div className="flex items-center gap-2">
+              <div className="inspector-value text-blue-400">{event.src_ip}</div>
+              {isIPBlocked && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-destructive/20 text-destructive">
+                  <Ban className="w-3 h-3" />
+                  BLOCKED
+                </span>
+              )}
+            </div>
           </div>
           <div>
             <div className="inspector-label">Destination</div>
@@ -219,15 +243,27 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
           </Button>
 
           <div className="text-xs font-semibold text-muted-foreground mt-4 mb-2">🚫 Active Defense</div>
-          <Button 
-            onClick={handleBlockIP}
-            disabled={blocking}
-            variant="destructive"
-            className="w-full text-xs"
-          >
-            {blocking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ShieldAlert className="w-4 h-4 mr-2" />}
-            Block {event.src_ip} on pfSense
-          </Button>
+          {isIPBlocked ? (
+            <div className="w-full p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-center">
+              <div className="flex items-center justify-center gap-2 text-destructive">
+                <Ban className="w-4 h-4" />
+                <span className="text-xs font-semibold">IP {event.src_ip} đã bị BLOCK</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                IP này đã được chặn trên pfSense Firewall
+              </p>
+            </div>
+          ) : (
+            <Button 
+              onClick={handleBlockIP}
+              disabled={blocking}
+              variant="destructive"
+              className="w-full text-xs"
+            >
+              {blocking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ShieldAlert className="w-4 h-4 mr-2" />}
+              Block {event.src_ip} on pfSense
+            </Button>
+          )}
         </div>
       </ScrollArea>
 
