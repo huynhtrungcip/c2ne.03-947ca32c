@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from config import NODEJS_BACKEND_URL, WHITELIST_IPS, should_auto_block, get_auto_block_status
 from pfsense_client import block_ip_on_pfsense
+from utils import calculate_community_id, extract_community_id_from_event, normalize_event
 
 logger = logging.getLogger("INGEST")
 
@@ -69,12 +70,41 @@ async def broadcast_event(event: Dict[str, Any]):
 
 # ==================== PARSERS ====================
 
+def ensure_community_id(data: Dict[str, Any]) -> str:
+    """
+    Đảm bảo có community_id cho event.
+    Nếu không có sẵn, tính toán từ 5-tuple.
+    """
+    # Check existing
+    existing = data.get("community_id", "")
+    if existing and existing.startswith("1:"):
+        return existing
+    
+    # Extract 5-tuple from various formats
+    src_ip = data.get("src_ip") or data.get("id.orig_h") or ""
+    dst_ip = data.get("dest_ip") or data.get("dst_ip") or data.get("id.resp_h") or ""
+    src_port = data.get("src_port") or data.get("id.orig_p") or 0
+    dst_port = data.get("dest_port") or data.get("dst_port") or data.get("id.resp_p") or 0
+    protocol = data.get("proto") or data.get("protocol") or "TCP"
+    
+    if src_ip and dst_ip:
+        return calculate_community_id(src_ip, dst_ip, int(src_port or 0), int(dst_port or 0), protocol)
+    
+    return ""
+
+
 def parse_suricata_alert(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """Parse Suricata alert event"""
+    """
+    Parse Suricata alert event.
+    Suricata là nguồn duy nhất tạo ALERT.
+    """
     if data.get("event_type") != "alert":
         return None
     
     alert = data.get("alert", {})
+    
+    # Ensure community_id
+    community_id = ensure_community_id(data)
     
     return {
         "id": f"EVT-{int(datetime.now().timestamp() * 1000)}-{str(uuid4())[:3]}",
@@ -83,31 +113,53 @@ def parse_suricata_alert(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         "dst_ip": data.get("dest_ip", ""),
         "src_port": data.get("src_port"),
         "dst_port": data.get("dest_port"),
-        "protocol": data.get("proto", "TCP"),
+        "protocol": (data.get("proto", "TCP") or "TCP").upper(),
         "attack_type": alert.get("signature", "Unknown Alert"),
-        "verdict": "ALERT",
+        "verdict": "ALERT",  # Suricata alerts are always ALERT initially
         "confidence": min(1.0, max(0.0, (4 - alert.get("severity", 2)) / 3)),
         "source_engine": "Suricata",
-        "community_id": data.get("community_id", ""),
+        "community_id": community_id,
         "flow_id": str(data.get("flow_id", "")),
         "raw_log": json.dumps(data, indent=2),
     }
 
 
 def parse_zeek_conn(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Parse Zeek conn.log"""
-    conn_state = data.get("conn_state", "")
+    """
+    Parse Zeek conn.log.
     
-    # Determine verdict based on connection state
-    verdict = "SUSPICIOUS"
-    confidence = 0.5
-    attack_type = f"Connection: {data.get('service', 'unknown')}"
+    QUAN TRỌNG: Zeek KHÔNG tạo ALERT - chỉ log metadata connections.
+    Verdict chỉ có thể là SUSPICIOUS hoặc BENIGN dựa trên connection state.
+    """
+    conn_state = data.get("conn_state", "") or ""
+    service = data.get("service", "-") or "-"
+    
+    # Ensure community_id
+    community_id = ensure_community_id(data)
+    
+    # Zeek chỉ có SUSPICIOUS hoặc BENIGN, KHÔNG BAO GIỜ có ALERT
+    verdict = "BENIGN"
+    confidence = 0.3
+    attack_type = f"Zeek Connection: {service}"
     
     # Suspicious connection states
-    if conn_state in ["REJ", "RSTO", "RSTOS0", "S0"]:
-        verdict = "ALERT"
-        confidence = 0.7
-        attack_type = f"Suspicious Connection ({conn_state})"
+    if conn_state in ["REJ", "RSTO", "RSTOS0"]:
+        verdict = "SUSPICIOUS"
+        confidence = 0.6
+        attack_type = f"Zeek: Connection Rejected ({conn_state})"
+    elif conn_state == "S0":
+        verdict = "SUSPICIOUS"
+        confidence = 0.5
+        attack_type = f"Zeek: No Response ({conn_state})"
+    elif conn_state in ["S1", "S2", "S3"]:
+        verdict = "SUSPICIOUS"
+        confidence = 0.4
+        attack_type = f"Zeek: Incomplete Connection ({conn_state})"
+    elif conn_state == "SF":
+        # Successful connection - benign
+        verdict = "BENIGN"
+        confidence = 0.2
+        attack_type = f"Zeek: Normal Connection ({service})"
     
     return {
         "id": f"EVT-{int(datetime.now().timestamp() * 1000)}-{str(uuid4())[:3]}",
@@ -116,47 +168,55 @@ def parse_zeek_conn(data: Dict[str, Any]) -> Dict[str, Any]:
         "dst_ip": data.get("id.resp_h", ""),
         "src_port": data.get("id.orig_p"),
         "dst_port": data.get("id.resp_p"),
-        "protocol": (data.get("proto", "tcp")).upper(),
+        "protocol": (data.get("proto", "tcp") or "tcp").upper(),
         "attack_type": attack_type,
-        "verdict": verdict,
+        "verdict": verdict,  # NEVER "ALERT" for Zeek
         "confidence": confidence,
         "source_engine": "Zeek",
-        "community_id": data.get("community_id", ""),
+        "community_id": community_id,
         "raw_log": json.dumps(data, indent=2),
     }
 
 
 def parse_zeek_http(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Parse Zeek http.log"""
-    method = data.get("method", "GET")
-    host = data.get("host", "")
-    uri = data.get("uri", "/")
-    status_code = data.get("status_code", 0)
+    """
+    Parse Zeek http.log.
     
-    # Basic threat detection
-    verdict = "SUSPICIOUS"
-    confidence = 0.4
-    attack_type = f"HTTP {method} {host}{uri}"[:100]
+    Zeek HTTP logs có thể phát hiện patterns nghi ngờ nhưng verdict vẫn là SUSPICIOUS,
+    KHÔNG PHẢI ALERT (chỉ Suricata mới có ALERT).
+    """
+    method = data.get("method", "GET") or "GET"
+    host = data.get("host", "") or ""
+    uri = data.get("uri", "/") or "/"
+    status_code = data.get("status_code", 0) or 0
     
-    # SQL Injection indicators
+    # Ensure community_id
+    community_id = ensure_community_id(data)
+    
+    # Zeek HTTP: SUSPICIOUS hoặc BENIGN, KHÔNG BAO GIỜ ALERT
+    verdict = "BENIGN"
+    confidence = 0.3
+    attack_type = f"Zeek HTTP: {method} {host}{uri}"[:100]
+    
+    # SQL Injection indicators -> SUSPICIOUS (not ALERT)
     sql_patterns = ["'", "\"", ";", "--", "union", "select", "drop", "insert"]
     if any(p in uri.lower() for p in sql_patterns):
-        verdict = "ALERT"
-        confidence = 0.85
-        attack_type = "Potential SQL Injection"
+        verdict = "SUSPICIOUS"
+        confidence = 0.7
+        attack_type = "Zeek: Potential SQL Injection Pattern"
     
-    # XSS indicators
+    # XSS indicators -> SUSPICIOUS
     xss_patterns = ["<script", "javascript:", "onerror=", "onload="]
     if any(p in uri.lower() for p in xss_patterns):
-        verdict = "ALERT"
-        confidence = 0.80
-        attack_type = "Potential XSS Attack"
+        verdict = "SUSPICIOUS"
+        confidence = 0.65
+        attack_type = "Zeek: Potential XSS Pattern"
     
-    # Path traversal
+    # Path traversal -> SUSPICIOUS
     if "../" in uri or "..%2f" in uri.lower():
-        verdict = "ALERT"
-        confidence = 0.75
-        attack_type = "Path Traversal Attempt"
+        verdict = "SUSPICIOUS"
+        confidence = 0.6
+        attack_type = "Zeek: Path Traversal Pattern"
     
     return {
         "id": f"EVT-{int(datetime.now().timestamp() * 1000)}-{str(uuid4())[:3]}",
@@ -167,10 +227,10 @@ def parse_zeek_http(data: Dict[str, Any]) -> Dict[str, Any]:
         "dst_port": data.get("id.resp_p", 80),
         "protocol": "HTTP",
         "attack_type": attack_type,
-        "verdict": verdict,
+        "verdict": verdict,  # NEVER "ALERT" for Zeek
         "confidence": confidence,
         "source_engine": "Zeek",
-        "community_id": data.get("community_id", ""),
+        "community_id": community_id,
         "raw_log": json.dumps(data, indent=2),
     }
 
@@ -179,6 +239,8 @@ async def auto_block_from_ingest(ip: str, signature: str):
     """
     Auto-block IP directly from ingest if enabled and signature matches dangerous patterns.
     This is called in real-time when critical events are received.
+    
+    CHỈ BLOCK từ Suricata ALERT, không block từ Zeek (vì Zeek không có ALERT).
     """
     if not get_auto_block_status():
         return
@@ -207,8 +269,10 @@ async def ingest_log(req: IngestRequest):
     """
     Receive logs from NIDS shipper and:
     1. Parse log based on source type
-    2. Store in database via Node.js backend
-    3. Broadcast to connected WebSocket clients (real-time dashboard)
+    2. Calculate/verify community_id for correlation
+    3. Store in database via Node.js backend
+    4. Broadcast to connected WebSocket clients (real-time dashboard)
+    5. Auto-block if critical Suricata ALERT (not Zeek)
     """
     try:
         # Parse based on source type
@@ -228,6 +292,12 @@ async def ingest_log(req: IngestRequest):
         if not event.get("src_ip") or not event.get("dst_ip"):
             return {"status": "ignored", "reason": "missing IP addresses"}
         
+        # Log community_id status for debugging
+        if event.get("community_id"):
+            logger.debug(f"[INGEST] Event has community_id: {event['community_id'][:20]}...")
+        else:
+            logger.warning(f"[INGEST] Event missing community_id - correlation may fail")
+        
         # Store event in Node.js backend database
         try:
             response = requests.post(
@@ -243,19 +313,23 @@ async def ingest_log(req: IngestRequest):
         # Broadcast to connected dashboards (real-time)
         asyncio.create_task(broadcast_event(event))
         
-        # Auto-block if critical signature and auto-block is enabled
-        if event.get("verdict") == "ALERT" and event.get("confidence", 0) >= 0.7:
+        # Auto-block CHỈ từ Suricata ALERT với critical signature
+        # Zeek không có ALERT nên không trigger auto-block
+        if (event.get("source_engine") == "Suricata" and 
+            event.get("verdict") == "ALERT" and 
+            event.get("confidence", 0) >= 0.7):
             signature = event.get("attack_type", "")
             src_ip = event.get("src_ip", "")
             if src_ip and signature:
                 asyncio.create_task(auto_block_from_ingest(src_ip, signature))
         
-        logger.debug(f"[INGEST] {req.source}: {event['src_ip']} -> {event['dst_ip']} ({event['attack_type']})")
+        logger.debug(f"[INGEST] {req.source}: {event['src_ip']} -> {event['dst_ip']} ({event['attack_type']}) [CID: {event.get('community_id', 'N/A')[:15]}]")
         
         return {
             "status": "ok",
             "event_id": event["id"],
             "verdict": event["verdict"],
+            "community_id": event.get("community_id", ""),
         }
     
     except Exception as e:

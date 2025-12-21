@@ -198,7 +198,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     setAddingMockData(true);
     try {
       const { generateMockEvents } = await import('@/data/mockEvents');
-      const mockEvents = generateMockEvents(50);
+      // Generate 1000 events spread across 1 day for realistic demo
+      const mockEvents = generateMockEvents(1000);
       
       const currentEvents = JSON.parse(localStorage.getItem('soc-events') || '[]');
       const newEvents = [...mockEvents.map(e => ({
@@ -403,7 +404,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           Thêm Dữ Liệu Demo
         </div>
         <p className={`text-[10px] mb-4 ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
-          Thêm 50 sự kiện giả lập để demo dashboard. Dữ liệu này có thể xóa bằng chức năng xóa ở trên.
+          Thêm 1000 sự kiện giả lập (70% Suricata, 30% Zeek) phân bổ trong 24h để demo dashboard. Lưu ý: Zeek không có ALERT, chỉ Suricata mới có.
         </p>
         
         <button
@@ -423,7 +424,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           ) : (
             <>
               <Plus className="w-4 h-4" />
-              Thêm 50 Sự Kiện Demo
+              Thêm 1000 Sự Kiện Demo
             </>
           )}
         </button>

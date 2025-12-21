@@ -1,6 +1,11 @@
 """
 AI Analyzer Module
 Phân tích log Suricata + Zeek để xác định verdict cuối cùng
+
+Quy tắc quan trọng:
+- Suricata: Có thể tạo ALERT, SUSPICIOUS, FALSE_POSITIVE
+- Zeek: CHỈ log connections, KHÔNG BAO GIỜ tạo ALERT
+- Community ID dùng để correlate Suricata alerts với Zeek flows
 """
 import os
 import logging
@@ -15,6 +20,15 @@ from config import (
     BENIGN_FP_SIGNATURES,
     get_auto_block_status,
 )
+
+# Import utils for community_id calculation
+try:
+    from utils import extract_community_id_from_event, correlate_suricata_zeek, extract_zeek_features
+except ImportError:
+    # Fallback if utils not available
+    extract_community_id_from_event = None
+    correlate_suricata_zeek = None
+    extract_zeek_features = None
 
 logger = logging.getLogger("AI_ANALYZER")
 
@@ -183,10 +197,13 @@ def analyze_flow(
     Phân tích một flow (Suricata alert + Zeek correlation).
     
     Quy trình:
-    1. Check signature patterns
-    2. Correlate với Zeek logs
-    3. Chạy ML models nếu có
-    4. Đưa ra verdict cuối cùng
+    1. Ensure community_id exists (calculate if missing)
+    2. Check signature patterns
+    3. Correlate với Zeek logs using community_id or 5-tuple
+    4. Chạy ML models nếu có
+    5. Đưa ra verdict cuối cùng
+    
+    LƯU Ý: Chỉ Suricata mới có ALERT. Zeek chỉ dùng để enrich data.
     
     Returns:
         {
@@ -202,17 +219,45 @@ def analyze_flow(
     signature = suricata_alert.get("attack_type") or suricata_alert.get("signature") or ""
     signature = signature if isinstance(signature, str) else str(signature)
     sig_lower = signature.lower()
+    
+    # Ensure community_id exists
+    community_id = suricata_alert.get("community_id", "")
+    if not community_id and extract_community_id_from_event:
+        community_id = extract_community_id_from_event(suricata_alert)
+        if community_id:
+            logger.debug(f"Calculated community_id: {community_id[:20]}...")
+    
+    # Find correlated Zeek flow
+    matched_zeek = None
+    match_method = "none"
+    
+    if zeek_flows and correlate_suricata_zeek:
+        matched_zeek, match_method = correlate_suricata_zeek(suricata_alert, zeek_flows)
+        if matched_zeek:
+            logger.debug(f"Found Zeek correlation via {match_method}")
+    elif zeek_flows:
+        # Simple fallback: use first flow with matching community_id
+        for zf in zeek_flows:
+            if zf.get("community_id") == community_id:
+                matched_zeek = zf
+                match_method = "community_id_simple"
+                break
+        if not matched_zeek and zeek_flows:
+            matched_zeek = zeek_flows[0]
+            match_method = "first_available"
 
     result = {
         "verdict": "SUSPICIOUS",
         "confidence": 0.5,
         "reasoning": "",
-        "zeek_matched": bool(zeek_flows),
+        "zeek_matched": matched_zeek is not None,
         "ml_used": False,
         "should_block": False,
         "details": {
             "signature": signature,
             "zeek_flows_count": len(zeek_flows) if zeek_flows else 0,
+            "community_id": community_id,
+            "zeek_match_method": match_method,
         },
     }
 
@@ -240,8 +285,9 @@ def analyze_flow(
             break
 
     # Step 2: Zeek correlation analysis
-    if zeek_flows and len(zeek_flows) > 0:
-        zeek_flow = zeek_flows[0]  # Primary correlated flow
+    # Sử dụng matched_zeek thay vì zeek_flows[0] để đảm bảo đúng flow
+    if matched_zeek:
+        zeek_flow = matched_zeek
         conn_state = zeek_flow.get("conn_state", "")
 
         # Analyze connection state
@@ -279,6 +325,7 @@ def analyze_flow(
                 result["should_block"] = ml_conf >= 0.8
     else:
         result["reasoning"] += " | No Zeek correlation found"
+        result["details"]["zeek_match_method"] = "no_match"
 
     # Final decision for auto-block
     if result["verdict"] == "ALERT" and result["confidence"] >= 0.8:
