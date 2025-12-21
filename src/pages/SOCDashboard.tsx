@@ -10,7 +10,7 @@ import VirtualizedEventTable from '@/components/soc/VirtualizedEventTable';
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
 
-// AI Chatbot Panel Component
+// AI Chatbot Panel Component - Gọi trực tiếp MegaLLM API
 const AIChatPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +30,22 @@ Ví dụ câu hỏi:
     }
   ]);
 
-  const AI_URL = import.meta.env.VITE_AI_URL || 'http://localhost:8000';
+  // MegaLLM API Configuration
+  const MEGALLM_API_KEY = 'sk-mega-7bd02bf1c5720f9bde518db892d4da8ef94671adcca28dd19299b1c2d8d4e753';
+  const MEGALLM_BASE_URL = 'https://ai.megallm.io/v1';
+  const MEGALLM_MODEL = 'deepseek-r1-distill-llama-70b';
+
+  const SOC_SYSTEM_PROMPT = `You are an AI SOC analyst (Tier 2) working on a hybrid NIDS stack with Zeek, Suricata and AI correlation.
+You receive:
+1) A natural language question from the analyst.
+2) A compact JSON snapshot of recent SOC alerts (if available).
+
+You must:
+- Correlate patterns.
+- Identify likely attack scenarios.
+- Propose CLEAR next actions (block / investigate / ignore).
+- NEVER hallucinate log entries that are not present in JSON.
+- Answer in concise Vietnamese, nhưng giữ technical terms tiếng Anh khi cần.`;
 
   if (!isOpen) return null;
 
@@ -43,38 +58,44 @@ Ví dụ câu hỏi:
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${AI_URL}/chat`, {
+      const response = await fetch(`${MEGALLM_BASE_URL}/chat/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${MEGALLM_API_KEY}`
+        },
         body: JSON.stringify({
-          prompt: userMessage,
-          events: [],
-          model: 'deepseek-r1-distill-llama-70b'
+          model: MEGALLM_MODEL,
+          messages: [
+            { role: 'system', content: SOC_SYSTEM_PROMPT },
+            ...messages.map(m => ({ role: m.role, content: m.content })),
+            { role: 'user', content: userMessage }
+          ],
+          max_tokens: 2048,
+          temperature: 0.7
         }),
       });
 
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+
       const data = await response.json();
       
-      if (data.success && data.response) {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+      if (data.choices && data.choices[0]?.message?.content) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.choices[0].message.content }]);
       } else {
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: `⚠️ Không thể kết nối với AI Engine. Vui lòng kiểm tra:
-1. AI Engine đang chạy tại ${AI_URL}
-2. MegaLLM API key đã được cấu hình trong .env
-3. Chạy \`docker compose up -d\` để khởi động tất cả services` 
-        }]);
+        throw new Error('Invalid response format from MegaLLM');
       }
     } catch (error) {
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: `❌ Lỗi kết nối: ${error instanceof Error ? error.message : 'Unknown error'}
+        content: `❌ Lỗi: ${error instanceof Error ? error.message : 'Unknown error'}
 
-Để sử dụng AI Assistant, bạn cần:
-1. Deploy backend với Docker: \`docker compose up -d --build\`
-2. AI Engine sẽ chạy tại http://localhost:8000
-3. Cấu hình MEGALLM_API_KEY trong file .env` 
+Kiểm tra:
+1. Kết nối internet
+2. MegaLLM API key còn hiệu lực
+3. Thử lại sau vài giây` 
       }]);
     } finally {
       setIsLoading(false);

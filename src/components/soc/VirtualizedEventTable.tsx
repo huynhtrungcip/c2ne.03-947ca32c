@@ -181,13 +181,13 @@ const VirtualizedEventTable = ({
       {/* Table Header */}
       <div className={`flex text-[10px] uppercase tracking-wider ${isDarkMode ? 'bg-[#0a0a0a] text-[#52525b]' : 'bg-[#f9fafb] text-[#9ca3af]'}`}
            style={{ borderBottom: isDarkMode ? '1px solid #1f1f1f' : '1px solid #e5e7eb' }}>
-        <div className="w-20 py-2 px-3 font-medium shrink-0">Time</div>
-        <div className="w-28 py-2 px-3 font-medium shrink-0">Verdict</div>
-        <div className="w-32 py-2 px-3 font-medium shrink-0">Source</div>
-        <div className="w-32 py-2 px-3 font-medium shrink-0">Destination</div>
-        <div className="w-16 py-2 px-3 font-medium shrink-0">Port</div>
-        <div className="flex-1 py-2 px-3 font-medium min-w-[200px]">Signature</div>
-        <div className="w-20 py-2 px-3 font-medium text-right shrink-0">Conf</div>
+        <div className="w-[72px] py-2 px-2 font-medium shrink-0">Time</div>
+        <div className="w-[110px] py-2 px-2 font-medium shrink-0">Verdict</div>
+        <div className="w-[130px] py-2 px-2 font-medium shrink-0">Source</div>
+        <div className="w-[130px] py-2 px-2 font-medium shrink-0">Destination</div>
+        <div className="w-[60px] py-2 px-2 font-medium shrink-0">Port</div>
+        <div className="flex-1 py-2 px-2 font-medium min-w-[150px]">Signature</div>
+        <div className="w-[80px] py-2 px-2 font-medium text-right shrink-0">Conf</div>
       </div>
 
       {/* Virtualized Rows */}
@@ -224,19 +224,19 @@ const VirtualizedEventTable = ({
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
                 >
-                  <div className={`w-20 py-1.5 px-3 font-mono shrink-0 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
-                    {event.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  <div className={`w-[72px] py-1.5 px-2 font-mono shrink-0 whitespace-nowrap ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+                    {event.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
                   </div>
-                  <div className={`w-28 py-1.5 px-3 font-semibold shrink-0 ${getVerdictClass(event.verdict)}`}>
+                  <div className={`w-[110px] py-1.5 px-2 font-semibold shrink-0 ${getVerdictClass(event.verdict)}`}>
                     {event.verdict}
                   </div>
-                  <div className="w-32 py-1.5 px-3 font-mono text-[#3b82f6] shrink-0 truncate">{event.src_ip}</div>
-                  <div className={`w-32 py-1.5 px-3 font-mono shrink-0 truncate ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.dst_ip}</div>
-                  <div className={`w-16 py-1.5 px-3 font-mono shrink-0 ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{event.dst_port || '-'}</div>
-                  <div className={`flex-1 py-1.5 px-3 truncate min-w-[200px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.attack_type}</div>
-                  <div className="w-20 py-1.5 px-3 shrink-0">
+                  <div className="w-[130px] py-1.5 px-2 font-mono text-[#3b82f6] shrink-0 truncate">{event.src_ip}</div>
+                  <div className={`w-[130px] py-1.5 px-2 font-mono shrink-0 truncate ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.dst_ip}</div>
+                  <div className={`w-[60px] py-1.5 px-2 font-mono shrink-0 ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{event.dst_port || '-'}</div>
+                  <div className={`flex-1 py-1.5 px-2 truncate min-w-[150px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.attack_type}</div>
+                  <div className="w-[80px] py-1.5 px-2 shrink-0">
                     <div className="flex items-center justify-end gap-1">
-                      <div className={`w-10 h-1 rounded overflow-hidden ${isDarkMode ? 'bg-[#27272a]' : 'bg-[#e5e7eb]'}`}>
+                      <div className={`w-8 h-1 rounded overflow-hidden ${isDarkMode ? 'bg-[#27272a]' : 'bg-[#e5e7eb]'}`}>
                         <div 
                           className="h-full rounded" 
                           style={{ 
@@ -245,7 +245,7 @@ const VirtualizedEventTable = ({
                           }} 
                         />
                       </div>
-                      <span className={`font-mono ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{event.confidence.toFixed(2)}</span>
+                      <span className={`font-mono text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{event.confidence.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
