@@ -5,6 +5,7 @@ import { SOCEvent } from '@/types/soc';
 import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
 import { Settings } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import SettingsModal from '@/components/soc/SettingsModal';
 import VirtualizedEventTable from '@/components/soc/VirtualizedEventTable';
 
@@ -194,7 +195,7 @@ Kiểm tra:
             }`}>
               {msg.role === 'assistant' ? (
                 <div className="prose prose-invert prose-xs max-w-none [&_table]:w-full [&_table]:text-[10px] [&_table]:border-collapse [&_th]:border [&_th]:border-[#3f3f46] [&_th]:bg-[#27272a] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_th]:text-[#e4e4e7] [&_td]:border [&_td]:border-[#3f3f46] [&_td]:px-2 [&_td]:py-1 [&_td]:text-[#a1a1aa] [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_strong]:text-[#e4e4e7] [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-[#e4e4e7] [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-xs [&_h2]:font-bold [&_h2]:text-[#e4e4e7] [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-[11px] [&_h3]:font-semibold [&_h3]:text-[#e4e4e7] [&_h3]:mt-2 [&_h3]:mb-1 [&_code]:bg-[#27272a] [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#60a5fa] [&_pre]:bg-[#0a0a0a] [&_pre]:p-2 [&_pre]:rounded [&_pre]:overflow-x-auto [&_blockquote]:border-l-2 [&_blockquote]:border-[#3b82f6] [&_blockquote]:pl-2 [&_blockquote]:italic [&_blockquote]:text-[#71717a]">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 </div>
               ) : (
                 msg.content
@@ -645,7 +646,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                 </div>
                 <div className="p-4 max-h-[300px] overflow-y-auto">
                   <div className="prose prose-invert prose-xs max-w-none [&_table]:w-full [&_table]:text-[10px] [&_table]:border-collapse [&_th]:border [&_th]:border-[#3f3f46] [&_th]:bg-[#27272a] [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold [&_th]:text-[#e4e4e7] [&_td]:border [&_td]:border-[#3f3f46] [&_td]:px-2 [&_td]:py-1.5 [&_td]:text-[#a1a1aa] [&_p]:my-2 [&_p]:text-[11px] [&_p]:leading-relaxed [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_li]:text-[11px] [&_strong]:text-[#e4e4e7] [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-[#60a5fa] [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:pb-1 [&_h1]:border-b [&_h1]:border-[#27272a] [&_h2]:text-xs [&_h2]:font-bold [&_h2]:text-[#60a5fa] [&_h2]:mt-3 [&_h2]:mb-2 [&_h3]:text-[11px] [&_h3]:font-semibold [&_h3]:text-[#a1a1aa] [&_h3]:mt-2 [&_h3]:mb-1 [&_code]:bg-[#27272a] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#fbbf24] [&_code]:text-[10px] [&_pre]:bg-[#000] [&_pre]:p-3 [&_pre]:rounded [&_pre]:overflow-x-auto [&_pre]:border [&_pre]:border-[#27272a] [&_blockquote]:border-l-2 [&_blockquote]:border-[#3b82f6] [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-[#71717a]">
-                    <ReactMarkdown>{analysisResult}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{analysisResult}</ReactMarkdown>
                   </div>
                 </div>
               </div>
