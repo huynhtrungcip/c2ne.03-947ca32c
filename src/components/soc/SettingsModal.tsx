@@ -737,14 +737,58 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     );
   };
 
+  // Mock data toggle state
+  const [mockDataEnabled, setMockDataEnabled] = useState(() => {
+    return localStorage.getItem('soc-mock-data-enabled') === 'true';
+  });
+
+  const handleToggleMockData = (enabled: boolean) => {
+    setMockDataEnabled(enabled);
+    localStorage.setItem('soc-mock-data-enabled', enabled ? 'true' : 'false');
+    // Dispatch event to update dashboard
+    window.dispatchEvent(new CustomEvent('soc-data-updated'));
+  };
+
   const renderDataManagementSection = () => (
     <div className="space-y-6">
       <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
         Data Management
       </div>
       <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
-        Quản lý dữ liệu sự kiện trong dashboard. Xóa dữ liệu cũ hoặc thêm dữ liệu demo.
+        Quản lý dữ liệu sự kiện trong dashboard. Bật/tắt mock data, xóa dữ liệu cũ hoặc thêm dữ liệu demo.
       </p>
+
+      {/* Mock Data Toggle */}
+      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${mockDataEnabled ? 'bg-[#f59e0b]/20 text-[#fbbf24]' : isDarkMode ? 'bg-[#27272a] text-[#52525b]' : 'bg-[#e5e7eb] text-[#9ca3af]'}`}>
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <div className={`text-[12px] font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+                Mock Data (Demo)
+              </div>
+              <div className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+                {mockDataEnabled ? 'Đang bật - Tự động tạo dữ liệu giả lập' : 'Đang tắt - Chỉ hiển thị dữ liệu thật'}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => handleToggleMockData(!mockDataEnabled)}
+            className={`w-12 h-6 rounded-full transition-colors relative ${
+              mockDataEnabled ? 'bg-[#f59e0b]' : isDarkMode ? 'bg-[#27272a]' : 'bg-[#d1d5db]'
+            }`}
+          >
+            <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${
+              mockDataEnabled ? 'translate-x-6' : 'translate-x-0.5'
+            }`} />
+          </button>
+        </div>
+        <p className={`mt-3 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+          Khi tắt, dashboard sẽ chỉ hiển thị dữ liệu thật từ Suricata/Zeek qua backend. Mặc định: TẮT.
+        </p>
+      </div>
 
       {/* Recovery Banner */}
       {pendingDelete && (
