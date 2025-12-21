@@ -1,5 +1,3 @@
-version: '3.8'
-
 # ============================================================
 # SOC Dashboard - False Positive Reduction System
 # Docker Compose Production Configuration
