@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw, Database, RotateCcw, AlertTriangle, Send, Bell, MessageCircle, CheckCircle } from 'lucide-react';
+import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw, Database, RotateCcw, AlertTriangle, Send, Bell, MessageCircle, CheckCircle, Terminal, FileText } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ConfirmDialog, useConfirmDialog, ConfirmActionType } from './ConfirmDialog';
 
@@ -44,7 +44,7 @@ const TIMEZONES = [
 
 const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: SettingsModalProps) => {
   const { language, setLanguage, t } = useLanguage();
-  const [activeSection, setActiveSection] = useState<'general' | 'telegram' | 'data' | 'sources' | 'blacklist' | 'whitelist' | 'blocked' | 'help'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'telegram' | 'data' | 'sources' | 'nids_debug' | 'blacklist' | 'whitelist' | 'blocked' | 'help'>('general');
   const [timezone, setTimezone] = useState(() => localStorage.getItem('soc-timezone') || 'Asia/Ho_Chi_Minh');
   const [connectedSources, setConnectedSources] = useState<ConnectedSource[]>([]);
   const [loadingSources, setLoadingSources] = useState(false);
@@ -118,6 +118,20 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   const [telegramTestStatus, setTelegramTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [telegramTestMessage, setTelegramTestMessage] = useState('');
 
+  // NIDS Debug logs state
+  interface IngestLog {
+    timestamp: string;
+    level: string;
+    source: string;
+    message: string;
+    details: Record<string, any>;
+  }
+  const [nidsLogs, setNidsLogs] = useState<IngestLog[]>([]);
+  const [nidsLogsLoading, setNidsLogsLoading] = useState(false);
+  const [nidsLogFilter, setNidsLogFilter] = useState<'all' | 'INFO' | 'WARNING' | 'ERROR'>('all');
+  const [nidsSourceFilter, setNidsSourceFilter] = useState<'all' | 'suricata' | 'zeek'>('all');
+  const [autoRefreshLogs, setAutoRefreshLogs] = useState(false);
+
   // Time ranges for data management
   const TIME_RANGES = [
     { value: '5m', label: '5 phút', ms: 5 * 60 * 1000 },
@@ -142,6 +156,41 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       console.error('Failed to fetch sources:', error);
     } finally {
       setLoadingSources(false);
+    }
+  }, [apiUrl]);
+
+  // Fetch NIDS ingest logs for debugging
+  const fetchNidsLogs = useCallback(async () => {
+    if (!apiUrl) return;
+    setNidsLogsLoading(true);
+    try {
+      // AI Engine URL - ensure we're calling port 8000
+      const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
+      const params = new URLSearchParams({ limit: '200' });
+      if (nidsLogFilter !== 'all') params.append('level', nidsLogFilter);
+      if (nidsSourceFilter !== 'all') params.append('source', nidsSourceFilter);
+      
+      const response = await fetch(`${aiEngineUrl}/ingest/logs?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        setNidsLogs(data.logs || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch NIDS logs:', error);
+    } finally {
+      setNidsLogsLoading(false);
+    }
+  }, [apiUrl, nidsLogFilter, nidsSourceFilter]);
+
+  // Clear NIDS logs
+  const clearNidsLogs = useCallback(async () => {
+    if (!apiUrl) return;
+    try {
+      const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
+      await fetch(`${aiEngineUrl}/ingest/logs`, { method: 'DELETE' });
+      setNidsLogs([]);
+    } catch (error) {
+      console.error('Failed to clear NIDS logs:', error);
     }
   }, [apiUrl]);
 
@@ -269,6 +318,20 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       fetchConnectedSources();
     }
   }, [activeSection, apiUrl, fetchConnectedSources]);
+
+  // Fetch NIDS logs when debug section is opened
+  useEffect(() => {
+    if (activeSection === 'nids_debug' && apiUrl) {
+      fetchNidsLogs();
+    }
+  }, [activeSection, apiUrl, fetchNidsLogs]);
+
+  // Auto-refresh NIDS logs
+  useEffect(() => {
+    if (!autoRefreshLogs || activeSection !== 'nids_debug') return;
+    const interval = setInterval(fetchNidsLogs, 3000);
+    return () => clearInterval(interval);
+  }, [autoRefreshLogs, activeSection, fetchNidsLogs]);
   
   // Save to localStorage
   useEffect(() => {
@@ -450,6 +513,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     { id: 'telegram', label: 'Telegram Alerts', icon: Send },
     { id: 'data', label: 'Data Management', icon: Database },
     { id: 'sources', label: 'NIDS Sources', icon: Server },
+    { id: 'nids_debug', label: 'NIDS Debug Logs', icon: Terminal },
     { id: 'blocked', label: 'Blocked IPs', icon: Ban },
     { id: 'blacklist', label: t('settings.blacklist'), icon: Shield },
     { id: 'whitelist', label: t('settings.whitelist'), icon: List },
@@ -1064,6 +1128,201 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       )}
     </div>
   );
+
+  // NIDS Debug Logs Section
+  const renderNidsDebugSection = () => {
+    const getLevelColor = (level: string) => {
+      switch (level) {
+        case 'ERROR': return 'bg-[#dc2626]/20 text-[#f87171]';
+        case 'WARNING': return 'bg-[#f59e0b]/20 text-[#fbbf24]';
+        default: return 'bg-[#3b82f6]/20 text-[#60a5fa]';
+      }
+    };
+
+    const getSourceColor = (source: string) => {
+      if (source.toLowerCase().includes('suricata')) return 'bg-[#dc2626]/20 text-[#f87171]';
+      if (source.toLowerCase().includes('zeek')) return 'bg-[#3b82f6]/20 text-[#60a5fa]';
+      if (source.toLowerCase().includes('backend')) return 'bg-[#8b5cf6]/20 text-[#a78bfa]';
+      if (source.toLowerCase().includes('websocket')) return 'bg-[#22c55e]/20 text-[#4ade80]';
+      return isDarkMode ? 'bg-[#27272a] text-[#a1a1aa]' : 'bg-[#e5e7eb] text-[#6b7280]';
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+          NIDS Ingest Debug Logs
+        </div>
+        <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+          Xem logs từ ai_log_shipper để debug khi không nhận được events. Logs được lưu trong bộ nhớ AI Engine (tối đa 500 entries).
+        </p>
+
+        {/* Controls */}
+        <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            {/* Level Filter */}
+            <select
+              value={nidsLogFilter}
+              onChange={(e) => setNidsLogFilter(e.target.value as any)}
+              className={`h-8 px-2 text-[11px] border rounded-lg ${
+                isDarkMode 
+                  ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7]' 
+                  : 'bg-white border-[#d1d5db] text-[#111827]'
+              }`}
+            >
+              <option value="all">All Levels</option>
+              <option value="INFO">INFO</option>
+              <option value="WARNING">WARNING</option>
+              <option value="ERROR">ERROR</option>
+            </select>
+
+            {/* Source Filter */}
+            <select
+              value={nidsSourceFilter}
+              onChange={(e) => setNidsSourceFilter(e.target.value as any)}
+              className={`h-8 px-2 text-[11px] border rounded-lg ${
+                isDarkMode 
+                  ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7]' 
+                  : 'bg-white border-[#d1d5db] text-[#111827]'
+              }`}
+            >
+              <option value="all">All Sources</option>
+              <option value="suricata">Suricata</option>
+              <option value="zeek">Zeek</option>
+            </select>
+
+            {/* Auto Refresh Toggle */}
+            <button
+              onClick={() => setAutoRefreshLogs(!autoRefreshLogs)}
+              className={`flex items-center gap-1.5 h-8 px-3 text-[11px] rounded-lg border transition-colors ${
+                autoRefreshLogs
+                  ? 'bg-[#22c55e]/20 border-[#22c55e]/50 text-[#4ade80]'
+                  : isDarkMode 
+                    ? 'bg-[#0a0a0a] border-[#27272a] text-[#a1a1aa] hover:bg-[#18181b]' 
+                    : 'bg-white border-[#d1d5db] text-[#6b7280] hover:bg-[#f9fafb]'
+              }`}
+            >
+              <RefreshCw className={`w-3 h-3 ${autoRefreshLogs ? 'animate-spin' : ''}`} />
+              Auto (3s)
+            </button>
+
+            {/* Manual Refresh */}
+            <button
+              onClick={fetchNidsLogs}
+              disabled={nidsLogsLoading}
+              className={`flex items-center gap-1.5 h-8 px-3 text-[11px] rounded-lg transition-colors ${
+                isDarkMode 
+                  ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:bg-[#27272a] disabled:text-[#52525b]' 
+                  : 'bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:bg-[#e5e7eb] disabled:text-[#9ca3af]'
+              }`}
+            >
+              <RefreshCw className={`w-3 h-3 ${nidsLogsLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+
+            {/* Clear Logs */}
+            <button
+              onClick={clearNidsLogs}
+              className={`flex items-center gap-1.5 h-8 px-3 text-[11px] rounded-lg transition-colors ${
+                isDarkMode 
+                  ? 'bg-[#dc2626]/20 text-[#f87171] hover:bg-[#dc2626]/30' 
+                  : 'bg-[#fef2f2] text-[#dc2626] hover:bg-[#fee2e2]'
+              }`}
+            >
+              <Trash2 className="w-3 h-3" />
+              Clear
+            </button>
+          </div>
+
+          {/* Stats */}
+          <div className={`flex items-center gap-4 text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+            <span>Showing: {nidsLogs.length} logs</span>
+          </div>
+        </div>
+
+        {/* Logs Display */}
+        <div className={`rounded-lg border overflow-hidden ${isDarkMode ? 'bg-[#0a0a0a] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+          {!apiUrl ? (
+            <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+              <Terminal className="w-10 h-10 mx-auto mb-3 opacity-50" />
+              <div className="text-[12px]">Cấu hình Backend API URL trong mục General để xem logs</div>
+            </div>
+          ) : nidsLogsLoading && nidsLogs.length === 0 ? (
+            <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+              <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin" />
+              <div className="text-[11px]">Loading logs...</div>
+            </div>
+          ) : nidsLogs.length === 0 ? (
+            <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+              <FileText className="w-10 h-10 mx-auto mb-3 opacity-50" />
+              <div className="text-[12px] mb-1">Chưa có logs</div>
+              <div className="text-[10px]">Logs sẽ xuất hiện khi ai_log_shipper gửi dữ liệu đến /ingest endpoint</div>
+            </div>
+          ) : (
+            <div className="max-h-[400px] overflow-y-auto">
+              {nidsLogs.map((log, index) => (
+                <div 
+                  key={index} 
+                  className={`p-3 border-b last:border-b-0 ${
+                    isDarkMode ? 'border-[#1f1f1f] hover:bg-[#111]' : 'border-[#e5e7eb] hover:bg-[#f3f4f6]'
+                  }`}
+                >
+                  <div className="flex items-start gap-2 mb-1">
+                    {/* Timestamp */}
+                    <span className={`text-[9px] font-mono shrink-0 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+                      {new Date(log.timestamp).toLocaleTimeString('vi-VN')}
+                    </span>
+                    
+                    {/* Level Badge */}
+                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-medium shrink-0 ${getLevelColor(log.level)}`}>
+                      {log.level}
+                    </span>
+                    
+                    {/* Source Badge */}
+                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-medium shrink-0 ${getSourceColor(log.source)}`}>
+                      {log.source}
+                    </span>
+                    
+                    {/* Message */}
+                    <span className={`text-[11px] ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+                      {log.message}
+                    </span>
+                  </div>
+                  
+                  {/* Details (if any) */}
+                  {log.details && Object.keys(log.details).length > 0 && (
+                    <div className={`ml-[60px] mt-1 text-[10px] font-mono ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+                      {Object.entries(log.details).map(([key, value]) => (
+                        <span key={key} className="mr-3">
+                          <span className={isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}>{key}:</span>{' '}
+                          <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>
+                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Help Info */}
+        <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+          <div className={`text-[11px] font-semibold mb-2 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+            <HelpCircle className="w-4 h-4 text-[#3b82f6]" />
+            Troubleshooting
+          </div>
+          <ul className={`text-[10px] space-y-1 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+            <li>• Nếu không thấy logs: Kiểm tra ai_log_shipper.py đang chạy trên NIDS (172.16.16.20)</li>
+            <li>• Kiểm tra AI_SERVER_URL trong shipper trỏ đúng: http://10.10.10.20:8000/ingest</li>
+            <li>• Xác nhận firewall mở port 8000 trên máy AI</li>
+            <li>• Chạy: <code className={`px-1 py-0.5 rounded ${isDarkMode ? 'bg-[#27272a]' : 'bg-[#e5e7eb]'}`}>curl http://10.10.10.20:8000/ingest/status</code></li>
+          </ul>
+        </div>
+      </div>
+    );
+  };
 
   const renderBlockedIPsSection = () => {
     const fetchPfSenseBlockedIPs = async () => {
@@ -1684,6 +1943,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             {activeSection === 'telegram' && renderTelegramSection()}
             {activeSection === 'data' && renderDataManagementSection()}
             {activeSection === 'sources' && renderSourcesSection()}
+            {activeSection === 'nids_debug' && renderNidsDebugSection()}
             {activeSection === 'blocked' && renderBlockedIPsSection()}
             {(activeSection === 'blacklist' || activeSection === 'whitelist') && renderListSection()}
             {activeSection === 'help' && renderHelpSection()}
