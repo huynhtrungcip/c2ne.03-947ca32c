@@ -97,9 +97,9 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     return localStorage.getItem('soc-mock-data-enabled') === 'true';
   });
 
-  // API URL for backend
-  const apiUrl = localStorage.getItem('soc-api-url') || '';
-  const [apiUrlInput, setApiUrlInput] = useState(apiUrl);
+  // API URL for backend - using state for reactivity
+  const [apiUrl, setApiUrl] = useState(() => localStorage.getItem('soc-api-url') || '');
+  const [apiUrlInput, setApiUrlInput] = useState(() => localStorage.getItem('soc-api-url') || '');
 
   // Telegram settings state
   const [telegramConfig, setTelegramConfig] = useState(() => {
@@ -288,9 +288,9 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     localStorage.setItem('soc-telegram-config', JSON.stringify(telegramConfig));
   }, [telegramConfig]);
 
-  // Telegram test function - call through backend to avoid CORS
+  // Telegram test function - call AI Engine (port 8000) directly
   const handleTestTelegram = useCallback(async () => {
-    if (!telegramConfig.botToken || !telegramConfig.chatId) {
+    if (!telegramConfig.botToken?.trim() || !telegramConfig.chatId?.trim()) {
       setTelegramTestStatus('error');
       setTelegramTestMessage('Vui lòng nhập Bot Token và Chat ID');
       return;
@@ -298,29 +298,35 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
 
     if (!apiUrl) {
       setTelegramTestStatus('error');
-      setTelegramTestMessage('Vui lòng cấu hình API URL trong phần General trước');
+      setTelegramTestMessage('Vui lòng cấu hình AI Engine URL trong phần Telegram trước');
       return;
     }
 
     setTelegramTestStatus('testing');
     try {
-      // First configure telegram bot on backend
-      const configResponse = await fetch(`${apiUrl}/telegram/configure`, {
+      // AI Engine URL - ensure we're calling port 8000
+      const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
+      
+      // First configure telegram bot on AI Engine
+      const configResponse = await fetch(`${aiEngineUrl}/telegram/configure`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          bot_token: telegramConfig.botToken,
-          chat_id: telegramConfig.chatId,
+          bot_token: telegramConfig.botToken.trim(),
+          chat_id: telegramConfig.chatId.trim(),
           confidence_threshold: telegramConfig.confidenceThreshold / 100,
         }),
       });
 
+      const configData = await configResponse.json().catch(() => ({}));
+      
       if (!configResponse.ok) {
-        throw new Error('Failed to configure Telegram');
+        const errorMsg = configData.detail || configData.error || configData.message || `Configure failed (${configResponse.status})`;
+        throw new Error(errorMsg);
       }
 
-      // Then send test alert through backend
-      const response = await fetch(`${apiUrl}/telegram/send-alert`, {
+      // Then send test alert through AI Engine
+      const response = await fetch(`${aiEngineUrl}/telegram/send-alert`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -334,19 +340,20 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       
       if (response.ok && data.success) {
         setTelegramTestStatus('success');
         setTelegramTestMessage('Gửi tin nhắn test thành công!');
       } else {
         setTelegramTestStatus('error');
-        setTelegramTestMessage(data.error || data.message || 'Lỗi kết nối Telegram');
+        const errorMsg = data.detail || data.error || data.message || `Send failed (${response.status})`;
+        setTelegramTestMessage(errorMsg);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Telegram test error:', error);
       setTelegramTestStatus('error');
-      setTelegramTestMessage('Không thể kết nối đến Backend API. Kiểm tra API URL.');
+      setTelegramTestMessage(error.message || 'Không thể kết nối đến AI Engine. Kiểm tra URL.');
     }
 
     // Reset status after 5s
@@ -417,7 +424,9 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   };
 
   const handleSaveApiUrl = () => {
-    localStorage.setItem('soc-api-url', apiUrlInput);
+    const trimmedUrl = apiUrlInput.trim();
+    localStorage.setItem('soc-api-url', trimmedUrl);
+    setApiUrl(trimmedUrl); // Update state for reactivity
     fetchConnectedSources();
   };
   
@@ -471,16 +480,16 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         </div>
       </div>
 
-      {/* Backend API URL - Required for Telegram */}
+      {/* AI Engine URL - Required for Telegram */}
       <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
         <div className={`text-[11px] font-semibold mb-2 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
           <Server className="w-4 h-4 text-[#22c55e]" />
-          Backend API URL
+          AI Engine URL
         </div>
         <div className="flex gap-2">
           <input
             type="text"
-            placeholder="http://192.168.1.100:8000"
+            placeholder="http://10.10.10.20:8000"
             value={apiUrlInput}
             onChange={(e) => setApiUrlInput(e.target.value)}
             className={`flex-1 h-9 px-3 text-[11px] font-mono border rounded-lg ${
@@ -497,7 +506,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </button>
         </div>
         <p className={`mt-1.5 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-          URL của backend AI Engine (ví dụ: http://localhost:8000). Bắt buộc để gửi Telegram.
+          URL của AI Engine (port 8000). Ví dụ: http://10.10.10.20:8000. Bắt buộc để gửi Telegram và block IP.
         </p>
         {apiUrl && (
           <div className="mt-2 flex items-center gap-1.5">
@@ -1046,7 +1055,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       if (!apiUrl) return;
       setBlockedIPsLoading(true);
       try {
-        const aiEngineUrl = apiUrl.replace(':3001', ':5000');
+        // AI Engine uses port 8000
+        const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
         const response = await fetch(`${aiEngineUrl}/blocked-ips`);
         if (response.ok) {
           const data = await response.json();
@@ -1063,7 +1073,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       setUnblockingIP(ip);
       try {
         if (apiUrl) {
-          const aiEngineUrl = apiUrl.replace(':3001', ':5000');
+          // AI Engine uses port 8000
+          const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
           await fetch(`${aiEngineUrl}/unblock`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1208,7 +1219,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               Khi block IP thông qua dashboard, IP sẽ được gửi đến AI-Engine để thêm vào alias <code className="bg-[#27272a] px-1 rounded">AI_Blocked_IP</code> trên pfSense firewall.
             </p>
             <div className={`mt-3 text-[10px] font-mono ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-              API Endpoint: POST {apiUrl.replace(':3001', ':5000')}/block
+              API Endpoint: POST {apiUrl.replace(':3001', ':8000').replace(':3002', ':8000')}/block
             </div>
           </div>
         )}
