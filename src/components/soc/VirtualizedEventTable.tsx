@@ -182,12 +182,14 @@ const VirtualizedEventTable = ({
       <div className={`flex text-[10px] uppercase tracking-wider ${isDarkMode ? 'bg-[#0a0a0a] text-[#52525b]' : 'bg-[#f9fafb] text-[#9ca3af]'}`}
            style={{ borderBottom: isDarkMode ? '1px solid #1f1f1f' : '1px solid #e5e7eb' }}>
         <div className="w-[72px] py-2 px-2 font-medium shrink-0">Time</div>
-        <div className="w-[100px] py-2 px-2 font-medium shrink-0">Verdict</div>
-        <div className="w-[130px] py-2 px-2 font-medium shrink-0">Source</div>
-        <div className="w-[130px] py-2 px-2 font-medium shrink-0">Destination</div>
-        <div className="w-[55px] py-2 px-2 font-medium shrink-0">Port</div>
-        <div className="flex-1 py-2 px-2 font-medium">Signature</div>
-        <div className="w-[90px] py-2 px-2 font-medium text-right shrink-0">Conf</div>
+        <div className="w-[90px] py-2 px-2 font-medium shrink-0">Verdict</div>
+        <div className="w-[120px] py-2 px-2 font-medium shrink-0">Source</div>
+        <div className="w-[120px] py-2 px-2 font-medium shrink-0">Destination</div>
+        <div className="w-[50px] py-2 px-2 font-medium shrink-0">Port</div>
+        <div className="w-[55px] py-2 px-2 font-medium shrink-0">Proto</div>
+        <div className="flex-1 py-2 px-2 font-medium min-w-[120px]">Signature</div>
+        <div className="w-[75px] py-2 px-2 font-medium shrink-0">Engine</div>
+        <div className="w-[70px] py-2 px-2 font-medium text-right shrink-0">Conf</div>
       </div>
 
       {/* Virtualized Rows */}
@@ -227,16 +229,21 @@ const VirtualizedEventTable = ({
                   <div className={`w-[72px] py-1.5 px-2 font-mono shrink-0 whitespace-nowrap ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
                     {event.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
                   </div>
-                  <div className={`w-[100px] py-1.5 px-2 font-semibold shrink-0 ${getVerdictClass(event.verdict)}`}>
+                  <div className={`w-[90px] py-1.5 px-2 font-semibold shrink-0 ${getVerdictClass(event.verdict)}`}>
                     {event.verdict}
                   </div>
-                  <div className="w-[130px] py-1.5 px-2 font-mono text-[#3b82f6] shrink-0 truncate">{event.src_ip}</div>
-                  <div className={`w-[130px] py-1.5 px-2 font-mono shrink-0 truncate ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.dst_ip}</div>
-                  <div className={`w-[55px] py-1.5 px-2 font-mono shrink-0 ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{event.dst_port || '-'}</div>
-                  <div className={`flex-1 py-1.5 px-2 truncate ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.attack_type}</div>
-                  <div className="w-[90px] py-1.5 px-2 shrink-0">
+                  <div className="w-[120px] py-1.5 px-2 font-mono text-[#3b82f6] shrink-0 truncate">{event.src_ip}</div>
+                  <div className={`w-[120px] py-1.5 px-2 font-mono shrink-0 truncate ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.dst_ip}</div>
+                  <div className={`w-[50px] py-1.5 px-2 font-mono shrink-0 ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{event.dst_port || '-'}</div>
+                  <div className={`w-[55px] py-1.5 px-2 shrink-0 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.protocol}</div>
+                  <div className={`flex-1 py-1.5 px-2 truncate min-w-[120px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.attack_type}</div>
+                  <div className={`w-[75px] py-1.5 px-2 shrink-0 truncate ${
+                    event.source_engine === 'Suricata' ? 'text-[#f87171]' :
+                    event.source_engine === 'Zeek' ? 'text-[#60a5fa]' : 'text-[#a78bfa]'
+                  }`}>{event.source_engine}</div>
+                  <div className="w-[70px] py-1.5 px-2 shrink-0">
                     <div className="flex items-center justify-end gap-1">
-                      <div className={`w-8 h-1 rounded overflow-hidden ${isDarkMode ? 'bg-[#27272a]' : 'bg-[#e5e7eb]'}`}>
+                      <div className={`w-6 h-1 rounded overflow-hidden ${isDarkMode ? 'bg-[#27272a]' : 'bg-[#e5e7eb]'}`}>
                         <div 
                           className="h-full rounded" 
                           style={{ 

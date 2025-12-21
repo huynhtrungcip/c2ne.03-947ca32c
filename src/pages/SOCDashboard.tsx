@@ -246,6 +246,7 @@ const SOCDashboard = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showAnalysisOptions, setShowAnalysisOptions] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [blockingIP, setBlockingIP] = useState(false);
   const [blockResult, setBlockResult] = useState<{ success: boolean; message: string } | null>(null);
   const [theme, setTheme] = useState<Theme>(() => {
@@ -285,6 +286,10 @@ const SOCDashboard = () => {
 
   const handleEventClick = (event: SOCEvent) => {
     if (isLive) return;
+    if (selectedEvent?.id !== event.id) {
+      setAnalysisResult(null); // Clear previous analysis when switching events
+      setBlockResult(null);
+    }
     setSelectedEvent(selectedEvent?.id === event.id ? null : event);
   };
 
@@ -400,10 +405,11 @@ const SOCDashboard = () => {
     const handleAnalyzeFlow = async (analyzeAll: boolean) => {
       setShowAnalysisOptions(false);
       setAnalysisLoading(true);
+      setAnalysisResult(null);
       
       try {
         const eventData = analyzeAll 
-          ? { ip: selectedEvent.src_ip, events: events.filter(e => e.src_ip === selectedEvent.src_ip) }
+          ? { ip: selectedEvent.src_ip, events: events.filter(e => e.src_ip === selectedEvent.src_ip).slice(0, 50) }
           : { event: selectedEvent };
         
         const prompt = analyzeAll 
@@ -420,16 +426,29 @@ const SOCDashboard = () => {
           body: JSON.stringify({
             model: DEFAULT_MODEL,
             messages: [
-              { role: 'system', content: `You are an AI SOC analyst (Tier 2). Analyze the provided network flow data and provide:
-1. Risk assessment (Critical/High/Medium/Low)
-2. Attack type classification
-3. Recommended actions (Block/Investigate/Ignore)
-4. Brief reasoning
-Answer in Vietnamese, keep technical terms in English.` },
+              { role: 'system', content: `You are an AI SOC analyst (Tier 2). Analyze the provided network flow data and provide a CONCISE report with:
+
+## Risk Level
+(Critical/High/Medium/Low) - One line explanation
+
+## Attack Classification
+- Attack Type: [type]
+- Technique: [MITRE ATT&CK if applicable]
+
+## Key Indicators
+- List 2-3 bullet points of suspicious indicators
+
+## Recommended Actions
+| Priority | Action | Reason |
+|----------|--------|--------|
+| 1 | ... | ... |
+| 2 | ... | ... |
+
+Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms in English.` },
               { role: 'user', content: prompt }
             ],
-            max_tokens: 2048,
-            temperature: 0.7
+            max_tokens: 1500,
+            temperature: 0.5
           }),
         });
         
@@ -438,10 +457,11 @@ Answer in Vietnamese, keep technical terms in English.` },
         const data = await response.json();
         const analysis = data.choices?.[0]?.message?.content || 'Không thể phân tích';
         
-        // Show result in AI Chat panel
-        setShowAIChat(true);
+        // Store result to display inline
+        setAnalysisResult(analysis);
       } catch (error) {
         console.error('Analysis error:', error);
+        setAnalysisResult(`**Lỗi phân tích:** ${error instanceof Error ? error.message : 'Unknown error'}`);
       } finally {
         setAnalysisLoading(false);
       }
@@ -591,6 +611,47 @@ Answer in Vietnamese, keep technical terms in English.` },
             {blockingIP ? 'Đang block...' : isAlreadyBlocked ? `IP đã bị block` : `Block IP ${selectedEvent.src_ip}`}
           </button>
         </div>
+
+        {/* AI Analysis Result - Inline Display */}
+        {(analysisLoading || analysisResult) && (
+          <div className="mx-5 mb-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] text-[#71717a] uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#3b82f6] animate-pulse"></span>
+                AI Analysis Result
+              </div>
+              {analysisResult && (
+                <button 
+                  onClick={() => setAnalysisResult(null)}
+                  className="text-[10px] text-[#52525b] hover:text-[#a1a1aa]"
+                >
+                  Đóng
+                </button>
+              )}
+            </div>
+            
+            {analysisLoading ? (
+              <div className="bg-[#0f0f0f] border border-[#1e3a5f] rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 border-2 border-[#3b82f6] border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-[11px] text-[#60a5fa]">Đang phân tích với {DEFAULT_MODEL}...</span>
+                </div>
+              </div>
+            ) : analysisResult && (
+              <div className="bg-[#0a0a0a] border border-[#27272a] rounded-lg overflow-hidden">
+                <div className="bg-[#18181b] px-4 py-2 border-b border-[#27272a] flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-[#22c55e]"></div>
+                  <span className="text-[10px] text-[#a1a1aa] font-medium">Analysis Complete</span>
+                </div>
+                <div className="p-4 max-h-[300px] overflow-y-auto">
+                  <div className="prose prose-invert prose-xs max-w-none [&_table]:w-full [&_table]:text-[10px] [&_table]:border-collapse [&_th]:border [&_th]:border-[#3f3f46] [&_th]:bg-[#27272a] [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold [&_th]:text-[#e4e4e7] [&_td]:border [&_td]:border-[#3f3f46] [&_td]:px-2 [&_td]:py-1.5 [&_td]:text-[#a1a1aa] [&_p]:my-2 [&_p]:text-[11px] [&_p]:leading-relaxed [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_li]:text-[11px] [&_strong]:text-[#e4e4e7] [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-[#60a5fa] [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:pb-1 [&_h1]:border-b [&_h1]:border-[#27272a] [&_h2]:text-xs [&_h2]:font-bold [&_h2]:text-[#60a5fa] [&_h2]:mt-3 [&_h2]:mb-2 [&_h3]:text-[11px] [&_h3]:font-semibold [&_h3]:text-[#a1a1aa] [&_h3]:mt-2 [&_h3]:mb-1 [&_code]:bg-[#27272a] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#fbbf24] [&_code]:text-[10px] [&_pre]:bg-[#000] [&_pre]:p-3 [&_pre]:rounded [&_pre]:overflow-x-auto [&_pre]:border [&_pre]:border-[#27272a] [&_blockquote]:border-l-2 [&_blockquote]:border-[#3b82f6] [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-[#71717a]">
+                    <ReactMarkdown>{analysisResult}</ReactMarkdown>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
