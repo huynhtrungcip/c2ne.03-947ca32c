@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff } from 'lucide-react';
+import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 type Theme = 'light' | 'dark';
@@ -43,7 +43,7 @@ const TIMEZONES = [
 
 const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: SettingsModalProps) => {
   const { language, setLanguage, t } = useLanguage();
-  const [activeSection, setActiveSection] = useState<'general' | 'sources' | 'blacklist' | 'whitelist' | 'help'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'sources' | 'blacklist' | 'whitelist' | 'blocked' | 'help'>('general');
   const [timezone, setTimezone] = useState(() => localStorage.getItem('soc-timezone') || 'Asia/Ho_Chi_Minh');
   const [connectedSources, setConnectedSources] = useState<ConnectedSource[]>([]);
   const [loadingSources, setLoadingSources] = useState(false);
@@ -144,6 +144,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   const sections = [
     { id: 'general', label: t('settings.general'), icon: Settings },
     { id: 'sources', label: 'NIDS Sources', icon: Server },
+    { id: 'blocked', label: 'Blocked IPs', icon: Ban },
     { id: 'blacklist', label: t('settings.blacklist'), icon: Shield },
     { id: 'whitelist', label: t('settings.whitelist'), icon: List },
     { id: 'help', label: t('settings.help'), icon: HelpCircle },
@@ -291,6 +292,161 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       )}
     </div>
   );
+
+  const renderBlockedIPsSection = () => {
+    const blockedIPs = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]') as string[];
+    const apiUrl = localStorage.getItem('soc-api-url') || '';
+    const [loading, setLoading] = useState(false);
+    const [pfSenseBlockedIPs, setPfSenseBlockedIPs] = useState<string[]>([]);
+    const [unblockingIP, setUnblockingIP] = useState<string | null>(null);
+
+    const fetchPfSenseBlockedIPs = async () => {
+      if (!apiUrl) return;
+      setLoading(true);
+      try {
+        const aiEngineUrl = apiUrl.replace(':3001', ':5000');
+        const response = await fetch(`${aiEngineUrl}/blocked-ips`);
+        if (response.ok) {
+          const data = await response.json();
+          setPfSenseBlockedIPs(data.ips || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch blocked IPs:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const handleUnblockIP = async (ip: string) => {
+      setUnblockingIP(ip);
+      try {
+        if (apiUrl) {
+          const aiEngineUrl = apiUrl.replace(':3001', ':5000');
+          await fetch(`${aiEngineUrl}/unblock`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip }),
+          });
+        }
+        
+        // Remove from localStorage
+        const current = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
+        const updated = current.filter((i: string) => i !== ip);
+        localStorage.setItem('soc-blocked-ips', JSON.stringify(updated));
+        
+        // Trigger re-render
+        window.location.reload();
+      } catch (error) {
+        console.error('Unblock failed:', error);
+      } finally {
+        setUnblockingIP(null);
+      }
+    };
+
+    const handleRemoveFromList = (ip: string) => {
+      const current = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
+      const updated = current.filter((i: string) => i !== ip);
+      localStorage.setItem('soc-blocked-ips', JSON.stringify(updated));
+      window.location.reload();
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+          Blocked IP Addresses
+        </div>
+        <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+          Danh sách các IP đã bị block thông qua hệ thống AI-SOC hoặc pfSense firewall.
+        </p>
+
+        {/* Local Blocked IPs */}
+        <div className={`border rounded-lg overflow-hidden ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
+          <div className={`p-3 border-b flex items-center justify-between ${isDarkMode ? 'bg-[#18181b] border-[#27272a]' : 'bg-[#f3f4f6] border-[#e5e7eb]'}`}>
+            <div className="flex items-center gap-2">
+              <Ban className="w-4 h-4 text-[#dc2626]" />
+              <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+                Blocked IPs ({blockedIPs.length})
+              </span>
+            </div>
+            {apiUrl && (
+              <button
+                onClick={fetchPfSenseBlockedIPs}
+                disabled={loading}
+                className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded ${isDarkMode ? 'bg-[#27272a] text-[#a1a1aa] hover:bg-[#3f3f46]' : 'bg-[#e5e7eb] text-[#6b7280] hover:bg-[#d1d5db]'}`}
+              >
+                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                Sync with pfSense
+              </button>
+            )}
+          </div>
+
+          {blockedIPs.length === 0 ? (
+            <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+              <Ban className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <div className="text-[11px]">Chưa có IP nào bị block</div>
+              <div className="text-[10px] mt-1">Các IP bị block sẽ hiển thị ở đây</div>
+            </div>
+          ) : (
+            <div className="divide-y divide-[#27272a]">
+              {blockedIPs.map((ip) => (
+                <div key={ip} className={`p-4 flex items-center justify-between ${isDarkMode ? 'hover:bg-[#18181b]' : 'hover:bg-[#f9fafb]'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#dc2626]/20 flex items-center justify-center">
+                      <Ban className="w-5 h-5 text-[#f87171]" />
+                    </div>
+                    <div>
+                      <div className={`text-[13px] font-mono font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+                        {ip}
+                      </div>
+                      <div className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+                        Blocked by AI-SOC
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded text-[9px] font-medium bg-[#dc2626]/20 text-[#f87171]">
+                      BLOCKED
+                    </span>
+                    {apiUrl && (
+                      <button
+                        onClick={() => handleUnblockIP(ip)}
+                        disabled={unblockingIP === ip}
+                        className="px-3 py-1.5 text-[10px] font-medium bg-[#052e16] text-[#4ade80] border border-[#166534] rounded hover:bg-[#166534]/50 disabled:opacity-50"
+                      >
+                        {unblockingIP === ip ? '...' : 'Unblock'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleRemoveFromList(ip)}
+                      className="p-1.5 text-[#71717a] hover:text-[#f87171] hover:bg-[#450a0a] rounded transition-colors"
+                      title="Remove from list"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* pfSense Sync Info */}
+        {apiUrl && (
+          <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+            <div className={`text-[11px] font-semibold mb-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+              pfSense Integration
+            </div>
+            <p className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+              Khi block IP thông qua dashboard, IP sẽ được gửi đến AI-Engine để thêm vào alias <code className="bg-[#27272a] px-1 rounded">AI_Blocked_IP</code> trên pfSense firewall.
+            </p>
+            <div className={`mt-3 text-[10px] font-mono ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+              API Endpoint: POST {apiUrl.replace(':3001', ':5000')}/block
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
   
   const renderListSection = () => (
     <div className="space-y-4">
@@ -707,6 +863,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           <div className="flex-1 overflow-y-auto p-6">
             {activeSection === 'general' && renderGeneralSection()}
             {activeSection === 'sources' && renderSourcesSection()}
+            {activeSection === 'blocked' && renderBlockedIPsSection()}
             {(activeSection === 'blacklist' || activeSection === 'whitelist') && renderListSection()}
             {activeSection === 'help' && renderHelpSection()}
           </div>

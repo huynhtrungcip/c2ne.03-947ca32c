@@ -10,10 +10,22 @@ import VirtualizedEventTable from '@/components/soc/VirtualizedEventTable';
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
 
+// MegaLLM Configuration
+const MEGALLM_API_KEY = 'sk-mega-7bd02bf1c5720f9bde518db892d4da8ef94671adcca28dd19299b1c2d8d4e753';
+const MEGALLM_BASE_URL = 'https://ai.megallm.io/v1';
+const MEGALLM_MODELS = [
+  'openai-gpt-oss-120b',
+  'openai-gpt-oss-20b',
+  'deepseek-r1-distill-llama-70b',
+  'llama3.3-70b-instruct',
+];
+const DEFAULT_MODEL = 'openai-gpt-oss-120b';
+
 // AI Chatbot Panel Component - Gọi trực tiếp MegaLLM API
 const AIChatPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
     { 
       role: 'assistant', 
@@ -29,11 +41,6 @@ Ví dụ câu hỏi:
 - De xuat hanh dong xu ly cho cac PortScan trong 1h gan day` 
     }
   ]);
-
-  // MegaLLM API Configuration
-  const MEGALLM_API_KEY = 'sk-mega-7bd02bf1c5720f9bde518db892d4da8ef94671adcca28dd19299b1c2d8d4e753';
-  const MEGALLM_BASE_URL = 'https://ai.megallm.io/v1';
-  const MEGALLM_MODEL = 'deepseek-r1-distill-llama-70b';
 
   const SOC_SYSTEM_PROMPT = `You are an AI SOC analyst (Tier 2) working on a hybrid NIDS stack with Zeek, Suricata and AI correlation.
 You receive:
@@ -65,7 +72,7 @@ You must:
           'Authorization': `Bearer ${MEGALLM_API_KEY}`
         },
         body: JSON.stringify({
-          model: MEGALLM_MODEL,
+          model: selectedModel,
           messages: [
             { role: 'system', content: SOC_SYSTEM_PROMPT },
             ...messages.map(m => ({ role: m.role, content: m.content })),
@@ -105,7 +112,18 @@ Kiểm tra:
   return (
     <div className="fixed right-4 bottom-4 w-[420px] bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg shadow-2xl z-50">
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f1f]">
-        <span className="text-[11px] font-semibold text-[#e4e4e7] uppercase tracking-wider">🧠 AI Assistant (MegaLLM)</span>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold text-[#e4e4e7] uppercase tracking-wider">🧠 AI Assistant</span>
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="h-6 px-2 text-[9px] bg-[#0a0a0a] border border-[#27272a] rounded text-[#a1a1aa] focus:outline-none focus:border-[#3b82f6]"
+          >
+            {MEGALLM_MODELS.map(model => (
+              <option key={model} value={model}>{model}</option>
+            ))}
+          </select>
+        </div>
         <button onClick={onClose} className="text-[#71717a] hover:text-[#e4e4e7] text-sm">✕</button>
       </div>
       <div className="h-80 overflow-y-auto p-3 space-y-3">
@@ -123,7 +141,7 @@ Kiểm tra:
         {isLoading && (
           <div className="flex justify-start">
             <div className="bg-[#18181b] text-[#a1a1aa] px-3 py-2 rounded-lg text-[11px]">
-              <span className="animate-pulse">🔄 Đang phân tích với MegaLLM...</span>
+              <span className="animate-pulse">🔄 Đang phân tích với {selectedModel}...</span>
             </div>
           </div>
         )}
@@ -162,6 +180,10 @@ const SOCDashboard = () => {
   const [selectedEvent, setSelectedEvent] = useState<SOCEvent | null>(null);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAnalysisOptions, setShowAnalysisOptions] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [blockingIP, setBlockingIP] = useState(false);
+  const [blockResult, setBlockResult] = useState<{ success: boolean; message: string } | null>(null);
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem('soc-theme') as Theme;
     return stored || 'dark';
@@ -305,6 +327,105 @@ const SOCDashboard = () => {
     const verdictBorderColor = selectedEvent.verdict === 'ALERT' ? '#dc2626' : 
                                selectedEvent.verdict === 'SUSPICIOUS' ? '#d97706' : '#16a34a';
     
+    const apiUrl = localStorage.getItem('soc-api-url') || '';
+    
+    // Check if IP is already blocked
+    const blockedIPs = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]') as string[];
+    const isAlreadyBlocked = blockedIPs.includes(selectedEvent.src_ip);
+    
+    const handleAnalyzeFlow = async (analyzeAll: boolean) => {
+      setShowAnalysisOptions(false);
+      setAnalysisLoading(true);
+      
+      try {
+        const eventData = analyzeAll 
+          ? { ip: selectedEvent.src_ip, events: events.filter(e => e.src_ip === selectedEvent.src_ip) }
+          : { event: selectedEvent };
+        
+        const prompt = analyzeAll 
+          ? `Phân tích TẤT CẢ flows từ IP ${selectedEvent.src_ip}. Dữ liệu:\n${JSON.stringify(eventData, null, 2)}`
+          : `Phân tích flow đơn lẻ này:\n${JSON.stringify(eventData, null, 2)}`;
+        
+        // Call MegaLLM API directly
+        const response = await fetch(`${MEGALLM_BASE_URL}/chat/completions`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${MEGALLM_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: DEFAULT_MODEL,
+            messages: [
+              { role: 'system', content: `You are an AI SOC analyst (Tier 2). Analyze the provided network flow data and provide:
+1. Risk assessment (Critical/High/Medium/Low)
+2. Attack type classification
+3. Recommended actions (Block/Investigate/Ignore)
+4. Brief reasoning
+Answer in Vietnamese, keep technical terms in English.` },
+              { role: 'user', content: prompt }
+            ],
+            max_tokens: 2048,
+            temperature: 0.7
+          }),
+        });
+        
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        
+        const data = await response.json();
+        const analysis = data.choices?.[0]?.message?.content || 'Không thể phân tích';
+        
+        // Show result in AI Chat panel
+        setShowAIChat(true);
+      } catch (error) {
+        console.error('Analysis error:', error);
+      } finally {
+        setAnalysisLoading(false);
+      }
+    };
+    
+    const handleBlockIP = async () => {
+      if (!selectedEvent?.src_ip) return;
+      setBlockingIP(true);
+      setBlockResult(null);
+      
+      try {
+        // Try to call AI-Engine API if available
+        if (apiUrl) {
+          const aiEngineUrl = apiUrl.replace(':3001', ':5000');
+          const response = await fetch(`${aiEngineUrl}/block`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip: selectedEvent.src_ip }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            setBlockResult({ success: data.success, message: data.message || 'IP đã được block thành công!' });
+          } else {
+            throw new Error('API không phản hồi');
+          }
+        } else {
+          // Simulate blocking for demo
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          setBlockResult({ success: true, message: `IP ${selectedEvent.src_ip} đã được thêm vào danh sách block!` });
+        }
+        
+        // Save to local storage
+        const currentBlocked = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
+        if (!currentBlocked.includes(selectedEvent.src_ip)) {
+          currentBlocked.push(selectedEvent.src_ip);
+          localStorage.setItem('soc-blocked-ips', JSON.stringify(currentBlocked));
+        }
+      } catch (error) {
+        setBlockResult({ 
+          success: false, 
+          message: `Lỗi: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        });
+      } finally {
+        setBlockingIP(false);
+      }
+    };
+    
     return (
       <div className="mt-4 bg-[#0a0a0a] border-2 rounded-lg shadow-xl" style={{ borderColor: verdictBorderColor }}>
         <div className="p-4 border-b border-[#1f1f1f] flex items-center justify-between bg-[#0f0f0f] rounded-t-lg">
@@ -350,15 +471,60 @@ const SOCDashboard = () => {
           </pre>
         </div>
         
+        {/* Block Result Feedback */}
+        {blockResult && (
+          <div className={`mx-5 mb-4 p-3 rounded-lg border text-[11px] ${
+            blockResult.success 
+              ? 'bg-[#052e16] border-[#166534] text-[#4ade80]' 
+              : 'bg-[#450a0a] border-[#7f1d1d] text-[#f87171]'
+          }`}>
+            {blockResult.success ? '✓' : '✗'} {blockResult.message}
+          </div>
+        )}
+        
         <div className="px-5 pb-5 flex gap-3">
+          {/* Ask ASSISTANT with dropdown */}
+          <div className="relative flex-1">
+            <button 
+              onClick={() => setShowAnalysisOptions(!showAnalysisOptions)}
+              disabled={analysisLoading}
+              className="w-full px-4 py-2.5 text-[11px] font-semibold bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded-lg hover:bg-[#1e40af]/50 transition-colors disabled:opacity-50"
+            >
+              {analysisLoading ? '🔄 Đang phân tích...' : '🧠 Ask ASSISTANT About This Flow ▾'}
+            </button>
+            
+            {/* Dropdown options */}
+            {showAnalysisOptions && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-[#18181b] border border-[#27272a] rounded-lg shadow-xl z-10 overflow-hidden">
+                <button
+                  onClick={() => handleAnalyzeFlow(false)}
+                  className="w-full px-4 py-3 text-left text-[11px] text-[#a1a1aa] hover:bg-[#27272a] hover:text-[#e4e4e7] transition-colors border-b border-[#27272a]"
+                >
+                  <div className="font-semibold text-[#60a5fa]">🔍 Phân tích Flow này</div>
+                  <div className="text-[10px] text-[#52525b] mt-0.5">Chỉ phân tích sự kiện đang chọn</div>
+                </button>
+                <button
+                  onClick={() => handleAnalyzeFlow(true)}
+                  className="w-full px-4 py-3 text-left text-[11px] text-[#a1a1aa] hover:bg-[#27272a] hover:text-[#e4e4e7] transition-colors"
+                >
+                  <div className="font-semibold text-[#fbbf24]">📊 Phân tích TẤT CẢ từ IP {selectedEvent.src_ip}</div>
+                  <div className="text-[10px] text-[#52525b] mt-0.5">Phân tích toàn bộ flows từ IP nguồn này</div>
+                </button>
+              </div>
+            )}
+          </div>
+          
+          {/* Block IP Button */}
           <button 
-            onClick={() => setShowAIChat(true)}
-            className="flex-1 px-4 py-2.5 text-[11px] font-semibold bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded-lg hover:bg-[#1e40af]/50 transition-colors"
+            onClick={handleBlockIP}
+            disabled={blockingIP || isAlreadyBlocked}
+            className={`flex-1 px-4 py-2.5 text-[11px] font-semibold rounded-lg transition-colors ${
+              isAlreadyBlocked
+                ? 'bg-[#27272a] text-[#52525b] border border-[#3f3f46] cursor-not-allowed'
+                : 'bg-[#450a0a] text-[#f87171] border border-[#7f1d1d] hover:bg-[#7f1d1d]/50'
+            } disabled:opacity-50`}
           >
-            Ask ASSISTANT About This Flow
-          </button>
-          <button className="flex-1 px-4 py-2.5 text-[11px] font-semibold bg-[#450a0a] text-[#f87171] border border-[#7f1d1d] rounded-lg hover:bg-[#7f1d1d]/50 transition-colors">
-            Block IP {selectedEvent.src_ip} on pfSense
+            {blockingIP ? '🔄 Đang block...' : isAlreadyBlocked ? `✓ IP đã bị block` : `🚫 Block IP ${selectedEvent.src_ip}`}
           </button>
         </div>
       </div>
