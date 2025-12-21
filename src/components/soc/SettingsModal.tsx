@@ -70,6 +70,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   const [newItem, setNewItem] = useState({ value: '', type: 'ip' as 'ip' | 'domain', note: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Blocked IPs state (moved from renderBlockedIPsSection)
+  const [blockedIPsLoading, setBlockedIPsLoading] = useState(false);
+  const [pfSenseBlockedIPs, setPfSenseBlockedIPs] = useState<string[]>([]);
+  const [unblockingIP, setUnblockingIP] = useState<string | null>(null);
+  const [blockedIPsList, setBlockedIPsList] = useState<string[]>(() => {
+    return JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
+  });
+
   // API URL for backend
   const apiUrl = localStorage.getItem('soc-api-url') || '';
   const [apiUrlInput, setApiUrlInput] = useState(apiUrl);
@@ -294,15 +302,9 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   );
 
   const renderBlockedIPsSection = () => {
-    const blockedIPs = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]') as string[];
-    const apiUrl = localStorage.getItem('soc-api-url') || '';
-    const [loading, setLoading] = useState(false);
-    const [pfSenseBlockedIPs, setPfSenseBlockedIPs] = useState<string[]>([]);
-    const [unblockingIP, setUnblockingIP] = useState<string | null>(null);
-
     const fetchPfSenseBlockedIPs = async () => {
       if (!apiUrl) return;
-      setLoading(true);
+      setBlockedIPsLoading(true);
       try {
         const aiEngineUrl = apiUrl.replace(':3001', ':5000');
         const response = await fetch(`${aiEngineUrl}/blocked-ips`);
@@ -313,7 +315,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       } catch (error) {
         console.error('Failed to fetch blocked IPs:', error);
       } finally {
-        setLoading(false);
+        setBlockedIPsLoading(false);
       }
     };
 
@@ -329,13 +331,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           });
         }
         
-        // Remove from localStorage
-        const current = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
-        const updated = current.filter((i: string) => i !== ip);
+        // Remove from localStorage and state
+        const updated = blockedIPsList.filter((i: string) => i !== ip);
         localStorage.setItem('soc-blocked-ips', JSON.stringify(updated));
-        
-        // Trigger re-render
-        window.location.reload();
+        setBlockedIPsList(updated);
       } catch (error) {
         console.error('Unblock failed:', error);
       } finally {
@@ -344,10 +343,9 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     };
 
     const handleRemoveFromList = (ip: string) => {
-      const current = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
-      const updated = current.filter((i: string) => i !== ip);
+      const updated = blockedIPsList.filter((i: string) => i !== ip);
       localStorage.setItem('soc-blocked-ips', JSON.stringify(updated));
-      window.location.reload();
+      setBlockedIPsList(updated);
     };
 
     return (
@@ -365,22 +363,22 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             <div className="flex items-center gap-2">
               <Ban className="w-4 h-4 text-[#dc2626]" />
               <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
-                Blocked IPs ({blockedIPs.length})
+                Blocked IPs ({blockedIPsList.length})
               </span>
             </div>
             {apiUrl && (
               <button
                 onClick={fetchPfSenseBlockedIPs}
-                disabled={loading}
+                disabled={blockedIPsLoading}
                 className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded ${isDarkMode ? 'bg-[#27272a] text-[#a1a1aa] hover:bg-[#3f3f46]' : 'bg-[#e5e7eb] text-[#6b7280] hover:bg-[#d1d5db]'}`}
               >
-                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3 h-3 ${blockedIPsLoading ? 'animate-spin' : ''}`} />
                 Sync with pfSense
               </button>
             )}
           </div>
 
-          {blockedIPs.length === 0 ? (
+          {blockedIPsList.length === 0 ? (
             <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
               <Ban className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <div className="text-[11px]">Chưa có IP nào bị block</div>
@@ -388,7 +386,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             </div>
           ) : (
             <div className="divide-y divide-[#27272a]">
-              {blockedIPs.map((ip) => (
+              {blockedIPsList.map((ip) => (
                 <div key={ip} className={`p-4 flex items-center justify-between ${isDarkMode ? 'hover:bg-[#18181b]' : 'hover:bg-[#f9fafb]'}`}>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-[#dc2626]/20 flex items-center justify-center">
