@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSOCData } from '@/hooks/useSOCData';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { SOCEvent } from '@/types/soc';
 import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
-import { Settings } from 'lucide-react';
+import { Settings, Wifi, WifiOff } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import SettingsModal from '@/components/soc/SettingsModal';
@@ -260,6 +261,38 @@ const SOCDashboard = () => {
   const [sigFilter, setSigFilter] = useState('');
   const [minConfidence, setMinConfidence] = useState(0);
 
+  // WebSocket configuration
+  const apiUrl = localStorage.getItem('soc-api-url') || '';
+  const wsUrl = apiUrl ? apiUrl.replace('http://', 'ws://').replace(':3001', ':8000') + '/ws' : '';
+  const [useWsRealtime, setUseWsRealtime] = useState(true);
+
+  const { events, metrics, topSources, attackTypeData, trafficData, timeRanges, wsConnected, setWsConnected, addEvent } = useSOCData(
+    timeRange,
+    viewMode,
+    isLive,
+    { verdictFocus, ipFilter, sigFilter, minConfidence },
+    { useWebSocket: useWsRealtime && isLive && !!wsUrl }
+  );
+
+  // WebSocket connection for real-time events
+  const handleWebSocketEvent = useCallback((event: SOCEvent) => {
+    if (isLive) {
+      addEvent(event);
+    }
+  }, [isLive, addEvent]);
+
+  const handleConnectionChange = useCallback((connected: boolean) => {
+    setWsConnected(connected);
+  }, [setWsConnected]);
+
+  const { isConnected: wsIsConnected, eventCount: wsEventCount } = useWebSocket({
+    url: wsUrl,
+    enabled: useWsRealtime && isLive && !!wsUrl,
+    onEvent: handleWebSocketEvent,
+    onConnectionChange: handleConnectionChange,
+    reconnectInterval: 5000,
+  });
+
   // Apply theme
   useEffect(() => {
     const root = document.documentElement;
@@ -268,13 +301,6 @@ const SOCDashboard = () => {
   }, [theme]);
 
   const isDarkMode = theme === 'dark';
-
-  const { events, metrics, topSources, attackTypeData, trafficData, timeRanges } = useSOCData(
-    timeRange,
-    viewMode,
-    isLive,
-    { verdictFocus, ipFilter, sigFilter, minConfidence }
-  );
 
   useEffect(() => {
     if (isLive) setSelectedEvent(null);
@@ -1214,6 +1240,26 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
       <div className="p-4">
         {/* Controls - themed */}
         <div className="flex items-center gap-3 mb-4">
+          {/* WebSocket Status Indicator */}
+          {wsUrl && (
+            <div className={`flex items-center gap-2 px-3 py-1.5 border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+              {wsIsConnected ? (
+                <>
+                  <Wifi className="w-3.5 h-3.5 text-[#22c55e]" />
+                  <span className="text-[10px] text-[#22c55e] font-medium">NIDS Connected</span>
+                  {wsEventCount > 0 && (
+                    <span className="text-[9px] text-[#71717a]">({wsEventCount} events)</span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-[#f59e0b]" />
+                  <span className="text-[10px] text-[#f59e0b] font-medium">NIDS Offline</span>
+                </>
+              )}
+            </div>
+          )}
+
           <div className={`flex items-center gap-2 px-3 py-1.5 border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
             <span className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Live</span>
             <button 

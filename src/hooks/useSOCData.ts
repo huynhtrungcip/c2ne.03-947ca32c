@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { SOCEvent, SOCMetrics, TimeRange } from '@/types/soc';
 import { mockEvents, generateMockEvents } from '@/data/mockEvents';
 
@@ -16,17 +16,60 @@ interface Filters {
   minConfidence: number;
 }
 
+interface UseSOCDataOptions {
+  useWebSocket?: boolean;
+  wsUrl?: string;
+  onWebSocketEvent?: (event: SOCEvent) => void;
+}
+
 export const useSOCData = (
   timeRange: string, 
   viewMode: 'all' | 'alerts', 
   isLive: boolean,
-  filters: Filters
+  filters: Filters,
+  options?: UseSOCDataOptions
 ) => {
   const [events, setEvents] = useState<SOCEvent[]>(mockEvents);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [wsConnected, setWsConnected] = useState(false);
+  const [wsEventCount, setWsEventCount] = useState(0);
 
+  // Add new event (from WebSocket or any source)
+  const addEvent = useCallback((event: SOCEvent) => {
+    setEvents(prev => [event, ...prev].slice(0, 20000));
+    setLastUpdate(new Date());
+    setWsEventCount(c => c + 1);
+    options?.onWebSocketEvent?.(event);
+  }, [options]);
+
+  // Listen for custom event to refresh data
+  useEffect(() => {
+    const handleDataUpdate = () => {
+      const stored = localStorage.getItem('soc-events');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          const eventsWithDates = parsed.map((e: Record<string, unknown>) => ({
+            ...e,
+            timestamp: new Date(e.timestamp as string),
+          }));
+          setEvents(eventsWithDates);
+        } catch (err) {
+          console.error('Failed to parse stored events:', err);
+        }
+      }
+    };
+    
+    window.addEventListener('soc-data-updated', handleDataUpdate);
+    return () => window.removeEventListener('soc-data-updated', handleDataUpdate);
+  }, []);
+
+  // Mock event generation (fallback when WebSocket is not connected)
   useEffect(() => {
     if (!isLive) return;
+    
+    // If WebSocket is connected, don't generate mock events
+    if (options?.useWebSocket && wsConnected) return;
 
     const interval = setInterval(() => {
       const newEvents = generateMockEvents(Math.floor(Math.random() * 3) + 1);
@@ -35,7 +78,7 @@ export const useSOCData = (
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [isLive]);
+  }, [isLive, wsConnected, options?.useWebSocket]);
 
   const filteredEvents = (() => {
     const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
@@ -199,6 +242,11 @@ export const useSOCData = (
     attackTypeData,
     trafficData,
     lastUpdate,
-    timeRanges
+    timeRanges,
+    // WebSocket state
+    wsConnected,
+    setWsConnected,
+    wsEventCount,
+    addEvent,
   };
 };
