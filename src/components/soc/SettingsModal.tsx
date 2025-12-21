@@ -466,6 +466,44 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         </div>
       </div>
 
+      {/* Backend API URL - Required for Telegram */}
+      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+        <div className={`text-[11px] font-semibold mb-2 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+          <Server className="w-4 h-4 text-[#22c55e]" />
+          Backend API URL
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="http://192.168.1.100:8000"
+            value={apiUrlInput}
+            onChange={(e) => setApiUrlInput(e.target.value)}
+            className={`flex-1 h-9 px-3 text-[11px] font-mono border rounded-lg ${
+              isDarkMode 
+                ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7] placeholder-[#52525b]' 
+                : 'bg-white border-[#d1d5db] text-[#111827] placeholder-[#9ca3af]'
+            }`}
+          />
+          <button
+            onClick={handleSaveApiUrl}
+            className="px-4 h-9 text-[11px] font-medium bg-[#22c55e] text-white rounded-lg hover:bg-[#16a34a]"
+          >
+            Lưu
+          </button>
+        </div>
+        <p className={`mt-1.5 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+          URL của backend AI Engine (ví dụ: http://localhost:8000). Bắt buộc để gửi Telegram.
+        </p>
+        {apiUrl && (
+          <div className="mt-2 flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse" />
+            <span className={`text-[9px] ${isDarkMode ? 'text-[#22c55e]' : 'text-[#16a34a]'}`}>
+              Đã kết nối: {apiUrl}
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* Bot Configuration */}
       <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
         <div className={`text-[11px] font-semibold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
@@ -491,7 +529,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               }`}
             />
             <p className={`mt-1 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-              Tạo bot tại @BotFather trên Telegram, sau đó copy token
+              Tạo bot tại @BotFather, copy token có dạng: 123456789:ABCxyz...
             </p>
           </div>
 
