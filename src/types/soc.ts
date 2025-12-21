@@ -3,7 +3,8 @@ export interface SOCEvent {
   timestamp: Date;
   src_ip: string;
   dst_ip: string;
-  dst_port: number;
+  src_port?: number;
+  dst_port?: number;
   protocol: string;
   verdict: 'ALERT' | 'SUSPICIOUS' | 'BENIGN' | 'FALSE_POSITIVE';
   attack_type: string;
