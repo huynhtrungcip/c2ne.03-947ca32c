@@ -21,7 +21,7 @@ from config import (
     get_attack_severity,
 )
 from ai_analyzer import analyze_flow, analyze_ip_flows, load_models, AI_BRAIN
-from pfsense_client import block_ip_on_pfsense, unblock_ip_on_pfsense
+from pfsense_client import block_ip_on_pfsense, unblock_ip_on_pfsense, get_blocked_ips
 from megallm_client import (
     chat_with_megallm,
     generate_playbook,
@@ -276,6 +276,21 @@ async def unblock_ip(req: BlockIPRequest):
         "message": message,
         "ip": req.ip,
         "debug": debug,
+    }
+
+
+@app.get("/blocked-ips")
+async def list_blocked_ips():
+    """
+    Lấy danh sách IP đang bị block từ pfSense alias.
+    Dùng để sync với dashboard.
+    """
+    success, ips, debug = get_blocked_ips()
+    return {
+        "success": success,
+        "ips": ips,
+        "count": len(ips),
+        "alias": debug.get("alias", ""),
     }
 
 

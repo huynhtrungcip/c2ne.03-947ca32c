@@ -257,3 +257,69 @@ def unblock_ip_on_pfsense(ip: str) -> Tuple[bool, str, Dict[str, Any]]:
     except Exception as e:
         debug["exception"] = repr(e)
         return False, f"Error: {e}", debug
+
+
+def get_blocked_ips() -> Tuple[bool, List[str], Dict[str, Any]]:
+    """
+    Lấy danh sách IP đang bị block trong alias AI_Blocked_IP từ pfSense.
+    
+    Returns:
+        - success (bool)
+        - list of blocked IPs (List[str])
+        - debug_info (dict)
+    """
+    debug: Dict[str, Any] = {"alias": PFSENSE_ALIAS}
+    
+    if not PFSENSE_API_KEY:
+        return False, [], {"error": "pfSense API key not configured"}
+    
+    base_url = f"http://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    headers = {
+        "X-API-Key": PFSENSE_API_KEY,
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    
+    try:
+        # GET alias
+        list_url = f"{base_url}/firewall/aliases?name={PFSENSE_ALIAS}"
+        debug["list_url"] = list_url
+        
+        r = requests.get(list_url, headers=headers, timeout=5, verify=False)
+        debug["status_code"] = r.status_code
+        
+        if r.status_code != 200:
+            return False, [], debug
+        
+        data = r.json()
+        aliases = data.get("data", data)
+        alias_obj = None
+        
+        if isinstance(aliases, list):
+            for item in aliases:
+                if item.get("name") == PFSENSE_ALIAS:
+                    alias_obj = item
+                    break
+        elif isinstance(aliases, dict) and aliases.get("name") == PFSENSE_ALIAS:
+            alias_obj = aliases
+        
+        if not alias_obj:
+            debug["error"] = f"Alias '{PFSENSE_ALIAS}' not found"
+            return False, [], debug
+        
+        # Get addresses
+        raw_addresses = alias_obj.get("address", [])
+        
+        if isinstance(raw_addresses, str):
+            blocked_ips = [a.strip() for a in raw_addresses.split(" ") if a.strip()]
+        elif isinstance(raw_addresses, list):
+            blocked_ips = [str(a).strip() for a in raw_addresses if str(a).strip()]
+        else:
+            blocked_ips = []
+        
+        debug["count"] = len(blocked_ips)
+        return True, blocked_ips, debug
+    
+    except Exception as e:
+        debug["exception"] = repr(e)
+        return False, [], debug
