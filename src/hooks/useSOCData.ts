@@ -30,7 +30,7 @@ export const useSOCData = (
 
     const interval = setInterval(() => {
       const newEvents = generateMockEvents(Math.floor(Math.random() * 3) + 1);
-      setEvents(prev => [...newEvents, ...prev].slice(0, 1000));
+      setEvents(prev => [...newEvents, ...prev].slice(0, 20000));
       setLastUpdate(new Date());
     }, 3000);
 
