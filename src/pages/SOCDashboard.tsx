@@ -215,17 +215,17 @@ const SOCDashboard = () => {
         {!isLive && <span className="text-[9px] text-[#22c55e]">Click any row to inspect</span>}
       </div>
 
-      <div className="overflow-auto max-h-[400px]">
+      <div className="overflow-auto max-h-[400px] relative">
         <table className="w-full text-[10px]">
-          <thead className={`sticky top-0 ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>
-            <tr className={`uppercase tracking-wider border-b ${isDarkMode ? 'text-[#52525b] border-[#1f1f1f]' : 'text-[#9ca3af] border-[#e5e7eb]'}`}>
-              <th className="text-left py-2 px-3 font-medium">Time</th>
-              <th className="text-left py-2 px-3 font-medium">Verdict</th>
-              <th className="text-left py-2 px-3 font-medium">Source</th>
-              <th className="text-left py-2 px-3 font-medium">Destination</th>
-              <th className="text-left py-2 px-3 font-medium">Port</th>
-              <th className="text-left py-2 px-3 font-medium">Signature</th>
-              <th className="text-right py-2 px-3 font-medium">Conf</th>
+          <thead className={`sticky top-0 z-10 ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`} style={{ boxShadow: isDarkMode ? '0 1px 0 #1f1f1f' : '0 1px 0 #e5e7eb' }}>
+            <tr className={`uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Time</th>
+              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Verdict</th>
+              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Source</th>
+              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Destination</th>
+              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Port</th>
+              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Signature</th>
+              <th className={`text-right py-2 px-3 font-medium ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f9fafb]'}`}>Conf</th>
             </tr>
           </thead>
           <tbody>
