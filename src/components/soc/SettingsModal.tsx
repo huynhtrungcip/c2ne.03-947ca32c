@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users } from 'lucide-react';
+import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 type Theme = 'light' | 'dark';
 
@@ -19,7 +20,7 @@ interface ListItem {
 }
 
 const TIMEZONES = [
-  { value: 'Asia/Ho_Chi_Minh', label: 'Việt Nam (UTC+7)' },
+  { value: 'Asia/Ho_Chi_Minh', label: 'Vietnam (UTC+7)' },
   { value: 'Asia/Bangkok', label: 'Thailand (UTC+7)' },
   { value: 'Asia/Singapore', label: 'Singapore (UTC+8)' },
   { value: 'Asia/Tokyo', label: 'Japan (UTC+9)' },
@@ -32,6 +33,7 @@ const TIMEZONES = [
 ];
 
 const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: SettingsModalProps) => {
+  const { language, setLanguage, t } = useLanguage();
   const [activeSection, setActiveSection] = useState<'general' | 'blacklist' | 'whitelist' | 'help'>('general');
   const [timezone, setTimezone] = useState(() => localStorage.getItem('soc-timezone') || 'Asia/Ho_Chi_Minh');
   
@@ -97,22 +99,19 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   };
   
   const sections = [
-    { id: 'general', label: 'Cài đặt chung', icon: Settings },
-    { id: 'blacklist', label: 'Danh sách đen', icon: Shield },
-    { id: 'whitelist', label: 'Danh sách trắng', icon: List },
-    { id: 'help', label: 'Hướng dẫn', icon: HelpCircle },
+    { id: 'general', label: t('settings.general'), icon: Settings },
+    { id: 'blacklist', label: t('settings.blacklist'), icon: Shield },
+    { id: 'whitelist', label: t('settings.whitelist'), icon: List },
+    { id: 'help', label: t('settings.help'), icon: HelpCircle },
   ];
   
   const renderListSection = () => (
     <div className="space-y-4">
       <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
-        {activeSection === 'blacklist' ? 'Danh sách đen (Blacklist)' : 'Danh sách trắng (Whitelist)'}
+        {activeSection === 'blacklist' ? t('list.blacklistTitle') : t('list.whitelistTitle')}
       </div>
       <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
-        {activeSection === 'blacklist' 
-          ? 'Các IP/Domain trong danh sách sẽ bị chặn tự động' 
-          : 'Các IP/Domain trong danh sách sẽ được tin tưởng và bỏ qua cảnh báo'
-        }
+        {activeSection === 'blacklist' ? t('list.blacklistDesc') : t('list.whitelistDesc')}
       </p>
       
       {/* Add new item form */}
@@ -120,7 +119,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <div className="grid grid-cols-12 gap-2">
           <input
             type="text"
-            placeholder="IP hoặc Domain..."
+            placeholder={t('list.ipOrDomain')}
             value={newItem.value}
             onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
             className={`col-span-4 h-8 px-3 text-[11px] border rounded ${
@@ -143,7 +142,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </select>
           <input
             type="text"
-            placeholder="Ghi chú..."
+            placeholder={t('list.note')}
             value={newItem.note}
             onChange={(e) => setNewItem({ ...newItem, note: e.target.value })}
             className={`col-span-4 h-8 px-3 text-[11px] border rounded ${
@@ -161,7 +160,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             }`}
           >
             <Plus className="w-3.5 h-3.5" />
-            Thêm
+            {t('list.add')}
           </button>
         </div>
       </div>
@@ -171,17 +170,17 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <table className="w-full text-[11px]">
           <thead>
             <tr className={isDarkMode ? 'bg-[#18181b]' : 'bg-[#f3f4f6]'}>
-              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>Giá trị</th>
-              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>Loại</th>
-              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>Ghi chú</th>
-              <th className={`text-right py-2 px-3 font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>Hành động</th>
+              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{t('list.value')}</th>
+              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{t('list.type')}</th>
+              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{t('list.note')}</th>
+              <th className={`text-right py-2 px-3 font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{t('list.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {currentList.length === 0 ? (
               <tr>
                 <td colSpan={4} className={`text-center py-6 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-                  Danh sách trống
+                  {t('list.empty')}
                 </td>
               </tr>
             ) : currentList.map((item) => (
@@ -233,20 +232,53 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       </div>
       
       <div className={`text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-        Tổng cộng: {currentList.length} mục
+        {t('list.total')}: {currentList.length} {t('list.items')}
       </div>
     </div>
   );
   
   const renderGeneralSection = () => (
     <div className="space-y-6">
-      {/* Theme Selection */}
+      {/* Language Selection */}
       <div>
-        <div className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>Giao diện</div>
+        <div className={`text-sm font-semibold mb-3 flex items-center gap-2 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+          <Globe className="w-4 h-4" />
+          {t('settings.language')}
+        </div>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { value: 'light', icon: Sun, label: 'Sáng', desc: 'Giao diện màu trắng' },
-            { value: 'dark', icon: Moon, label: 'Tối', desc: 'Giao diện màu đen' },
+            { value: 'en', label: t('settings.english'), flag: '🇺🇸' },
+            { value: 'vi', label: t('settings.vietnamese'), flag: '🇻🇳' },
+          ].map(({ value, label, flag }) => (
+            <button
+              key={value}
+              onClick={() => setLanguage(value as 'en' | 'vi')}
+              className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                language === value
+                  ? isDarkMode 
+                    ? 'bg-[#1e3a5f] border-[#3b82f6] text-[#60a5fa]'
+                    : 'bg-[#eff6ff] border-[#3b82f6] text-[#2563eb]'
+                  : isDarkMode
+                    ? 'bg-[#18181b] border-[#27272a] text-[#a1a1aa] hover:border-[#3f3f46]'
+                    : 'bg-[#f9fafb] border-[#e5e7eb] text-[#6b7280] hover:border-[#d1d5db]'
+              }`}
+            >
+              <span className="text-xl">{flag}</span>
+              <div className="text-left">
+                <div className="text-[12px] font-medium">{label}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Theme Selection */}
+      <div>
+        <div className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>{t('settings.theme')}</div>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { value: 'light', icon: Sun, label: t('settings.light'), desc: t('settings.lightDesc') },
+            { value: 'dark', icon: Moon, label: t('settings.dark'), desc: t('settings.darkDesc') },
           ].map(({ value, icon: Icon, label, desc }) => (
             <button
               key={value}
@@ -275,7 +307,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       <div>
         <div className={`text-sm font-semibold mb-3 flex items-center gap-2 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
           <Clock className="w-4 h-4" />
-          Múi giờ
+          {t('settings.timezone')}
         </div>
         <select
           value={timezone}
@@ -291,26 +323,26 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           ))}
         </select>
         <p className={`mt-2 text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-          Thời gian hiển thị trên dashboard sẽ theo múi giờ này
+          {t('settings.timezoneHint')}
         </p>
       </div>
       
       {/* Dashboard Info */}
       <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
         <div className={`text-[10px] uppercase tracking-wider mb-3 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
-          Thông tin hệ thống
+          {t('settings.sysInfo')}
         </div>
         <div className={`space-y-2 text-[11px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
           <div className="flex justify-between">
-            <span>Phiên bản:</span>
+            <span>{t('settings.version')}:</span>
             <span className={`font-mono ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>2.0.0</span>
           </div>
           <div className="flex justify-between">
-            <span>Engine:</span>
+            <span>{t('settings.engine')}:</span>
             <span className={`font-mono ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>Hybrid NIDS</span>
           </div>
           <div className="flex justify-between">
-            <span>Múi giờ:</span>
+            <span>{t('settings.timezone')}:</span>
             <span className={`font-mono ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>{timezone}</span>
           </div>
         </div>
@@ -321,26 +353,26 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   const renderHelpSection = () => (
     <div className="space-y-6">
       <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
-        Hướng dẫn sử dụng SOC Dashboard
+        {t('help.title')}
       </div>
       
       {/* Quick Guide */}
       <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
         <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
-          Tổng quan các tab
+          {t('help.tabOverview')}
         </div>
         <div className={`space-y-3 text-[11px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
           <div>
-            <span className={`font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>Overview:</span> Tổng quan các sự kiện bảo mật, biểu đồ traffic và phân bố tấn công.
+            <span className={`font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>Overview:</span> {t('help.overviewDesc')}
           </div>
           <div>
-            <span className={`font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>Events:</span> Danh sách chi tiết tất cả các sự kiện với bộ lọc nâng cao.
+            <span className={`font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>Events:</span> {t('help.eventsDesc')}
           </div>
           <div>
-            <span className={`font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>Threats:</span> Phân tích mối đe dọa, nguồn tấn công và chữ ký độc hại.
+            <span className={`font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>Threats:</span> {t('help.threatsDesc')}
           </div>
           <div>
-            <span className={`font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>Reports:</span> Báo cáo tổng hợp và phân tích xu hướng.
+            <span className={`font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>Reports:</span> {t('help.reportsDesc')}
           </div>
         </div>
       </div>
@@ -348,43 +380,43 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       {/* Features */}
       <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
         <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
-          Các tính năng chính
+          {t('help.features')}
         </div>
         <ul className={`space-y-2 text-[11px] list-disc list-inside ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
-          <li><strong>LIVE Mode:</strong> Theo dõi sự kiện realtime, tắt để kiểm tra chi tiết</li>
-          <li><strong>Auto Block:</strong> Tự động chặn IP đáng ngờ trên pfSense</li>
-          <li><strong>Filters:</strong> Lọc theo Verdict, IP, Signature, Confidence</li>
-          <li><strong>Event Inspector:</strong> Click vào event để xem chi tiết (tắt LIVE mode trước)</li>
-          <li><strong>AI Assistant:</strong> Hỏi AI về các pattern tấn công</li>
-          <li><strong>Blacklist/Whitelist:</strong> Quản lý danh sách IP/Domain</li>
+          <li><strong>LIVE Mode:</strong> Real-time event monitoring, disable to inspect details</li>
+          <li><strong>Auto Block:</strong> Automatically block suspicious IPs on pfSense</li>
+          <li><strong>Filters:</strong> Filter by Verdict, IP, Signature, Confidence</li>
+          <li><strong>Event Inspector:</strong> Click event to view details (disable LIVE mode first)</li>
+          <li><strong>AI Assistant:</strong> Ask AI about attack patterns</li>
+          <li><strong>Blacklist/Whitelist:</strong> Manage IP/Domain lists</li>
         </ul>
       </div>
       
       {/* Verdicts Guide */}
       <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
         <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
-          Ý nghĩa các mức Verdict
+          {t('help.verdictMeaning')}
         </div>
         <div className="space-y-2 text-[11px]">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-[#dc2626]"></span>
             <span className={isDarkMode ? 'text-[#f87171]' : 'text-[#dc2626]'}>ALERT:</span>
-            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>Cảnh báo nghiêm trọng, cần xử lý ngay</span>
+            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>{t('help.alertDesc')}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-[#f59e0b]"></span>
             <span className={isDarkMode ? 'text-[#fbbf24]' : 'text-[#d97706]'}>SUSPICIOUS:</span>
-            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>Đáng ngờ, cần theo dõi</span>
+            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>{t('help.suspiciousDesc')}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-[#22c55e]"></span>
             <span className={isDarkMode ? 'text-[#4ade80]' : 'text-[#16a34a]'}>FALSE_POSITIVE:</span>
-            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>Cảnh báo sai, không nguy hiểm</span>
+            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>{t('help.falsePositiveDesc')}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded bg-[#71717a]"></span>
             <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>BENIGN:</span>
-            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>Hoạt động bình thường</span>
+            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>{t('help.benignDesc')}</span>
           </div>
         </div>
       </div>
@@ -394,17 +426,17 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <div className="flex items-center gap-2 mb-3">
           <Users className="w-4 h-4 text-[#3b82f6]" />
           <div className={`text-[11px] font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
-            Đội ngũ phát triển
+            {t('help.devTeam')}
           </div>
         </div>
         <div className={`text-[12px] font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>
-          Nhóm C1NE.03
+          C1NE.03 Team
         </div>
         <div className={`text-[11px] mt-1 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
-          Chuyên ngành An ninh mạng K28
+          Cybersecurity K28
         </div>
         <div className={`text-[11px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
-          Đại học Duy Tân
+          Duy Tan University
         </div>
         <div className={`mt-3 pt-3 border-t text-[10px] ${isDarkMode ? 'border-[#27272a] text-[#52525b]' : 'border-[#e5e7eb] text-[#9ca3af]'}`}>
           © 2025 SOC Dashboard - All Rights Reserved
@@ -428,7 +460,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         {/* Sidebar */}
         <div className={`w-52 border-r flex-shrink-0 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
           <div className={`p-4 border-b ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#e5e7eb]'}`}>
-            <div className={`text-sm font-bold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>Cài đặt</div>
+            <div className={`text-sm font-bold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>{t('settings.title')}</div>
           </div>
           <div className="p-2">
             {sections.map((section) => (
