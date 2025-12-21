@@ -28,6 +28,7 @@ from megallm_client import (
     MEGALLM_DEFAULT_MODEL,
     MEGALLM_API_KEY,
 )
+from ingest import router as ingest_router
 
 # Logging setup
 logging.basicConfig(
@@ -41,7 +42,7 @@ logger = logging.getLogger("AI_ENGINE")
 app = FastAPI(
     title="AI-SOC False Positive Reduction Engine",
     description="Hệ thống AI phân tích log Suricata + Zeek với MegaLLM Assistant",
-    version="2.2.0",
+    version="2.3.0",
 )
 
 # CORS middleware
@@ -52,6 +53,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include ingest router for /ingest endpoint
+app.include_router(ingest_router)
 
 
 # ==================== MODELS ====================
