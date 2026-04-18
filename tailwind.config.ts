@@ -107,38 +107,30 @@ export default {
   		},
   		fontFamily: {
   			sans: [
-  				'Inter',
-  				'ui-sans-serif',
-  				'system-ui',
+  				'IBM Plex Sans',
   				'-apple-system',
   				'BlinkMacSystemFont',
   				'Segoe UI',
   				'Roboto',
   				'Helvetica Neue',
   				'Arial',
-  				'Noto Sans',
   				'sans-serif'
   			],
-  			serif: [
-  				'Lora',
-  				'ui-serif',
-  				'Georgia',
-  				'Cambria',
-  				'Times New Roman',
-  				'Times',
-  				'serif'
-  			],
   			mono: [
-  				'Space Mono',
+  				'IBM Plex Mono',
   				'ui-monospace',
   				'SFMono-Regular',
   				'Menlo',
   				'Monaco',
   				'Consolas',
-  				'Liberation Mono',
-  				'Courier New',
   				'monospace'
   			]
+  		},
+  		fontSize: {
+  			'2xs': ['0.65rem', { lineHeight: '0.9rem' }],
+  			xs: ['0.72rem', { lineHeight: '1rem' }],
+  			sm: ['0.8rem', { lineHeight: '1.15rem' }],
+  			base: ['0.875rem', { lineHeight: '1.3rem' }],
   		},
   		boxShadow: {
   			'2xs': 'var(--shadow-2xs)',
