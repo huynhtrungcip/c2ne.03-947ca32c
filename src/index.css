@@ -1,99 +1,150 @@
-@import url("https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;500;600;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* SOC Dashboard - Enterprise Style (Matching Python/Streamlit Version) */
+/* ============================================================
+ * SOC Dashboard — Splunk / Datadog SIEM aesthetic
+ * Compact density · Cool blue + amber/red alerts · Sharp edges
+ * ============================================================ */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
+    /* Light mode (rarely used; SOC is dark-first) */
+    --background: 220 20% 98%;
     --foreground: 222 47% 11%;
-
-    --card: 0 0% 98%;
+    --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-
-    --primary: 217 91% 50%;
+    --primary: 212 100% 42%;
     --primary-foreground: 0 0% 100%;
-
-    --secondary: 210 40% 96%;
+    --secondary: 220 14% 95%;
     --secondary-foreground: 222 47% 11%;
-
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-
-    --accent: 210 40% 96%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 9% 40%;
+    --accent: 220 14% 95%;
     --accent-foreground: 222 47% 11%;
-
-    --destructive: 0 84% 60%;
+    --destructive: 0 78% 50%;
     --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 88%;
+    --input: 220 13% 88%;
+    --ring: 212 100% 42%;
+    --radius: 0.125rem;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 50%;
+    --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'IBM Plex Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-    --radius: 0.25rem;
-
-    --font-sans: 'Segoe UI', Helvetica, Arial, sans-serif;
-    --font-mono: 'Roboto Mono', monospace;
-    
-    /* SOC specific tokens */
-    --soc-bg: 0 0% 98%;
+    /* SOC palette — light */
+    --soc-bg: 220 20% 98%;
     --soc-card: 0 0% 100%;
-    --soc-border: 220 13% 91%;
+    --soc-border: 220 13% 88%;
     --soc-text-primary: 222 47% 11%;
-    --soc-text-secondary: 215 16% 47%;
-    --soc-text-muted: 215 20% 65%;
-    --soc-alert: 0 84% 60%;
-    --soc-warning: 38 92% 50%;
-    --soc-success: 142 76% 36%;
-    --soc-info: 217 91% 50%;
+    --soc-text-secondary: 220 9% 40%;
+    --soc-text-muted: 220 9% 55%;
+    --soc-alert: 0 78% 50%;
+    --soc-warning: 32 95% 48%;
+    --soc-success: 152 76% 32%;
+    --soc-info: 212 100% 42%;
+
+    /* Severity (Datadog-like) */
+    --severity-critical: 350 85% 48%;
+    --severity-high: 14 95% 52%;
+    --severity-medium: 38 95% 50%;
+    --severity-low: 195 90% 45%;
+    --severity-info: 220 9% 55%;
+
+    /* Status */
+    --status-online: 152 70% 38%;
+    --status-offline: 220 9% 40%;
+    --status-warning: 38 95% 50%;
+    --status-pending: 212 100% 42%;
+
+    /* Charts (Datadog-ish ramp) */
+    --chart-1: 212 100% 55%;
+    --chart-2: 280 75% 60%;
+    --chart-3: 160 70% 45%;
+    --chart-4: 32 95% 55%;
+    --chart-5: 350 85% 60%;
+
+    /* Sidebar */
+    --sidebar-background: 222 25% 10%;
+    --sidebar-foreground: 220 14% 88%;
+    --sidebar-primary: 212 100% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 20% 16%;
+    --sidebar-accent-foreground: 220 14% 95%;
+    --sidebar-border: 222 20% 18%;
+    --sidebar-ring: 212 100% 55%;
   }
 
   .dark {
-    --background: 0 0% 4%;
-    --foreground: 220 9% 91%;
+    /* Splunk-ish near-black with subtle blue undertone */
+    --background: 222 28% 6%;
+    --foreground: 220 14% 90%;
 
-    --card: 0 0% 6%;
-    --card-foreground: 220 9% 91%;
+    --card: 222 25% 9%;
+    --card-foreground: 220 14% 90%;
 
-    --popover: 0 0% 6%;
-    --popover-foreground: 220 9% 91%;
+    --popover: 222 28% 7%;
+    --popover-foreground: 220 14% 90%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 212 100% 56%;
+    --primary-foreground: 222 47% 6%;
 
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 220 9% 91%;
+    --secondary: 222 20% 14%;
+    --secondary-foreground: 220 14% 90%;
 
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 4% 46%;
+    --muted: 222 20% 14%;
+    --muted-foreground: 220 9% 60%;
 
-    --accent: 240 4% 16%;
-    --accent-foreground: 220 9% 91%;
+    --accent: 222 20% 16%;
+    --accent-foreground: 220 14% 95%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 78% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 217 91% 60%;
-    
-    /* SOC specific tokens - dark */
-    --soc-bg: 0 0% 4%;
-    --soc-card: 0 0% 6%;
-    --soc-border: 240 4% 16%;
-    --soc-text-primary: 220 9% 91%;
-    --soc-text-secondary: 240 4% 66%;
-    --soc-text-muted: 240 4% 46%;
-    --soc-alert: 0 84% 60%;
-    --soc-warning: 38 92% 50%;
-    --soc-success: 142 76% 36%;
-    --soc-info: 217 91% 60%;
+    --border: 222 18% 18%;
+    --input: 222 18% 18%;
+    --ring: 212 100% 56%;
+
+    /* SOC palette — dark */
+    --soc-bg: 222 28% 6%;
+    --soc-card: 222 25% 9%;
+    --soc-border: 222 18% 18%;
+    --soc-text-primary: 220 14% 92%;
+    --soc-text-secondary: 220 9% 65%;
+    --soc-text-muted: 220 9% 45%;
+    --soc-alert: 0 78% 58%;
+    --soc-warning: 32 95% 55%;
+    --soc-success: 152 65% 45%;
+    --soc-info: 212 100% 56%;
+
+    --severity-critical: 350 85% 58%;
+    --severity-high: 14 95% 58%;
+    --severity-medium: 38 95% 55%;
+    --severity-low: 195 90% 55%;
+    --severity-info: 220 9% 60%;
+
+    --status-online: 152 65% 45%;
+    --status-offline: 220 9% 45%;
+    --status-warning: 38 95% 55%;
+    --status-pending: 212 100% 56%;
+
+    --chart-1: 212 100% 60%;
+    --chart-2: 280 75% 65%;
+    --chart-3: 160 70% 50%;
+    --chart-4: 32 95% 60%;
+    --chart-5: 350 85% 65%;
+
+    --sidebar-background: 222 30% 5%;
+    --sidebar-foreground: 220 14% 88%;
+    --sidebar-primary: 212 100% 60%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 222 22% 12%;
+    --sidebar-accent-foreground: 220 14% 95%;
+    --sidebar-border: 222 22% 14%;
+    --sidebar-ring: 212 100% 60%;
   }
 }
 
@@ -102,36 +153,55 @@
     @apply border-border;
   }
 
+  html {
+    font-feature-settings: "cv11", "ss01", "tnum";
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
-    font-size: 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    letter-spacing: -0.005em;
   }
 
+  /* Tabular numerics everywhere — SIEM essential */
+  .tabular-nums, table, .metric-value, code, pre, .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Compact scrollbars (Datadog style) */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
-
   ::-webkit-scrollbar-track {
-    background: #000;
+    background: hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.6);
   }
 
-  ::-webkit-scrollbar-thumb {
-    background: #27272a;
-    border-radius: 3px;
+  /* Focus ring */
+  :focus-visible {
+    outline: 1px solid hsl(var(--ring));
+    outline-offset: 1px;
   }
 }
 
 @layer components {
-  /* Header */
+  /* ============= Header ============= */
   .soc-header {
     display: flex;
     flex-direction: column;
-    border-bottom: 1px solid #27272a;
-    padding-bottom: 12px;
-    margin-bottom: 20px;
-    margin-top: 8px;
+    border-bottom: 1px solid hsl(var(--border));
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+    margin-top: 6px;
   }
 
   .soc-header-row {
@@ -141,238 +211,249 @@
   }
 
   .soc-title {
-    font-size: 1.6rem;
-    font-weight: 900;
-    color: #ffffff;
-    letter-spacing: 0.08em;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: hsl(var(--foreground));
+    letter-spacing: 0.14em;
     text-transform: uppercase;
+    font-family: var(--font-sans);
   }
 
   .soc-subtitle {
-    font-size: 0.82rem;
-    color: #9ca3af;
-    margin-top: 4px;
+    font-size: 0.72rem;
+    color: hsl(var(--muted-foreground));
+    margin-top: 3px;
+    letter-spacing: 0.02em;
   }
 
   .soc-meta {
-    font-size: 0.75rem;
-    color: #6b7280;
+    font-size: 0.7rem;
+    color: hsl(var(--muted-foreground));
+    font-family: var(--font-mono);
   }
 
-  /* Live Badge */
+  /* ============= Live Badge ============= */
   .live-badge-on {
-    background-color: rgba(34, 197, 94, 0.18);
-    color: #4ade80;
-    border: 1px solid #22c55e;
-    padding: 3px 9px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    border-radius: 4px;
-    letter-spacing: 0.09em;
+    background-color: hsl(var(--status-online) / 0.12);
+    color: hsl(var(--status-online));
+    border: 1px solid hsl(var(--status-online) / 0.5);
+    padding: 2px 8px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    border-radius: 2px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
+    font-family: var(--font-mono);
   }
 
   .live-badge-off {
-    background-color: rgba(63, 63, 70, 0.5);
-    color: #d4d4d8;
-    border: 1px solid #71717a;
-    padding: 3px 9px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    border-radius: 4px;
-    letter-spacing: 0.09em;
+    background-color: hsl(var(--muted) / 0.5);
+    color: hsl(var(--muted-foreground));
+    border: 1px solid hsl(var(--border));
+    padding: 2px 8px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    border-radius: 2px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
+    font-family: var(--font-mono);
   }
 
-  /* Metrics */
+  /* ============= Metrics ============= */
   .metric-container {
-    background-color: #09090b;
-    border: 1px solid #27272a;
-    border-left: 4px solid #3b82f6;
-    padding: 12px;
-    border-radius: 4px;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-left: 3px solid hsl(var(--primary));
+    padding: 10px 12px;
+    border-radius: 2px;
   }
 
-  .metric-container.alert {
-    border-left-color: #ef4444;
-  }
-
-  .metric-container.warning {
-    border-left-color: #eab308;
-  }
-
-  .metric-container.success {
-    border-left-color: #22c55e;
-  }
+  .metric-container.alert      { border-left-color: hsl(var(--soc-alert)); }
+  .metric-container.warning    { border-left-color: hsl(var(--soc-warning)); }
+  .metric-container.success    { border-left-color: hsl(var(--soc-success)); }
 
   .metric-label {
-    font-size: 0.75rem;
-    color: #71717a;
-    font-weight: 700;
-    letter-spacing: 0.06em;
+    font-size: 0.68rem;
+    color: hsl(var(--muted-foreground));
+    font-weight: 600;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
   }
 
   .metric-value {
-    font-size: 1.9rem;
-    color: #f8fafc;
-    font-weight: 700;
-    font-family: 'Roboto Mono', monospace;
+    font-size: 1.55rem;
+    color: hsl(var(--foreground));
+    font-weight: 600;
+    font-family: var(--font-mono);
+    letter-spacing: -0.01em;
+    line-height: 1.15;
   }
 
   .metric-delta {
-    font-size: 0.8rem;
-    color: #ef4444;
+    font-size: 0.72rem;
+    color: hsl(var(--soc-alert));
     font-weight: 600;
+    font-family: var(--font-mono);
   }
 
-  /* Section Title */
+  /* ============= Section Title ============= */
   .soc-section-title {
-    font-size: 0.9rem;
+    font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.16em;
-    color: #d4d4d8;
-    margin-bottom: 10px;
-    border-left: 3px solid #3b82f6;
-    padding-left: 9px;
+    letter-spacing: 0.18em;
+    color: hsl(var(--foreground));
+    margin-bottom: 8px;
+    border-left: 2px solid hsl(var(--primary));
+    padding-left: 8px;
   }
 
-  /* Inspector Panel */
+  /* ============= Inspector Panel ============= */
   .inspector-panel {
-    background-color: #09090b;
-    border: 1px solid #ef4444;
-    border-radius: 6px;
-    padding: 20px;
-    margin-top: 10px;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-top: 2px solid hsl(var(--soc-alert));
+    border-radius: 2px;
+    padding: 16px;
+    margin-top: 8px;
   }
 
   .inspector-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 20px 20px;
+    gap: 16px;
   }
 
   .inspector-label {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.16em;
-    color: #71717a;
-    margin-bottom: 4px;
+    color: hsl(var(--muted-foreground));
+    margin-bottom: 3px;
     font-weight: 600;
   }
 
   .inspector-value {
-    font-family: 'Roboto Mono', monospace;
-    color: #f4f4f5;
-    font-size: 0.95rem;
+    font-family: var(--font-mono);
+    color: hsl(var(--foreground));
+    font-size: 0.85rem;
     font-weight: 500;
     word-wrap: break-word;
     word-break: break-all;
   }
 
-  .inspector-value-strong {
-    font-weight: 700;
-  }
+  .inspector-value-strong { font-weight: 700; }
+  .inspector-verdict-alert       { color: hsl(var(--soc-alert)); }
+  .inspector-verdict-suspicious  { color: hsl(var(--soc-warning)); }
+  .inspector-verdict-benign      { color: hsl(var(--soc-success)); }
 
-  .inspector-verdict-alert {
-    color: #ef4444;
-  }
-
-  .inspector-verdict-suspicious {
-    color: #eab308;
-  }
-
-  .inspector-verdict-benign {
-    color: #22c55e;
-  }
-
-  /* Controls */
+  /* ============= Controls ============= */
   .control-label {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     text-transform: uppercase;
     letter-spacing: 0.14em;
-    color: #6b7280;
+    color: hsl(var(--muted-foreground));
     margin-bottom: 0.15rem;
+    font-weight: 600;
   }
 
-  /* Footer */
+  /* ============= Footer ============= */
   .soc-footer {
     text-align: center;
-    font-size: 0.7rem;
-    color: #444444;
-    padding-top: 10px;
+    font-size: 0.68rem;
+    color: hsl(var(--muted-foreground));
+    padding-top: 8px;
+    font-family: var(--font-mono);
   }
 
-  /* Data Table */
+  /* ============= Data Table (Splunk dense) ============= */
   .data-table {
-    border: 1px solid #27272a;
+    border: 1px solid hsl(var(--border));
+    border-radius: 2px;
   }
 
   .data-table th {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: #71717a;
+    color: hsl(var(--muted-foreground));
     font-weight: 600;
-    padding: 8px 12px;
-    background: #09090b;
-    border-bottom: 1px solid #27272a;
+    padding: 6px 10px;
+    background: hsl(var(--card));
+    border-bottom: 1px solid hsl(var(--border));
   }
 
   .data-table td {
-    font-family: 'Roboto Mono', monospace;
-    font-size: 0.85rem;
-    padding: 6px 12px;
-    border-bottom: 1px solid #18181b;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    padding: 4px 10px;
+    border-bottom: 1px solid hsl(var(--border) / 0.5);
+    color: hsl(var(--foreground));
   }
 
-  .data-table tr:hover {
-    background: rgba(59, 130, 246, 0.05);
-  }
+  .data-table tr:hover { background: hsl(var(--primary) / 0.06); }
+  .data-table tr.selected { background: hsl(var(--primary) / 0.12); }
 
-  .data-table tr.selected {
-    background: rgba(59, 130, 246, 0.1);
-  }
+  /* ============= Verdicts ============= */
+  .verdict-alert          { color: hsl(var(--soc-alert));   font-weight: 600; }
+  .verdict-suspicious     { color: hsl(var(--soc-warning)); font-weight: 600; }
+  .verdict-benign         { color: hsl(var(--soc-success)); font-weight: 600; }
+  .verdict-false-positive { color: hsl(var(--soc-success)); font-weight: 600; }
 
-  /* Verdict colors */
-  .verdict-alert { color: #ef4444; font-weight: 600; }
-  .verdict-suspicious { color: #eab308; font-weight: 600; }
-  .verdict-benign { color: #22c55e; font-weight: 600; }
-  .verdict-false-positive { color: #22c55e; font-weight: 600; }
-
-  /* Confidence bar */
+  /* ============= Confidence bar ============= */
   .confidence-bar {
-    width: 60px;
-    height: 6px;
-    background: #27272a;
-    border-radius: 3px;
+    width: 56px;
+    height: 4px;
+    background: hsl(var(--muted));
+    border-radius: 1px;
     overflow: hidden;
   }
 
   .confidence-fill {
     height: 100%;
-    background: linear-gradient(90deg, #22c55e, #3b82f6);
-    border-radius: 3px;
+    background: linear-gradient(90deg, hsl(var(--soc-success)), hsl(var(--soc-info)));
+    border-radius: 1px;
   }
 
-  /* Filter inputs */
+  /* ============= Filter inputs ============= */
   .filter-input {
-    background-color: #020617;
-    color: #e5e7eb;
-    border-radius: 6px;
-    border: 1px solid #27272a;
-    padding: 0.35rem 0.6rem;
-    font-size: 0.8rem;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    border-radius: 2px;
+    border: 1px solid hsl(var(--border));
+    padding: 0.3rem 0.55rem;
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    transition: border-color 120ms ease, box-shadow 120ms ease;
   }
 
   .filter-input:focus {
     outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 1px rgba(37,99,235,0.7);
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.6);
   }
 
-  .filter-input::placeholder {
-    color: #6b7280;
+  .filter-input::placeholder { color: hsl(var(--muted-foreground)); }
+
+  /* ============= Pill / Chip (Datadog) ============= */
+  .soc-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 6px;
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--muted) / 0.4);
+    color: hsl(var(--foreground));
+    border-radius: 2px;
+    letter-spacing: 0.02em;
+  }
+
+  /* ============= Surface helpers ============= */
+  .soc-surface {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    border-radius: 2px;
   }
 }
