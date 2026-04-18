@@ -239,7 +239,8 @@ Kiểm tra:
 const SOCDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [isLive, setIsLive] = useState(true);
+  // Realtime streaming is always-on (SIEM-style). No pause toggle.
+  const isLive = true;
   const [autoBlock, setAutoBlock] = useState(false);
   const [timeRange, setTimeRange] = useState('1h');
   const [viewMode, setViewMode] = useState<'all' | 'alerts'>('all');
@@ -302,19 +303,15 @@ const SOCDashboard = () => {
 
   const isDarkMode = theme === 'dark';
 
-  useEffect(() => {
-    if (isLive) setSelectedEvent(null);
-  }, [isLive]);
-
-  // Reset selected event when switching tabs or mode changes
+  // Reset selected event when switching tabs / time range / view mode
   useEffect(() => {
     setSelectedEvent(null);
-  }, [activeTab, isLive, timeRange, viewMode]);
+  }, [activeTab, timeRange, viewMode]);
 
+  // Click row to pin & inspect; click again to unpin. Stream keeps flowing.
   const handleEventClick = (event: SOCEvent) => {
-    if (isLive) return;
     if (selectedEvent?.id !== event.id) {
-      setAnalysisResult(null); // Clear previous analysis when switching events
+      setAnalysisResult(null);
       setBlockResult(null);
     }
     setSelectedEvent(selectedEvent?.id === event.id ? null : event);
@@ -418,7 +415,7 @@ const SOCDashboard = () => {
   );
 
   const renderInspector = () => {
-    if (isLive || !selectedEvent) return null;
+    if (!selectedEvent) return null;
     
     const verdictBorderColor = selectedEvent.verdict === 'ALERT' ? '#dc2626' : 
                                selectedEvent.verdict === 'SUSPICIOUS' ? '#d97706' : '#16a34a';
@@ -1215,12 +1212,12 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           <div className={`h-7 px-3 flex items-center text-[10px] font-mono rounded-md ${isDarkMode ? 'text-[#71717a] bg-[#0a0a0a] border border-[#1f1f1f]' : 'text-[#6b7280] bg-white border border-[#e5e7eb]'}`}>
             {now}
           </div>
-          <div className={`h-7 px-3 flex items-center text-[9px] font-semibold tracking-wider uppercase rounded-md transition-all ${
-            isLive 
-              ? 'bg-gradient-to-b from-[#166534] to-[#14532d] text-[#86efac] border border-[#22c55e]/30 shadow-sm shadow-[#22c55e]/10' 
-              : isDarkMode ? 'bg-[#18181b] text-[#71717a] border border-[#27272a]' : 'bg-[#f3f4f6] text-[#6b7280] border border-[#e5e7eb]'
-          }`}>
-            {isLive ? '● LIVE' : 'PAUSED'}
+          <div
+            className="h-7 px-3 flex items-center gap-1.5 text-[9px] font-semibold tracking-wider uppercase rounded-md bg-gradient-to-b from-[#166534] to-[#14532d] text-[#86efac] border border-[#22c55e]/30 shadow-sm shadow-[#22c55e]/10"
+            title="Realtime stream — always on"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
+            STREAMING
           </div>
           
           {/* Settings Button */}
@@ -1259,16 +1256,6 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
               )}
             </div>
           )}
-
-          <div className={`flex items-center gap-2 px-3 py-1.5 border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-            <span className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Live</span>
-            <button 
-              onClick={() => setIsLive(!isLive)}
-              className={`w-8 h-4 rounded-full transition-colors relative ${isLive ? 'bg-[#22c55e]' : isDarkMode ? 'bg-[#27272a]' : 'bg-[#d1d5db]'}`}
-            >
-              <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${isLive ? 'left-4' : 'left-0.5'}`} />
-            </button>
-          </div>
 
           <div className={`flex items-center gap-2 px-3 py-1.5 border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
             <span className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Auto Block</span>

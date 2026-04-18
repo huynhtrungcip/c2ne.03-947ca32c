@@ -49,10 +49,10 @@ const VirtualizedEventTable = ({
   };
 
   const handleRowClick = useCallback((event: SOCEvent) => {
-    if (!isLive) {
-      onEventClick(event);
-    }
-  }, [isLive, onEventClick]);
+    // SIEM-style: row is always clickable. Stream keeps flowing in background;
+    // selected row stays pinned until user deselects.
+    onEventClick(event);
+  }, [onEventClick]);
 
   // Export functions
   const exportToCSV = useCallback(() => {
@@ -172,9 +172,9 @@ const VirtualizedEventTable = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {isLive && <span className="text-[9px] text-[#f59e0b]">Pause LIVE mode to inspect events</span>}
-          {!isLive && <span className="text-[9px] text-[#22c55e]">Click any row to inspect</span>}
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
+          <span className="text-[9px] text-[#22c55e] uppercase tracking-wider font-mono">Streaming · click row to pin & inspect</span>
         </div>
       </div>
 
@@ -216,10 +216,8 @@ const VirtualizedEventTable = ({
                 <div
                   key={event.id}
                   onClick={() => handleRowClick(event)}
-                  className={`absolute top-0 left-0 w-full flex items-center border-b text-[11px] transition-colors ${
-                    isDarkMode ? 'border-[#18181b]' : 'border-[#f3f4f6]'
-                  } ${
-                    isLive ? 'cursor-not-allowed opacity-70' : `cursor-pointer ${isDarkMode ? 'hover:bg-[#18181b]' : 'hover:bg-[#f9fafb]'}`
+                  className={`absolute top-0 left-0 w-full flex items-center border-b text-[11px] transition-colors cursor-pointer ${
+                    isDarkMode ? 'border-[#18181b] hover:bg-[#18181b]' : 'border-[#f3f4f6] hover:bg-[#f9fafb]'
                   } ${isSelected ? (isDarkMode ? 'bg-[#1e3a5f]/40 border-l-2 border-l-[#3b82f6]' : 'bg-[#eff6ff] border-l-2 border-l-[#3b82f6]') : ''}`}
                   style={{
                     height: `${virtualRow.size}px`,
