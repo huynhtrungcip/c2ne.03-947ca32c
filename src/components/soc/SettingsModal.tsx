@@ -89,7 +89,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     timeRange: string; 
     deletedData: any[] | null; 
     countdown: number;
-    intervalId: NodeJS.Timeout | null;
+    intervalId: ReturnType<typeof setTimeout> | null;
   } | null>(null);
   const [addingMockData, setAddingMockData] = useState(false);
   
