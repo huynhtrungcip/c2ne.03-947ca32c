@@ -85,35 +85,11 @@ export const MetricStatCard = ({
 
   return (
     <div
-      className="relative overflow-hidden bg-card p-4"
+      className="bg-card p-4 flex items-center justify-between gap-3"
       style={{ borderTop: `2px solid ${accent}` }}
     >
-      {/* Sparkline background - Grafana stat panel style */}
-      <div className="absolute inset-x-0 bottom-0 h-[55%] pointer-events-none opacity-90">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={series} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={accent} stopOpacity={0.45} />
-                <stop offset="100%" stopColor={accent} stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <YAxis hide domain={[0, 'dataMax + 1']} />
-            <Area
-              type="monotone"
-              dataKey="v"
-              stroke={accent}
-              strokeWidth={1.5}
-              fill={`url(#${gradId})`}
-              isAnimationActive={false}
-              dot={false}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Foreground */}
-      <div className="relative z-10">
+      {/* Left: label + value + delta */}
+      <div className="flex flex-col min-w-0">
         <div className="text-[10px] font-medium uppercase tracking-wider mb-1 text-muted-foreground">
           {label}
         </div>
@@ -125,6 +101,24 @@ export const MetricStatCard = ({
             {delta}
           </div>
         )}
+      </div>
+
+      {/* Right: thin sparkline, no fill */}
+      <div className="w-[55%] h-12 shrink-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={series} margin={{ top: 4, right: 0, left: 0, bottom: 2 }}>
+            <YAxis hide domain={[0, 'dataMax + 1']} />
+            <Area
+              type="linear"
+              dataKey="v"
+              stroke={accent}
+              strokeWidth={1.25}
+              fill="none"
+              isAnimationActive={false}
+              dot={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
