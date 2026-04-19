@@ -173,8 +173,8 @@ const VirtualizedEventTable = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
-          <span className="text-[9px] text-[#22c55e] uppercase tracking-wider font-mono">Streaming · click row to pin & inspect</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--soc-success))] animate-pulse" />
+          <span className="text-[9px] text-muted-foreground uppercase tracking-wider font-mono">Streaming · click row to pin & inspect</span>
         </div>
       </div>
 
@@ -229,7 +229,7 @@ const VirtualizedEventTable = ({
                   <div className={`w-[9%] py-1.5 px-3 font-semibold shrink-0 ${getVerdictClass(event.verdict)}`}>
                     {event.verdict}
                   </div>
-                  <div className="w-[14%] py-1.5 px-3 font-mono text-[#3b82f6] shrink-0 truncate">{event.src_ip}</div>
+                  <div className={`w-[14%] py-1.5 px-3 font-mono shrink-0 truncate ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#27272a]'}`}>{event.src_ip}</div>
                   <div className={`w-[14%] py-1.5 px-3 font-mono shrink-0 truncate ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.dst_ip}</div>
                   <div className={`w-[5%] py-1.5 px-3 font-mono shrink-0 ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{event.dst_port || '-'}</div>
                   <div className={`w-[6%] py-1.5 px-3 shrink-0 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{event.protocol}</div>

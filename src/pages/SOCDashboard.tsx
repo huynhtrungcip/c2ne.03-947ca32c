@@ -1160,16 +1160,16 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             {/* Event Statistics */}
             <div className="grid grid-cols-6 gap-px mb-4" style={{ backgroundColor: 'hsl(var(--border))' }}>
               {[
-                { label: 'Total', value: sortedEvents.length, color: '#3b82f6' },
-                { label: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: '#ef4444' },
-                { label: 'Suspicious', value: sortedEvents.filter(e => e.verdict === 'SUSPICIOUS').length, color: '#f59e0b' },
-                { label: 'False Pos', value: sortedEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length, color: '#22c55e' },
-                { label: 'Benign', value: sortedEvents.filter(e => e.verdict === 'BENIGN').length, color: '#71717a' },
-                { label: 'High Conf', value: sortedEvents.filter(e => e.confidence > 0.8).length, color: '#8b5cf6' },
+                { label: 'Total', value: sortedEvents.length, color: 'text-foreground' },
+                { label: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: 'text-[hsl(var(--soc-alert))]' },
+                { label: 'Suspicious', value: sortedEvents.filter(e => e.verdict === 'SUSPICIOUS').length, color: 'text-[hsl(var(--soc-warning))]' },
+                { label: 'False Pos', value: sortedEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length, color: 'text-muted-foreground' },
+                { label: 'Benign', value: sortedEvents.filter(e => e.verdict === 'BENIGN').length, color: 'text-[hsl(var(--soc-success))]' },
+                { label: 'High Conf', value: sortedEvents.filter(e => e.confidence > 0.8).length, color: 'text-foreground' },
               ].map((s, i) => (
-                <div key={i} className={`p-2 text-center ${'bg-card'}`}>
-                  <div className="text-lg font-semibold font-mono" style={{ color: s.color }}>{s.value}</div>
-                  <div className={`text-[9px] uppercase ${'text-muted-foreground/60'}`}>{s.label}</div>
+                <div key={i} className="p-2 text-center bg-card">
+                  <div className={`text-lg font-semibold font-mono ${s.color}`}>{s.value}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-muted-foreground/60">{s.label}</div>
                 </div>
               ))}
             </div>
