@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { useMemo, useState } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { SOCEvent } from '@/types/soc';
 
 interface VerdictDistributionPanelProps {
@@ -14,6 +14,8 @@ const VERDICT_CONFIG: { key: string; label: string; color: string }[] = [
 ];
 
 export const VerdictDistributionPanel = ({ events }: VerdictDistributionPanelProps) => {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
   const { data, total } = useMemo(() => {
     const counts: Record<string, number> = {
       ALERT: 0,
@@ -35,6 +37,10 @@ export const VerdictDistributionPanel = ({ events }: VerdictDistributionPanelPro
   }, [events]);
 
   const hasData = total > 0;
+  const active = hoverIdx !== null ? data[hoverIdx] : null;
+  const centerValue = active ? active.value : data[0].value;
+  const centerLabel = active ? active.name : 'Alerts';
+  const centerPct = total ? ((centerValue / total) * 100).toFixed(1) : '0.0';
 
   return (
     <div className="p-3 border border-border rounded-md bg-card">
@@ -51,7 +57,6 @@ export const VerdictDistributionPanel = ({ events }: VerdictDistributionPanelPro
         </div>
       ) : (
         <div className="flex items-center gap-3">
-          {/* Donut */}
           <div className="relative" style={{ width: 96, height: 96 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -66,42 +71,41 @@ export const VerdictDistributionPanel = ({ events }: VerdictDistributionPanelPro
                   stroke="hsl(var(--card))"
                   strokeWidth={2}
                   isAnimationActive={false}
+                  onMouseEnter={(_, idx) => setHoverIdx(idx)}
+                  onMouseLeave={() => setHoverIdx(null)}
                 >
-                  {data.map((d) => (
-                    <Cell key={d.key} fill={d.color} />
+                  {data.map((d, i) => (
+                    <Cell
+                      key={d.key}
+                      fill={d.color}
+                      opacity={hoverIdx === null || hoverIdx === i ? 1 : 0.35}
+                    />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: 6,
-                    fontSize: 10,
-                    padding: '4px 8px',
-                  }}
-                  formatter={(value: number, name: string) => [
-                    `${value} (${((value / total) * 100).toFixed(1)}%)`,
-                    name,
-                  ]}
-                />
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <div className="text-[13px] font-mono font-semibold text-foreground tabular-nums leading-none">
-                {data[0].value}
+                {centerValue}
               </div>
               <div className="text-[8px] uppercase tracking-wider text-muted-foreground/80 mt-0.5">
-                Alerts
+                {active ? `${centerPct}%` : centerLabel}
               </div>
             </div>
           </div>
 
-          {/* Legend */}
           <div className="flex-1 grid grid-cols-1 gap-1">
-            {data.map((d) => {
+            {data.map((d, i) => {
               const pct = total ? (d.value / total) * 100 : 0;
+              const dim = hoverIdx !== null && hoverIdx !== i;
               return (
-                <div key={d.key} className="flex items-center gap-1.5 text-[9px]">
+                <div
+                  key={d.key}
+                  className="flex items-center gap-1.5 text-[9px] cursor-pointer transition-opacity"
+                  style={{ opacity: dim ? 0.4 : 1 }}
+                  onMouseEnter={() => setHoverIdx(i)}
+                  onMouseLeave={() => setHoverIdx(null)}
+                >
                   <span
                     className="w-2 h-2 rounded-sm shrink-0"
                     style={{ background: d.color }}
