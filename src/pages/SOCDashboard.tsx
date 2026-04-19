@@ -31,293 +31,558 @@ import { SOC_TOOLS, executeTool, TOOLS_REQUIRING_CONFIRMATION } from '@/lib/socT
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
 
-// MegaLLM Configuration
-const MEGALLM_API_KEY = 'sk-mega-7bd02bf1c5720f9bde518db892d4da8ef94671adcca28dd19299b1c2d8d4e753';
-const MEGALLM_BASE_URL = 'https://ai.megallm.io/v1';
-const MEGALLM_MODELS = [
-  'openai-gpt-oss-120b',
-  'openai-gpt-oss-20b',
-  'deepseek-r1-distill-llama-70b',
-  'llama3.3-70b-instruct',
-];
-const DEFAULT_MODEL = 'openai-gpt-oss-120b';
+// ===== Fallback MegaLLM (legacy) — used only when no provider configured =====
+const FALLBACK_PROVIDER: AIProviderConfig = {
+  id: 'fallback-megallm',
+  kind: 'megallm',
+  label: 'MegaLLM (default)',
+  baseUrl: 'https://ai.megallm.io/v1',
+  apiKey: 'sk-mega-7bd02bf1c5720f9bde518db892d4da8ef94671adcca28dd19299b1c2d8d4e753',
+  model: 'deepseek-r1-distill-llama-70b',
+  supportsTools: true,
+};
 
-// AI Chatbot Panel Component - Gọi trực tiếp MegaLLM API
-const AIChatPanel = ({ 
-  isOpen, 
-  onClose, 
-  events = [],
-  selectedEvent = null 
-}: { 
-  isOpen: boolean; 
+const SOC_SYSTEM_PROMPT = `You are an AI SOC analyst (Tier 2) on a hybrid NIDS stack with Zeek + Suricata + AI correlation, developed by C1NE.03 — K28 Cybersecurity, Duy Tan University.
+
+You receive:
+1) A natural language question from the analyst.
+2) A compact JSON snapshot of recent SOC alerts.
+3) Optional tool results when you call functions.
+
+Available tools (use proactively when needed):
+- query_events(filters): get raw events
+- get_top_sources(): rank attacker IPs
+- summarize_range(): aggregate stats
+- block_ip(ip, reason): block via pfSense (USER WILL BE ASKED TO CONFIRM)
+
+Rules:
+- Correlate patterns across events (DDoS, PortScan, BruteForce, WebAttack...).
+- NEVER invent log entries. If data is missing, call a tool.
+- Propose CLEAR next actions: BLOCK / INVESTIGATE / IGNORE with reasoning.
+- Answer concisely in Vietnamese; keep technical terms in English.
+- Use markdown tables and bullet points when helpful.`;
+
+interface ChatTurn {
+  role: 'user' | 'assistant' | 'tool' | 'system';
+  content: string;
+  tool_call_id?: string;
+  tool_calls?: AIMessage['tool_calls'];
+  // UI-only:
+  toolDisplay?: Array<{
+    id: string;
+    name: string;
+    args: string;
+    status: 'pending' | 'running' | 'success' | 'error' | 'denied';
+    result?: unknown;
+    error?: string;
+  }>;
+}
+
+interface AIChatPanelProps {
+  isOpen: boolean;
   onClose: () => void;
   events?: SOCEvent[];
   selectedEvent?: SOCEvent | null;
-}) => {
+  apiUrl?: string;
+}
+
+const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUrl = '' }: AIChatPanelProps) => {
   const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([
-    { 
-      role: 'assistant', 
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [activeProvider, setActiveProvider] = useState<AIProviderConfig | null>(() => getActiveProvider() || FALLBACK_PROVIDER);
+  const [showSettings, setShowSettings] = useState(false);
+  const [pendingTool, setPendingTool] = useState<{ name: string; args: string; resolve: (ok: boolean) => void } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const eventsRef = useRef(events);
+  useEffect(() => { eventsRef.current = events; }, [events]);
+
+  const [turns, setTurns] = useState<ChatTurn[]>([
+    {
+      role: 'assistant',
       content: `Xin chào, tôi là **SOC AI Assistant** của hệ thống AI-SOC Dashboard, được phát triển bởi nhóm **C1NE.03 – K28 An ninh mạng, Đại học Duy Tân**.
 
-- Tôi chỉ tập trung vào **phân tích sự kiện an ninh**, logs, alerts và traffic trong SOC.
-- Anh/chị có thể hỏi bằng **tiếng Việt (có/không dấu) hoặc tiếng Anh**.
-- Phong cách trả lời theo chuẩn **SOC Tier-2**, ngắn gọn, rõ ràng, tập trung vào hành động.
-
-Ví dụ câu hỏi:
-- IP nao tan cong he thong nhieu nhat trong 1h qua?
-- Are these ICMP alerts likely to be a scan or health check?
-- De xuat hanh dong xu ly cho cac PortScan trong 1h gan day` 
-    }
+- Tôi tập trung vào **phân tích sự kiện an ninh**, logs, alerts và traffic trong SOC.
+- Có thể **gọi tool thật**: \`query_events\`, \`get_top_sources\`, \`summarize_range\`, \`block_ip\` (cần xác nhận).
+- Hỏi bằng **tiếng Việt (có/không dấu) hoặc tiếng Anh**.`,
+    },
   ]);
 
-  // Build context from events for AI analysis
-  const buildEventsContext = () => {
-    if (events.length === 0) return '';
-    
-    // Get last 100 events for context (to avoid token limit)
-    const recentEvents = events.slice(0, 100).map(e => ({
+  // Reload provider khi settings đóng
+  const refreshProvider = useCallback(() => {
+    setActiveProvider(getActiveProvider() || (loadProviders()[0] ?? FALLBACK_PROVIDER));
+  }, []);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [turns, isStreaming]);
+
+  // Build snapshot context
+  const buildSnapshot = useCallback(() => {
+    const evs = eventsRef.current;
+    if (evs.length === 0) return 'No SOC events loaded.';
+    const recent = evs.slice(0, 50).map((e) => ({
       time: e.timestamp.toISOString(),
       verdict: e.verdict,
-      src_ip: e.src_ip,
-      dst_ip: e.dst_ip,
-      dst_port: e.dst_port,
-      protocol: e.protocol,
-      signature: e.attack_type,
-      confidence: e.confidence.toFixed(2),
-      engine: e.source_engine
+      src: e.src_ip,
+      dst: e.dst_ip,
+      port: e.dst_port,
+      proto: e.protocol,
+      sig: e.attack_type,
+      conf: Number(e.confidence?.toFixed?.(2) ?? e.confidence),
+      engine: e.source_engine,
     }));
-    
-    // Group by IP for summary
-    const ipSummary: Record<string, { count: number; alerts: number; suspicious: number }> = {};
-    events.forEach(e => {
-      if (!ipSummary[e.src_ip]) {
-        ipSummary[e.src_ip] = { count: 0, alerts: 0, suspicious: 0 };
-      }
-      ipSummary[e.src_ip].count++;
-      if (e.verdict === 'ALERT') ipSummary[e.src_ip].alerts++;
-      if (e.verdict === 'SUSPICIOUS') ipSummary[e.src_ip].suspicious++;
-    });
-    
-    const topAttackers = Object.entries(ipSummary)
-      .sort((a, b) => (b[1].alerts + b[1].suspicious) - (a[1].alerts + a[1].suspicious))
+    const ipMap: Record<string, { c: number; a: number; s: number }> = {};
+    for (const e of evs) {
+      const r = (ipMap[e.src_ip] ||= { c: 0, a: 0, s: 0 });
+      r.c++;
+      if (e.verdict === 'ALERT') r.a++;
+      if (e.verdict === 'SUSPICIOUS') r.s++;
+    }
+    const top = Object.entries(ipMap)
+      .sort((a, b) => b[1].a + b[1].s - (a[1].a + a[1].s))
       .slice(0, 10);
+    return JSON.stringify({
+      total: evs.length,
+      top_sources: top.map(([ip, s]) => ({ ip, ...s })),
+      recent_sample: recent,
+      selected_event: selectedEvent
+        ? {
+            time: selectedEvent.timestamp.toISOString(),
+            verdict: selectedEvent.verdict,
+            src: selectedEvent.src_ip,
+            dst: selectedEvent.dst_ip,
+            sig: selectedEvent.attack_type,
+          }
+        : null,
+    });
+  }, [selectedEvent]);
 
-    return `
---- SOC EVENTS SNAPSHOT ---
-Total events: ${events.length}
-Time range: ${events[events.length - 1]?.timestamp.toISOString()} to ${events[0]?.timestamp.toISOString()}
+  // Block IP executor (used by tool)
+  const performBlockIP = useCallback(
+    async (ip: string, reason: string): Promise<{ ok: boolean; error?: string }> => {
+      try {
+        if (apiUrl) {
+          const aiEngineUrl = apiUrl.replace(':3001', ':5000');
+          const resp = await fetch(`${aiEngineUrl}/block`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip, reason }),
+          });
+          if (!resp.ok) return { ok: false, error: `pfSense API HTTP ${resp.status}` };
+        }
+        const cur = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
+        if (!cur.includes(ip)) {
+          cur.push(ip);
+          localStorage.setItem('soc-blocked-ips', JSON.stringify(cur));
+        }
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) };
+      }
+    },
+    [apiUrl]
+  );
 
-TOP 10 SOURCE IPs BY THREAT LEVEL:
-${topAttackers.map(([ip, data]) => `- ${ip}: ${data.count} events (${data.alerts} ALERT, ${data.suspicious} SUSPICIOUS)`).join('\n')}
-
-RECENT EVENTS (last 100):
-${JSON.stringify(recentEvents, null, 2)}
---- END SNAPSHOT ---`;
+  // Confirm dialog for sensitive tools (returns user decision)
+  const requestConfirmation = (name: string, argsJson: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setPendingTool({ name, args: argsJson, resolve });
+    });
   };
 
-  const SOC_SYSTEM_PROMPT = `You are an AI SOC analyst (Tier 2) working on a hybrid NIDS stack with Zeek, Suricata and AI correlation.
-You receive:
-1) A natural language question from the analyst.
-2) A compact JSON snapshot of recent SOC alerts (provided below).
+  const stopStream = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsStreaming(false);
+  };
 
-You must:
-- Correlate patterns.
-- Identify likely attack scenarios.
-- Propose CLEAR next actions (block / investigate / ignore).
-- NEVER hallucinate log entries that are not present in JSON.
-- Answer in concise Vietnamese, nhưng giữ technical terms tiếng Anh khi cần.
+  const runConversation = useCallback(
+    async (userText: string) => {
+      const provider = activeProvider || FALLBACK_PROVIDER;
+      const useTools = !!provider.supportsTools;
 
-${buildEventsContext()}`;
+      // Append user turn
+      const newUserTurn: ChatTurn = { role: 'user', content: userText };
+      setTurns((prev) => [...prev, newUserTurn]);
+
+      // Build initial messages for API
+      const baseMessages: AIMessage[] = [
+        { role: 'system', content: `${SOC_SYSTEM_PROMPT}\n\n=== SOC SNAPSHOT (JSON) ===\n${buildSnapshot()}` },
+        ...turns
+          .filter((t) => t.role !== 'system')
+          .map<AIMessage>((t) => ({
+            role: t.role,
+            content: t.content,
+            tool_call_id: t.tool_call_id,
+            tool_calls: t.tool_calls,
+          })),
+        { role: 'user', content: userText },
+      ];
+
+      setIsStreaming(true);
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+
+      // Loop: stream → if tool_calls → execute → push tool results → stream again
+      let messages = baseMessages;
+      let safety = 5;
+      try {
+        while (safety-- > 0) {
+          // Insert empty assistant turn to be filled progressively
+          let assistantIdx = -1;
+          setTurns((prev) => {
+            assistantIdx = prev.length;
+            return [...prev, { role: 'assistant', content: '' }];
+          });
+
+          const result = await streamChat({
+            provider,
+            messages,
+            tools: useTools ? SOC_TOOLS : undefined,
+            signal: ctrl.signal,
+            onDelta: (chunk) => {
+              setTurns((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last && last.role === 'assistant') {
+                  next[next.length - 1] = { ...last, content: last.content + chunk };
+                }
+                return next;
+              });
+            },
+          });
+
+          // No tool calls → done
+          if (!result.toolCalls || result.toolCalls.length === 0) {
+            break;
+          }
+
+          // Attach tool_calls to the assistant turn
+          const assistantMsg: AIMessage = {
+            role: 'assistant',
+            content: result.content,
+            tool_calls: result.toolCalls.map((tc) => ({
+              id: tc.id,
+              type: 'function',
+              function: { name: tc.name, arguments: tc.arguments },
+            })),
+          };
+          setTurns((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last && last.role === 'assistant') {
+              next[next.length - 1] = {
+                ...last,
+                tool_calls: assistantMsg.tool_calls,
+                toolDisplay: result.toolCalls.map((tc) => ({
+                  id: tc.id,
+                  name: tc.name,
+                  args: tc.arguments,
+                  status: 'running',
+                })),
+              };
+            }
+            return next;
+          });
+
+          // Execute each tool sequentially
+          const toolMessages: AIMessage[] = [];
+          for (const tc of result.toolCalls) {
+            let parsedArgs: Record<string, unknown> = {};
+            try {
+              parsedArgs = JSON.parse(tc.arguments || '{}');
+            } catch {
+              /* keep empty */
+            }
+
+            // Confirmation gate
+            if (TOOLS_REQUIRING_CONFIRMATION.has(tc.name)) {
+              const ok = await requestConfirmation(tc.name, tc.arguments);
+              if (!ok) {
+                setTurns((prev) => {
+                  const next = [...prev];
+                  const last = next[next.length - 1];
+                  if (last && last.toolDisplay) {
+                    last.toolDisplay = last.toolDisplay.map((d) =>
+                      d.id === tc.id ? { ...d, status: 'denied', error: 'User denied execution' } : d
+                    );
+                  }
+                  return next;
+                });
+                toolMessages.push({
+                  role: 'tool',
+                  tool_call_id: tc.id,
+                  content: JSON.stringify({ ok: false, error: 'User denied execution' }),
+                });
+                continue;
+              }
+            }
+
+            const exec = await executeTool(tc.name, parsedArgs, {
+              events: eventsRef.current,
+              blockIp: performBlockIP,
+            });
+
+            setTurns((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              if (last && last.toolDisplay) {
+                last.toolDisplay = last.toolDisplay.map((d) =>
+                  d.id === tc.id
+                    ? exec.ok
+                      ? { ...d, status: 'success', result: exec.data }
+                      : { ...d, status: 'error', error: exec.error }
+                    : d
+                );
+              }
+              return next;
+            });
+
+            toolMessages.push({
+              role: 'tool',
+              tool_call_id: tc.id,
+              content: JSON.stringify(exec.ok ? exec.data : { error: exec.error }),
+            });
+          }
+
+          // Append for next round
+          messages = [...messages, assistantMsg, ...toolMessages];
+        }
+      } catch (e) {
+        if ((e as Error).name === 'AbortError') {
+          setTurns((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last && last.role === 'assistant') {
+              next[next.length - 1] = { ...last, content: last.content + '\n\n_⏹ Stopped by user._' };
+            }
+            return next;
+          });
+        } else {
+          setTurns((prev) => [
+            ...prev,
+            {
+              role: 'assistant',
+              content: `**[Error]** ${e instanceof Error ? e.message : String(e)}\n\nKiểm tra:\n1. Provider đang active (${provider.label} · ${provider.model})\n2. API key hợp lệ\n3. CORS / network\n4. Bấm ⚙️ để đổi provider.`,
+            },
+          ]);
+        }
+      } finally {
+        abortRef.current = null;
+        setIsStreaming(false);
+      }
+    },
+    [activeProvider, buildSnapshot, turns, performBlockIP]
+  );
 
   if (!isOpen) return null;
 
-  const handleSend = async () => {
-    if (!message.trim() || isLoading) return;
-    
-    const userMessage = message.trim();
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+  const handleSend = () => {
+    const t = message.trim();
+    if (!t || isStreaming) return;
     setMessage('');
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(`${MEGALLM_BASE_URL}/chat/completions`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${MEGALLM_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [
-            { role: 'system', content: SOC_SYSTEM_PROMPT },
-            ...messages.map(m => ({ role: m.role, content: m.content })),
-            { role: 'user', content: userMessage }
-          ],
-          max_tokens: 2048,
-          temperature: 0.7
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.choices && data.choices[0]?.message?.content) {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.choices[0].message.content }]);
-      } else {
-        throw new Error('Invalid response format from MegaLLM');
-      }
-    } catch (error) {
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: `[ERROR] ${error instanceof Error ? error.message : 'Unknown error'}
-
-Kiểm tra:
-1. Kết nối internet
-2. MegaLLM API key còn hiệu lực
-3. Thử lại sau vài giây` 
-      }]);
-    } finally {
-      setIsLoading(false);
-    }
+    void runConversation(t);
   };
 
   const quickPrompts = [
-    { label: '🔥 Top threats 1h', text: 'IP nào tấn công hệ thống nhiều nhất trong 1h qua? Tóm tắt top 5 và đề xuất hành động.' },
-    { label: '🛡️ ICMP scan?', text: 'Các ICMP alerts gần đây có phải scan/recon không hay chỉ là health check?' },
-    { label: '🚫 Block đề xuất', text: 'Đề xuất danh sách IP nên block ngay dựa trên patterns hiện tại, kèm lý do.' },
-    { label: '📊 Tóm tắt SOC', text: 'Tóm tắt tình hình SOC trong 1h qua: alerts, suspicious, top sources, top signatures.' },
+    { label: '🔥 Top threats 1h', text: 'Dùng tool get_top_sources để lấy top 10 IP tấn công trong 1h qua, sau đó tóm tắt và đề xuất hành động.' },
+    { label: '📊 Summary 1h', text: 'Gọi summarize_range(60) và tóm tắt tình hình SOC.' },
+    { label: '🛡️ ICMP scan?', text: 'Query các ICMP events gần đây. Đây là scan/recon hay health check?' },
+    { label: '🚫 Block đề xuất', text: 'Phân tích top sources và đề xuất các IP nên block (gọi block_ip cho IP rõ ràng nhất, sẽ có xác nhận).' },
   ];
 
   return (
-    <div className="fixed right-4 bottom-4 w-[440px] bg-card border border-border rounded-xl shadow-2xl shadow-black/50 z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300 backdrop-blur-xl">
-      {/* Header with gradient accent */}
-      <div className="relative flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-primary/10 via-card to-card">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15 border border-primary/30 shrink-0">
-            <Brain className="h-3.5 w-3.5 text-primary" />
-            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-success ring-2 ring-card animate-pulse" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[11px] font-bold text-foreground uppercase tracking-wider leading-tight">SOC AI Assistant</div>
-            <div className="text-[9px] text-muted-foreground font-mono truncate">Tier-2 Analyst · Online</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="h-6 px-2 text-[9px] bg-background border border-border rounded text-muted-foreground hover:text-foreground hover:border-primary/40 focus:outline-none focus:border-primary transition-colors cursor-pointer max-w-[130px]"
-          >
-            {MEGALLM_MODELS.map(model => (
-              <option key={model} value={model}>{model}</option>
-            ))}
-          </select>
-          <button
-            onClick={onClose}
-            className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="Close"
-          >
-            <span className="text-base leading-none">×</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div className="h-[360px] overflow-y-auto px-3 py-3 space-y-3 bg-background/40 scroll-smooth">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-200`}>
-            {msg.role === 'assistant' && (
-              <div className="h-6 w-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center mr-2 mt-0.5 shrink-0">
-                <Brain className="h-3 w-3 text-primary" />
+    <>
+      <div className="fixed right-4 bottom-4 w-[460px] bg-card border border-border rounded-xl shadow-2xl shadow-black/50 z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300 backdrop-blur-xl">
+        {/* Header */}
+        <div className="relative flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-primary/10 via-card to-card">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15 border border-primary/30 shrink-0">
+              <Brain className="h-3.5 w-3.5 text-primary" />
+              <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-success ring-2 ring-card animate-pulse" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold text-foreground uppercase tracking-wider leading-tight">SOC AI Assistant</div>
+              <div className="text-[9px] text-muted-foreground font-mono truncate">
+                {activeProvider ? `${activeProvider.label} · ${activeProvider.model}` : 'No provider'}
               </div>
-            )}
-            <div className={`max-w-[82%] px-3 py-2 rounded-lg text-[11px] leading-relaxed shadow-sm ${
-              msg.role === 'user'
-                ? 'bg-primary text-primary-foreground rounded-br-sm whitespace-pre-wrap font-medium'
-                : 'bg-muted/60 border border-border/60 text-foreground/90 rounded-bl-sm'
-            }`}>
-              {msg.role === 'assistant' ? (
-                <div className="prose prose-invert prose-xs max-w-none [&_table]:w-full [&_table]:text-[10px] [&_table]:border-collapse [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1 [&_td]:text-muted-foreground [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_strong]:text-foreground [&_strong]:font-semibold [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-xs [&_h2]:font-bold [&_h2]:text-foreground [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-[11px] [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-2 [&_h3]:mb-1 [&_code]:bg-background [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-primary [&_code]:text-[10px] [&_code]:border [&_code]:border-border/60 [&_pre]:bg-background [&_pre]:p-2 [&_pre]:rounded [&_pre]:overflow-x-auto [&_pre]:border [&_pre]:border-border [&_blockquote]:border-l-2 [&_blockquote]:border-primary [&_blockquote]:pl-2 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_a]:text-primary [&_a]:underline">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                </div>
-              ) : (
-                msg.content
-              )}
             </div>
           </div>
-        ))}
-        {isLoading && (
-          <div className="flex justify-start animate-in fade-in duration-200">
-            <div className="h-6 w-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center mr-2 mt-0.5">
-              <Brain className="h-3 w-3 text-primary animate-pulse" />
-            </div>
-            <div className="bg-muted/60 border border-border/60 px-3 py-2 rounded-lg rounded-bl-sm text-[11px] flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-bounce" style={{ animationDelay: '300ms' }} />
-              <span className="ml-1 text-[10px] text-muted-foreground font-mono">{selectedModel}</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowSettings(true)}
+              className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-muted transition-colors"
+              title="AI Provider Settings"
+            >
+              <Sliders className="h-3 w-3" />
+            </button>
+            <button
+              onClick={onClose}
+              className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Close"
+            >
+              <span className="text-base leading-none">×</span>
+            </button>
+          </div>
+        </div>
+
+        {/* No-provider warning */}
+        {!getActiveProvider() && (
+          <div className="px-3 py-1.5 bg-warning/10 border-b border-warning/30 text-[10px] text-warning-foreground flex items-center gap-1.5">
+            <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
+            <span>Đang dùng MegaLLM mặc định. Bấm <Sliders className="inline h-2.5 w-2.5" /> để cấu hình Grok / Gemini / Ollama riêng.</span>
+          </div>
+        )}
+
+        {/* Messages */}
+        <div ref={scrollRef} className="h-[400px] overflow-y-auto px-3 py-3 space-y-3 bg-background/40 scroll-smooth">
+          {turns.map((msg, i) => {
+            if (msg.role === 'tool') return null; // Hide raw tool results — already shown in toolDisplay
+            const isUser = msg.role === 'user';
+            return (
+              <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-1 duration-200`}>
+                {!isUser && (
+                  <div className="h-6 w-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center mr-2 mt-0.5 shrink-0">
+                    <Brain className="h-3 w-3 text-primary" />
+                  </div>
+                )}
+                <div className={`max-w-[82%] px-3 py-2 rounded-lg text-[11px] leading-relaxed shadow-sm ${
+                  isUser
+                    ? 'bg-primary text-primary-foreground rounded-br-sm whitespace-pre-wrap font-medium'
+                    : 'bg-muted/60 border border-border/60 text-foreground/90 rounded-bl-sm'
+                }`}>
+                  {isUser ? (
+                    msg.content
+                  ) : (
+                    <>
+                      {msg.toolDisplay?.map((td) => (
+                        <AIToolCallCard key={td.id} {...td} />
+                      ))}
+                      {msg.content && (
+                        <div className="prose prose-invert prose-xs max-w-none [&_table]:w-full [&_table]:text-[10px] [&_table]:border-collapse [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1 [&_td]:text-muted-foreground [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_strong]:text-foreground [&_strong]:font-semibold [&_h1]:text-sm [&_h1]:font-bold [&_h2]:text-xs [&_h2]:font-bold [&_h3]:text-[11px] [&_h3]:font-semibold [&_code]:bg-background [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-primary [&_code]:text-[10px] [&_code]:border [&_code]:border-border/60 [&_pre]:bg-background [&_pre]:p-2 [&_pre]:rounded [&_pre]:overflow-x-auto [&_pre]:border [&_pre]:border-border">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                          {isStreaming && i === turns.length - 1 && (
+                            <span className="inline-block w-1.5 h-3 bg-primary/70 ml-0.5 align-middle animate-pulse" />
+                          )}
+                        </div>
+                      )}
+                      {!msg.content && isStreaming && i === turns.length - 1 && !msg.toolDisplay?.length && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Quick prompts */}
+        {turns.length <= 1 && !isStreaming && (
+          <div className="px-3 pt-2 pb-1 border-t border-border/60 bg-card/50">
+            <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 px-0.5">⚡ Quick prompts</div>
+            <div className="flex flex-wrap gap-1.5">
+              {quickPrompts.map((p, i) => (
+                <button
+                  key={i}
+                  onClick={() => setMessage(p.text)}
+                  className="px-2 py-1 text-[10px] bg-muted/40 hover:bg-primary/15 border border-border/60 hover:border-primary/40 rounded-md text-muted-foreground hover:text-foreground transition-all duration-150 hover:scale-[1.02] active:scale-95"
+                >
+                  {p.label}
+                </button>
+              ))}
             </div>
           </div>
         )}
+
+        {/* Input */}
+        <div className="p-3 border-t border-border bg-card">
+          <div className="flex gap-2 items-center bg-background border border-border rounded-lg px-2 py-1 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              placeholder={isStreaming ? 'AI đang trả lời...' : 'Hỏi về logs, alerts, correlation...'}
+              disabled={isStreaming}
+              className="flex-1 h-7 bg-transparent text-[11px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
+            />
+            {isStreaming ? (
+              <button
+                onClick={stopStream}
+                className="px-3 h-7 text-[10px] font-semibold bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-all flex items-center gap-1"
+              >
+                <Square className="h-3 w-3 fill-current" />
+                <span>Stop</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!message.trim()}
+                className="px-3 h-7 text-[10px] font-semibold bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 flex items-center gap-1"
+              >
+                <span>Gửi</span>
+                <span className="text-[8px] opacity-60">↵</span>
+              </button>
+            )}
+          </div>
+          <div className="text-[9px] text-muted-foreground/60 mt-1.5 px-1 font-mono flex items-center justify-between">
+            <span>{events.length > 0 ? `📡 Context: ${Math.min(events.length, 50)} events` : '⚠️ No events context'}</span>
+            <span>{activeProvider?.supportsTools ? '🔧 Tools enabled' : '🔧 Tools off'}</span>
+          </div>
+        </div>
       </div>
 
-      {/* Quick prompts */}
-      {messages.length <= 1 && !isLoading && (
-        <div className="px-3 pt-2 pb-1 border-t border-border/60 bg-card/50">
-          <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 px-0.5">⚡ Quick prompts</div>
-          <div className="flex flex-wrap gap-1.5">
-            {quickPrompts.map((p, i) => (
+      {/* Settings Modal */}
+      <AISettingsModal
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        onChange={refreshProvider}
+      />
+
+      {/* Tool confirmation dialog */}
+      {pendingTool && (
+        <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-card border border-border rounded-lg shadow-2xl max-w-md w-full p-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="h-9 w-9 rounded-md bg-destructive/15 border border-destructive/40 flex items-center justify-center shrink-0">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-bold text-foreground">AI yêu cầu thực thi tool</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  AI muốn gọi <code className="bg-muted px-1 rounded text-foreground">{pendingTool.name}</code>. Hành động này có tác động thật lên hệ thống.
+                </p>
+              </div>
+            </div>
+            <pre className="bg-background border border-border rounded p-2 text-[10px] font-mono text-foreground/80 max-h-40 overflow-auto mb-3">
+              {(() => { try { return JSON.stringify(JSON.parse(pendingTool.args), null, 2); } catch { return pendingTool.args; } })()}
+            </pre>
+            <div className="flex gap-2 justify-end">
               <button
-                key={i}
-                onClick={() => setMessage(p.text)}
-                className="px-2 py-1 text-[10px] bg-muted/40 hover:bg-primary/15 border border-border/60 hover:border-primary/40 rounded-md text-muted-foreground hover:text-foreground transition-all duration-150 hover:scale-[1.02] active:scale-95"
+                onClick={() => { pendingTool.resolve(false); setPendingTool(null); }}
+                className="px-3 h-8 text-[11px] font-medium border border-border text-foreground rounded-md hover:bg-muted"
               >
-                {p.label}
+                Từ chối
               </button>
-            ))}
+              <button
+                onClick={() => { pendingTool.resolve(true); setPendingTool(null); }}
+                className="px-3 h-8 text-[11px] font-semibold bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90"
+              >
+                Cho phép thực thi
+              </button>
+            </div>
           </div>
         </div>
       )}
-
-      {/* Input */}
-      <div className="p-3 border-t border-border bg-card">
-        <div className="flex gap-2 items-center bg-background border border-border rounded-lg px-2 py-1 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            placeholder="Hỏi về logs, alerts, correlation..."
-            disabled={isLoading}
-            className="flex-1 h-7 bg-transparent text-[11px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
-          />
-          <button
-            onClick={handleSend}
-            disabled={isLoading || !message.trim()}
-            className="px-3 h-7 text-[10px] font-semibold bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 flex items-center gap-1"
-          >
-            {isLoading ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <>
-                <span>Gửi</span>
-                <span className="text-[8px] opacity-60">↵</span>
-              </>
-            )}
-          </button>
-        </div>
-        <div className="text-[9px] text-muted-foreground/60 mt-1.5 px-1 font-mono">
-          {events.length > 0 ? `📡 Context: ${Math.min(events.length, 100)} events loaded` : '⚠️ No events context'}
-        </div>
-      </div>
-    </div>
+    </>
   );
 };
 
