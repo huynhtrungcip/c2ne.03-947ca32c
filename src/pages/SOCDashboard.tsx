@@ -31,6 +31,11 @@ import { SOC_TOOLS, executeTool, TOOLS_REQUIRING_CONFIRMATION } from '@/lib/socT
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
 
+// Legacy MegaLLM constants — only used by the inline "analyze.flow" panel (Event Inspector)
+const MEGALLM_API_KEY = 'sk-mega-7bd02bf1c5720f9bde518db892d4da8ef94671adcca28dd19299b1c2d8d4e753';
+const MEGALLM_BASE_URL = 'https://ai.megallm.io/v1';
+const DEFAULT_MODEL = 'deepseek-r1-distill-llama-70b';
+
 // ===== Fallback MegaLLM (legacy) — used only when no provider configured =====
 const FALLBACK_PROVIDER: AIProviderConfig = {
   id: 'fallback-megallm',
@@ -329,13 +334,11 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
               const next = [...prev];
               const last = next[next.length - 1];
               if (last && last.toolDisplay) {
-                last.toolDisplay = last.toolDisplay.map((d) =>
-                  d.id === tc.id
-                    ? exec.ok
-                      ? { ...d, status: 'success', result: exec.data }
-                      : { ...d, status: 'error', error: exec.error }
-                    : d
-                );
+                last.toolDisplay = last.toolDisplay.map((d) => {
+                  if (d.id !== tc.id) return d;
+                  if (!exec.ok) return { ...d, status: 'error' as const, error: exec.error };
+                  return { ...d, status: 'success' as const, result: exec.data };
+                });
               }
               return next;
             });
@@ -343,7 +346,7 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
             toolMessages.push({
               role: 'tool',
               tool_call_id: tc.id,
-              content: JSON.stringify(exec.ok ? exec.data : { error: exec.error }),
+              content: JSON.stringify(!exec.ok ? { error: exec.error } : exec.data),
             });
           }
 
