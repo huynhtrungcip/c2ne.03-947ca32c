@@ -1793,14 +1793,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       </div>
 
       {/* Credits */}
-      <div className="pt-5">
-        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2 font-mono">
+      <div className="pt-8">
+        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-4 font-mono">
           {t('help.devTeam')}
         </div>
-        <div className="border border-border rounded-md bg-background/40 px-3.5 py-3 text-[11px] space-y-0.5">
-          <div className="text-foreground font-medium">C1NE.03 Team</div>
+        <div className="border border-border rounded-md bg-background/40 px-5 py-5 text-[11px] space-y-2">
+          <div className="text-foreground font-medium text-[13px]">C1NE.03 Team</div>
           <div className="text-muted-foreground">Cybersecurity K28 · Duy Tan University</div>
-          <div className="text-muted-foreground/70 text-[10px] pt-2 mt-2 border-t border-border font-mono">
+          <div className="text-muted-foreground/70 text-[10px] pt-4 mt-4 border-t border-border font-mono">
             © 2025 SOC Dashboard
           </div>
         </div>
