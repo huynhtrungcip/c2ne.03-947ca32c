@@ -80,7 +80,7 @@ export const TrafficChart = ({ data }: TrafficChartProps) => {
               labelStyle={{ color: 'hsl(var(--muted-foreground))', fontSize: '10px', marginBottom: 4 }}
             />
             <Area
-              type="monotone"
+              type="basis"
               dataKey="total"
               stroke="hsl(var(--chart-1))"
               strokeWidth={1.5}
@@ -91,7 +91,7 @@ export const TrafficChart = ({ data }: TrafficChartProps) => {
               isAnimationActive={false}
             />
             <Area
-              type="monotone"
+              type="basis"
               dataKey="alerts"
               stroke="hsl(var(--soc-alert))"
               strokeWidth={1.5}
