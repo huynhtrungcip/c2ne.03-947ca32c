@@ -1222,14 +1222,64 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             </div>
             
             {/* Time Distribution */}
-            <div className={`border p-3 ${'bg-card border-border'}`}>
-              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Event Timeline</div>
+            <div className="border p-3 bg-card border-border">
+              <div className="text-[10px] uppercase tracking-wider font-medium mb-3 text-muted-foreground">Event Timeline</div>
               <div className="h-16">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData.slice(-12)} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                     <Area type="monotone" dataKey="Traffic" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.2} strokeWidth={1} />
                   </AreaChart>
                 </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Top Source IPs */}
+            <div className="border p-3 bg-card border-border">
+              <div className="text-[10px] uppercase tracking-wider font-medium mb-3 text-muted-foreground">Top Source IPs</div>
+              <div className="space-y-2">
+                {topSources.length === 0 ? (
+                  <div className="text-[10px] text-muted-foreground/50">No sources</div>
+                ) : topSources.slice(0, 6).map((src) => {
+                  let isBlocked = false;
+                  try {
+                    const blockedIPs = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]') as string[];
+                    isBlocked = blockedIPs.includes(src.ip);
+                  } catch {}
+                  return (
+                    <div key={src.ip} className="flex items-center justify-between gap-2">
+                      <span className={`text-[10px] font-mono truncate ${isBlocked ? 'text-[hsl(var(--soc-alert))] line-through' : 'text-muted-foreground'}`}>
+                        {src.ip}
+                      </span>
+                      <span className="text-[11px] font-mono text-foreground">{src.count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Verdict Breakdown */}
+            <div className="border p-3 bg-card border-border">
+              <div className="text-[10px] uppercase tracking-wider font-medium mb-3 text-muted-foreground">Verdict Breakdown</div>
+              <div className="space-y-2">
+                {[
+                  { label: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: 'hsl(var(--soc-alert))' },
+                  { label: 'Suspicious', value: sortedEvents.filter(e => e.verdict === 'SUSPICIOUS').length, color: 'hsl(var(--soc-warning))' },
+                  { label: 'Benign', value: sortedEvents.filter(e => e.verdict === 'BENIGN').length, color: 'hsl(var(--soc-success))' },
+                  { label: 'False Pos', value: sortedEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length, color: 'hsl(var(--muted-foreground))' },
+                ].map((v) => {
+                  const pct = sortedEvents.length > 0 ? (v.value / sortedEvents.length) * 100 : 0;
+                  return (
+                    <div key={v.label}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-muted-foreground">{v.label}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground">{v.value}</span>
+                      </div>
+                      <div className="h-1 bg-muted/30 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: v.color }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
