@@ -1,16 +1,15 @@
-import { Bar, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart } from 'recharts';
+import { Area, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, ComposedChart } from 'recharts';
 import { TrafficData } from '@/types/soc';
 
 interface TrafficChartProps {
   data: TrafficData[];
 }
 
-// Datadog/Grafana-style: discrete bars per bucket. No smoothing, no fake curves.
-// Two stacked series: total traffic (cool) + alerts (red) overlaid.
+// Grafana-style: monotone line + soft area fill + small dots at each datapoint.
 export const TrafficChart = ({ data }: TrafficChartProps) => {
   const chartData = data.map(d => ({
     time: d.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-    benign: Math.max(0, d.total - d.alerts),
+    traffic: d.total,
     alerts: d.alerts,
   }));
 
@@ -20,10 +19,10 @@ export const TrafficChart = ({ data }: TrafficChartProps) => {
         <div className="soc-section-title mb-0">Traffic & Alerts</div>
         <div className="flex items-center gap-3 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-[1px] bg-[hsl(var(--chart-1))]" /> Traffic
+            <span className="w-2.5 h-0.5 bg-[hsl(var(--chart-1))]" /> Traffic
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-[1px] bg-[hsl(var(--soc-alert))]" /> Alerts
+            <span className="w-2.5 h-0.5 bg-[hsl(var(--soc-alert))]" /> Alerts
           </span>
         </div>
       </div>
@@ -33,17 +32,22 @@ export const TrafficChart = ({ data }: TrafficChartProps) => {
           No data available.
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart
-            data={chartData}
-            margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
-            barCategoryGap="18%"
-          >
+        <ResponsiveContainer width="100%" height={240}>
+          <ComposedChart data={chartData} margin={{ top: 10, right: 14, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id="trafficGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.32} />
+                <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0.02} />
+              </linearGradient>
+              <linearGradient id="alertsGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--soc-alert))" stopOpacity={0.28} />
+                <stop offset="100%" stopColor="hsl(var(--soc-alert))" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
             <CartesianGrid
               strokeDasharray="2 4"
               stroke="hsl(var(--border))"
-              strokeOpacity={0.4}
-              vertical={false}
+              strokeOpacity={0.45}
             />
             <XAxis
               dataKey="time"
@@ -57,11 +61,11 @@ export const TrafficChart = ({ data }: TrafficChartProps) => {
               tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
               axisLine={false}
               tickLine={false}
-              width={32}
+              width={36}
               allowDecimals={false}
             />
             <Tooltip
-              cursor={{ fill: 'hsl(var(--primary) / 0.08)' }}
+              cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '3 3' }}
               contentStyle={{
                 backgroundColor: 'hsl(var(--card))',
                 border: '1px solid hsl(var(--border))',
@@ -73,30 +77,30 @@ export const TrafficChart = ({ data }: TrafficChartProps) => {
                 boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
               }}
               labelStyle={{ color: 'hsl(var(--muted-foreground))', fontSize: '10px', marginBottom: 4 }}
-              formatter={(value: number, name: string) => {
-                const label = name === 'benign' ? 'Traffic' : 'Alerts';
-                return [value, label];
-              }}
             />
-            {/* Stacked: benign traffic on bottom, alerts on top */}
-            <Bar
-              dataKey="benign"
-              stackId="events"
-              fill="hsl(var(--chart-1))"
-              fillOpacity={0.85}
+            <Area
+              type="monotone"
+              dataKey="traffic"
+              stroke="hsl(var(--chart-1))"
+              strokeWidth={1.75}
+              fill="url(#trafficGradient)"
+              name="Traffic"
+              dot={{ fill: 'hsl(var(--chart-1))', stroke: 'hsl(var(--background))', strokeWidth: 1, r: 2 }}
+              activeDot={{ fill: 'hsl(var(--chart-1))', stroke: 'hsl(var(--background))', strokeWidth: 2, r: 4 }}
               isAnimationActive={false}
-              maxBarSize={18}
             />
-            <Bar
+            <Area
+              type="monotone"
               dataKey="alerts"
-              stackId="events"
-              fill="hsl(var(--soc-alert))"
-              fillOpacity={0.95}
+              stroke="hsl(var(--soc-alert))"
+              strokeWidth={1.75}
+              fill="url(#alertsGradient)"
+              name="Alerts"
+              dot={{ fill: 'hsl(var(--soc-alert))', stroke: 'hsl(var(--background))', strokeWidth: 1, r: 2 }}
+              activeDot={{ fill: 'hsl(var(--soc-alert))', stroke: 'hsl(var(--background))', strokeWidth: 2, r: 4 }}
               isAnimationActive={false}
-              maxBarSize={18}
-              radius={[2, 2, 0, 0]}
             />
-          </BarChart>
+          </ComposedChart>
         </ResponsiveContainer>
       )}
     </div>
