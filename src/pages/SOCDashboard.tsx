@@ -177,33 +177,64 @@ Kiểm tra:
     }
   };
 
+  const quickPrompts = [
+    { label: '🔥 Top threats 1h', text: 'IP nào tấn công hệ thống nhiều nhất trong 1h qua? Tóm tắt top 5 và đề xuất hành động.' },
+    { label: '🛡️ ICMP scan?', text: 'Các ICMP alerts gần đây có phải scan/recon không hay chỉ là health check?' },
+    { label: '🚫 Block đề xuất', text: 'Đề xuất danh sách IP nên block ngay dựa trên patterns hiện tại, kèm lý do.' },
+    { label: '📊 Tóm tắt SOC', text: 'Tóm tắt tình hình SOC trong 1h qua: alerts, suspicious, top sources, top signatures.' },
+  ];
+
   return (
-    <div className="fixed right-4 bottom-4 w-[420px] bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg shadow-2xl z-50">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f1f]">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold text-[#e4e4e7] uppercase tracking-wider">SOC AI Assistant</span>
+    <div className="fixed right-4 bottom-4 w-[440px] bg-card border border-border rounded-xl shadow-2xl shadow-black/50 z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300 backdrop-blur-xl">
+      {/* Header with gradient accent */}
+      <div className="relative flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-primary/10 via-card to-card">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15 border border-primary/30 shrink-0">
+            <Brain className="h-3.5 w-3.5 text-primary" />
+            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-card animate-pulse" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] font-bold text-foreground uppercase tracking-wider leading-tight">SOC AI Assistant</div>
+            <div className="text-[9px] text-muted-foreground font-mono truncate">Tier-2 Analyst · Online</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value)}
-            className="h-6 px-2 text-[9px] bg-[#0a0a0a] border border-[#27272a] rounded text-[#a1a1aa] focus:outline-none focus:border-[#3b82f6]"
+            className="h-6 px-2 text-[9px] bg-background border border-border rounded text-muted-foreground hover:text-foreground hover:border-primary/40 focus:outline-none focus:border-primary transition-colors cursor-pointer max-w-[130px]"
           >
             {MEGALLM_MODELS.map(model => (
               <option key={model} value={model}>{model}</option>
             ))}
           </select>
+          <button
+            onClick={onClose}
+            className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            aria-label="Close"
+          >
+            <span className="text-base leading-none">×</span>
+          </button>
         </div>
-        <button onClick={onClose} className="text-[#71717a] hover:text-[#e4e4e7] text-sm">×</button>
       </div>
-      <div className="h-80 overflow-y-auto p-3 space-y-3">
+
+      {/* Messages */}
+      <div className="h-[360px] overflow-y-auto px-3 py-3 space-y-3 bg-background/40 scroll-smooth">
         {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] px-3 py-2 rounded-lg text-[11px] ${
-              msg.role === 'user' 
-                ? 'bg-[#1e3a5f] text-[#93c5fd] whitespace-pre-wrap' 
-                : 'bg-[#18181b] text-[#a1a1aa]'
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-200`}>
+            {msg.role === 'assistant' && (
+              <div className="h-6 w-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center mr-2 mt-0.5 shrink-0">
+                <Brain className="h-3 w-3 text-primary" />
+              </div>
+            )}
+            <div className={`max-w-[82%] px-3 py-2 rounded-lg text-[11px] leading-relaxed shadow-sm ${
+              msg.role === 'user'
+                ? 'bg-primary text-primary-foreground rounded-br-sm whitespace-pre-wrap font-medium'
+                : 'bg-muted/60 border border-border/60 text-foreground/90 rounded-bl-sm'
             }`}>
               {msg.role === 'assistant' ? (
-                <div className="prose prose-invert prose-xs max-w-none [&_table]:w-full [&_table]:text-[10px] [&_table]:border-collapse [&_th]:border [&_th]:border-[#3f3f46] [&_th]:bg-[#27272a] [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_th]:text-[#e4e4e7] [&_td]:border [&_td]:border-[#3f3f46] [&_td]:px-2 [&_td]:py-1 [&_td]:text-[#a1a1aa] [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_strong]:text-[#e4e4e7] [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-[#e4e4e7] [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-xs [&_h2]:font-bold [&_h2]:text-[#e4e4e7] [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-[11px] [&_h3]:font-semibold [&_h3]:text-[#e4e4e7] [&_h3]:mt-2 [&_h3]:mb-1 [&_code]:bg-[#27272a] [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[#60a5fa] [&_pre]:bg-[#0a0a0a] [&_pre]:p-2 [&_pre]:rounded [&_pre]:overflow-x-auto [&_blockquote]:border-l-2 [&_blockquote]:border-[#3b82f6] [&_blockquote]:pl-2 [&_blockquote]:italic [&_blockquote]:text-[#71717a]">
+                <div className="prose prose-invert prose-xs max-w-none [&_table]:w-full [&_table]:text-[10px] [&_table]:border-collapse [&_th]:border [&_th]:border-border [&_th]:bg-muted [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1 [&_td]:text-muted-foreground [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_strong]:text-foreground [&_strong]:font-semibold [&_h1]:text-sm [&_h1]:font-bold [&_h1]:text-foreground [&_h1]:mt-3 [&_h1]:mb-1 [&_h2]:text-xs [&_h2]:font-bold [&_h2]:text-foreground [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-[11px] [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-2 [&_h3]:mb-1 [&_code]:bg-background [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-primary [&_code]:text-[10px] [&_code]:border [&_code]:border-border/60 [&_pre]:bg-background [&_pre]:p-2 [&_pre]:rounded [&_pre]:overflow-x-auto [&_pre]:border [&_pre]:border-border [&_blockquote]:border-l-2 [&_blockquote]:border-primary [&_blockquote]:pl-2 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_a]:text-primary [&_a]:underline">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 </div>
               ) : (
@@ -213,15 +244,41 @@ Kiểm tra:
           </div>
         ))}
         {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-[#18181b] text-[#a1a1aa] px-3 py-2 rounded-lg text-[11px]">
-              <span className="animate-pulse">Đang phân tích với {selectedModel}...</span>
+          <div className="flex justify-start animate-in fade-in duration-200">
+            <div className="h-6 w-6 rounded-md bg-primary/15 border border-primary/30 flex items-center justify-center mr-2 mt-0.5">
+              <Brain className="h-3 w-3 text-primary animate-pulse" />
+            </div>
+            <div className="bg-muted/60 border border-border/60 px-3 py-2 rounded-lg rounded-bl-sm text-[11px] flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-bounce" style={{ animationDelay: '300ms' }} />
+              <span className="ml-1 text-[10px] text-muted-foreground font-mono">{selectedModel}</span>
             </div>
           </div>
         )}
       </div>
-      <div className="p-3 border-t border-[#1f1f1f]">
-        <div className="flex gap-2">
+
+      {/* Quick prompts */}
+      {messages.length <= 1 && !isLoading && (
+        <div className="px-3 pt-2 pb-1 border-t border-border/60 bg-card/50">
+          <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold mb-1.5 px-0.5">⚡ Quick prompts</div>
+          <div className="flex flex-wrap gap-1.5">
+            {quickPrompts.map((p, i) => (
+              <button
+                key={i}
+                onClick={() => setMessage(p.text)}
+                className="px-2 py-1 text-[10px] bg-muted/40 hover:bg-primary/15 border border-border/60 hover:border-primary/40 rounded-md text-muted-foreground hover:text-foreground transition-all duration-150 hover:scale-[1.02] active:scale-95"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="p-3 border-t border-border bg-card">
+        <div className="flex gap-2 items-center bg-background border border-border rounded-lg px-2 py-1 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
           <input
             type="text"
             value={message}
@@ -229,15 +286,25 @@ Kiểm tra:
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
             placeholder="Hỏi về logs, alerts, correlation..."
             disabled={isLoading}
-            className="flex-1 h-8 px-3 text-[11px] bg-[#0a0a0a] border border-[#27272a] rounded text-[#e4e4e7] placeholder-[#3f3f46] focus:outline-none focus:border-[#3b82f6] disabled:opacity-50"
+            className="flex-1 h-7 bg-transparent text-[11px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
           />
-          <button 
+          <button
             onClick={handleSend}
             disabled={isLoading || !message.trim()}
-            className="px-3 h-8 text-[10px] bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded hover:bg-[#1e40af]/50 transition-colors font-medium disabled:opacity-50"
+            className="px-3 h-7 text-[10px] font-semibold bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 flex items-center gap-1"
           >
-            {isLoading ? '...' : 'Gửi'}
+            {isLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <>
+                <span>Gửi</span>
+                <span className="text-[8px] opacity-60">↵</span>
+              </>
+            )}
           </button>
+        </div>
+        <div className="text-[9px] text-muted-foreground/60 mt-1.5 px-1 font-mono">
+          {events.length > 0 ? `📡 Context: ${Math.min(events.length, 100)} events loaded` : '⚠️ No events context'}
         </div>
       </div>
     </div>
