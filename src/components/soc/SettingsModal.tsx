@@ -538,10 +538,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   // Health Section Renderer
   const renderHealthSection = () => (
     <div className="space-y-6">
-      <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+      <div className={`text-sm font-semibold text-foreground`}>
         System Health
       </div>
-      <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+      <p className={`text-[11px] text-muted-foreground`}>
         Kiểm tra định kỳ tình trạng NIDS shipper và pfSense/Telegram để tránh nhấp nháy trạng thái trên giao diện.
       </p>
       <SystemHealthMonitor isDarkMode={isDarkMode} apiUrl={apiUrl} />
@@ -551,25 +551,25 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   // Telegram Section Renderer
   const renderTelegramSection = () => (
     <div className="space-y-6">
-      <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+      <div className={`text-sm font-semibold text-foreground`}>
         Telegram Alert Configuration
       </div>
-      <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+      <p className={`text-[11px] text-muted-foreground`}>
         Cấu hình gửi cảnh báo qua Telegram Bot. Chỉ gửi các sự kiện có mức độ tin cậy cao để tránh spam.
       </p>
 
       {/* Enable Toggle */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+      <div className={`p-4 rounded-md border bg-background/40 border-border`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${telegramConfig.enabled ? 'bg-[#3b82f6]/20 text-[#60a5fa]' : isDarkMode ? 'bg-[#27272a] text-[#52525b]' : 'bg-[#e5e7eb] text-[#9ca3af]'}`}>
+            <div className={`w-10 h-10 rounded-md flex items-center justify-center ${telegramConfig.enabled ? 'bg-[#3b82f6]/20 text-[#60a5fa]' : isDarkMode ? 'bg-[#27272a] text-[#52525b]' : 'bg-[#e5e7eb] text-[#9ca3af]'}`}>
               <Send className="w-5 h-5" />
             </div>
             <div>
-              <div className={`text-[12px] font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+              <div className={`text-[12px] font-semibold text-foreground`}>
                 Telegram Alerts
               </div>
-              <div className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+              <div className={`text-[10px] text-muted-foreground`}>
                 {telegramConfig.enabled ? 'Đang bật - Gửi cảnh báo tự động' : 'Đang tắt'}
               </div>
             </div>
@@ -588,8 +588,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       </div>
 
       {/* AI Engine URL - Required for Telegram */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-        <div className={`text-[11px] font-semibold mb-2 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+      <div className={`p-4 rounded-md border bg-background/40 border-border`}>
+        <div className={`text-[11px] font-semibold mb-2 flex items-center gap-2 text-foreground`}>
           <Server className="w-4 h-4 text-[#22c55e]" />
           AI Engine URL
         </div>
@@ -599,20 +599,16 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             placeholder="http://10.10.10.20:8000"
             value={apiUrlInput}
             onChange={(e) => setApiUrlInput(e.target.value)}
-            className={`flex-1 h-9 px-3 text-[11px] font-mono border rounded-lg ${
-              isDarkMode 
-                ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7] placeholder-[#52525b]' 
-                : 'bg-white border-[#d1d5db] text-[#111827] placeholder-[#9ca3af]'
-            }`}
+            className={`flex-1 h-9 px-3 text-[11px] font-mono border rounded-md bg-background border-border text-foreground placeholder:text-muted-foreground/60`}
           />
           <button
             onClick={handleSaveApiUrl}
-            className="px-4 h-9 text-[11px] font-medium bg-[#22c55e] text-white rounded-lg hover:bg-[#16a34a]"
+            className="px-4 h-9 text-[11px] font-medium bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors"
           >
             Lưu
           </button>
         </div>
-        <p className={`mt-1.5 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+        <p className={`mt-1.5 text-[9px] text-muted-foreground/70`}>
           URL của AI Engine (port 8000). Ví dụ: http://10.10.10.20:8000. Bắt buộc để gửi Telegram và block IP.
         </p>
         {apiUrl && (
@@ -626,8 +622,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       </div>
 
       {/* Bot Configuration */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-        <div className={`text-[11px] font-semibold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+      <div className={`p-4 rounded-md border bg-background/40 border-border`}>
+        <div className={`text-[11px] font-semibold mb-4 flex items-center gap-2 text-foreground`}>
           <MessageCircle className="w-4 h-4 text-[#3b82f6]" />
           Bot Configuration
         </div>
@@ -635,7 +631,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <div className="space-y-4">
           {/* Bot Token */}
           <div>
-            <label className={`block text-[11px] font-medium mb-1.5 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+            <label className={`block text-[11px] font-medium mb-1.5 text-muted-foreground`}>
               Bot Token
             </label>
             <input
@@ -643,20 +639,16 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               placeholder="123456789:ABCDefGHIjklMNOpqrSTUvwxYZ"
               value={telegramConfig.botToken}
               onChange={(e) => setTelegramConfig({ ...telegramConfig, botToken: e.target.value })}
-              className={`w-full h-9 px-3 text-[11px] font-mono border rounded-lg ${
-                isDarkMode 
-                  ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7] placeholder-[#52525b]' 
-                  : 'bg-white border-[#d1d5db] text-[#111827] placeholder-[#9ca3af]'
-              }`}
+              className={`w-full h-9 px-3 text-[11px] font-mono border rounded-md bg-background border-border text-foreground placeholder:text-muted-foreground/60`}
             />
-            <p className={`mt-1 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+            <p className={`mt-1 text-[9px] text-muted-foreground/70`}>
               Tạo bot tại @BotFather, copy token có dạng: 123456789:ABCxyz...
             </p>
           </div>
 
           {/* Chat ID */}
           <div>
-            <label className={`block text-[11px] font-medium mb-1.5 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+            <label className={`block text-[11px] font-medium mb-1.5 text-muted-foreground`}>
               Chat ID
             </label>
             <input
@@ -664,13 +656,9 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               placeholder="-1001234567890 hoặc 123456789"
               value={telegramConfig.chatId}
               onChange={(e) => setTelegramConfig({ ...telegramConfig, chatId: e.target.value })}
-              className={`w-full h-9 px-3 text-[11px] font-mono border rounded-lg ${
-                isDarkMode 
-                  ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7] placeholder-[#52525b]' 
-                  : 'bg-white border-[#d1d5db] text-[#111827] placeholder-[#9ca3af]'
-              }`}
+              className={`w-full h-9 px-3 text-[11px] font-mono border rounded-md bg-background border-border text-foreground placeholder:text-muted-foreground/60`}
             />
-            <p className={`mt-1 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+            <p className={`mt-1 text-[9px] text-muted-foreground/70`}>
               Chat ID của nhóm hoặc cá nhân. Dùng @userinfobot để lấy ID
             </p>
           </div>
@@ -679,7 +667,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           <button
             onClick={handleTestTelegram}
             disabled={telegramTestStatus === 'testing' || !telegramConfig.botToken || !telegramConfig.chatId}
-            className={`w-full flex items-center justify-center gap-2 h-10 rounded-lg font-medium text-[11px] transition-colors ${
+            className={`w-full flex items-center justify-center gap-2 h-10 rounded-md font-medium text-[11px] transition-colors ${
               telegramTestStatus === 'success' 
                 ? 'bg-[#22c55e] text-white' 
                 : telegramTestStatus === 'error'
@@ -715,8 +703,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       </div>
 
       {/* Alert Settings */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-        <div className={`text-[11px] font-semibold mb-4 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+      <div className={`p-4 rounded-md border bg-background/40 border-border`}>
+        <div className={`text-[11px] font-semibold mb-4 flex items-center gap-2 text-foreground`}>
           <Bell className="w-4 h-4 text-[#f59e0b]" />
           Alert Settings
         </div>
@@ -724,7 +712,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         {/* Confidence Threshold */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <label className={`text-[11px] font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+            <label className={`text-[11px] font-medium text-muted-foreground`}>
               Confidence Threshold
             </label>
             <span className={`text-[12px] font-bold ${
@@ -740,19 +728,19 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             max="99"
             value={telegramConfig.confidenceThreshold}
             onChange={(e) => setTelegramConfig({ ...telegramConfig, confidenceThreshold: parseInt(e.target.value) })}
-            className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-[#27272a]"
+            className="w-full h-2 rounded-md appearance-none cursor-pointer bg-[#27272a]"
             style={{
               background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(telegramConfig.confidenceThreshold - 50) / 49 * 100}%, ${isDarkMode ? '#27272a' : '#e5e7eb'} ${(telegramConfig.confidenceThreshold - 50) / 49 * 100}%, ${isDarkMode ? '#27272a' : '#e5e7eb'} 100%)`
             }}
           />
-          <p className={`mt-2 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+          <p className={`mt-2 text-[9px] text-muted-foreground/70`}>
             Chỉ gửi cảnh báo khi AI confidence ≥ {telegramConfig.confidenceThreshold}%. Khuyến nghị: 80-90% để tránh spam.
           </p>
         </div>
 
         {/* Alert Types */}
         <div className="mb-4">
-          <label className={`block text-[11px] font-medium mb-2 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+          <label className={`block text-[11px] font-medium mb-2 text-muted-foreground`}>
             Loại cảnh báo gửi
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -765,7 +753,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                     : [...telegramConfig.alertTypes, type];
                   setTelegramConfig({ ...telegramConfig, alertTypes: types });
                 }}
-                className={`p-2 rounded-lg border text-[11px] font-medium transition-all ${
+                className={`p-2 rounded-md border text-[11px] font-medium transition-all ${
                   telegramConfig.alertTypes.includes(type)
                     ? type === 'ALERT' 
                       ? 'bg-[#dc2626]/20 border-[#dc2626] text-[#f87171]'
@@ -783,7 +771,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
 
         {/* Action Notifications */}
         <div>
-          <label className={`block text-[11px] font-medium mb-2 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+          <label className={`block text-[11px] font-medium mb-2 text-muted-foreground`}>
             Thông báo hành động quan trọng
           </label>
           <div className="space-y-2">
@@ -794,13 +782,11 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             ].map(({ key, label, desc }) => (
               <div 
                 key={key}
-                className={`flex items-center justify-between p-3 rounded-lg border ${
-                  isDarkMode ? 'bg-[#18181b] border-[#27272a]' : 'bg-white border-[#e5e7eb]'
-                }`}
+                className={`flex items-center justify-between p-3 rounded-md border bg-background/40 border-border`}
               >
                 <div>
-                  <div className={`text-[11px] font-medium ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>{label}</div>
-                  <div className={`text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{desc}</div>
+                  <div className={`text-[11px] font-medium text-foreground`}>{label}</div>
+                  <div className={`text-[9px] text-muted-foreground/70`}>{desc}</div>
                 </div>
                 <button
                   onClick={() => setTelegramConfig({ ...telegramConfig, [key]: !telegramConfig[key as keyof typeof telegramConfig] })}
@@ -819,11 +805,11 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       </div>
 
       {/* Telegram Bot Commands Info */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#1e3a5f]/30 border-[#3b82f6]/30' : 'bg-[#eff6ff] border-[#3b82f6]/30'}`}>
+      <div className={`p-4 rounded-md border ${isDarkMode ? 'bg-[#1e3a5f]/30 border-[#3b82f6]/30' : 'bg-[#eff6ff] border-[#3b82f6]/30'}`}>
         <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>
           Telegram Bot Commands
         </div>
-        <div className={`space-y-2 text-[10px] font-mono ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+        <div className={`space-y-2 text-[10px] font-mono text-muted-foreground`}>
           <div className="flex items-start gap-2">
             <code className="px-1.5 py-0.5 bg-[#27272a] rounded text-[#60a5fa]">/status</code>
             <span>- Xem trạng thái hệ thống (CPU, RAM, Disk, Network)</span>
@@ -841,7 +827,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             <span>- Thống kê sự kiện hôm nay</span>
           </div>
         </div>
-        <p className={`mt-3 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+        <p className={`mt-3 text-[9px] text-muted-foreground/70`}>
           Bot cần được chạy trên server backend (AI-Engine) để xử lý commands.
         </p>
       </div>
@@ -867,25 +853,25 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
 
   const renderDataManagementSection = () => (
     <div className="space-y-6">
-      <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+      <div className={`text-sm font-semibold text-foreground`}>
         Data Management
       </div>
-      <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+      <p className={`text-[11px] text-muted-foreground`}>
         Quản lý dữ liệu sự kiện trong dashboard. Bật/tắt mock data, xóa dữ liệu cũ hoặc thêm dữ liệu demo.
       </p>
 
       {/* NIDS Data Toggle */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+      <div className={`p-4 rounded-md border bg-background/40 border-border`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${nidsDataEnabled ? 'bg-[#22c55e]/20 text-[#4ade80]' : isDarkMode ? 'bg-[#27272a] text-[#52525b]' : 'bg-[#e5e7eb] text-[#9ca3af]'}`}>
+            <div className={`w-10 h-10 rounded-md flex items-center justify-center ${nidsDataEnabled ? 'bg-[#22c55e]/20 text-[#4ade80]' : isDarkMode ? 'bg-[#27272a] text-[#52525b]' : 'bg-[#e5e7eb] text-[#9ca3af]'}`}>
               <Wifi className="w-5 h-5" />
             </div>
             <div>
-              <div className={`text-[12px] font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+              <div className={`text-[12px] font-semibold text-foreground`}>
                 NIDS Data (Real)
               </div>
-              <div className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+              <div className={`text-[10px] text-muted-foreground`}>
                 {nidsDataEnabled ? 'Đang bật - Nhận dữ liệu từ Suricata/Zeek' : 'Đang tắt - Không hiển thị dữ liệu NIDS'}
               </div>
             </div>
@@ -906,23 +892,23 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             }`} />
           </button>
         </div>
-        <p className={`mt-3 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+        <p className={`mt-3 text-[9px] text-muted-foreground/70`}>
           Dữ liệu thật từ NIDS (Suricata/Zeek) qua WebSocket. Mặc định: BẬT.
         </p>
       </div>
 
       {/* Mock Data Toggle */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+      <div className={`p-4 rounded-md border bg-background/40 border-border`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${mockDataEnabled ? 'bg-[#f59e0b]/20 text-[#fbbf24]' : isDarkMode ? 'bg-[#27272a] text-[#52525b]' : 'bg-[#e5e7eb] text-[#9ca3af]'}`}>
+            <div className={`w-10 h-10 rounded-md flex items-center justify-center ${mockDataEnabled ? 'bg-[#f59e0b]/20 text-[#fbbf24]' : isDarkMode ? 'bg-[#27272a] text-[#52525b]' : 'bg-[#e5e7eb] text-[#9ca3af]'}`}>
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <div className={`text-[12px] font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+              <div className={`text-[12px] font-semibold text-foreground`}>
                 Mock Data (Demo)
               </div>
-              <div className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+              <div className={`text-[10px] text-muted-foreground`}>
                 {mockDataEnabled ? 'Đang bật - Tự động tạo dữ liệu giả lập' : 'Đang tắt - Chỉ hiển thị dữ liệu thật'}
               </div>
             </div>
@@ -938,14 +924,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             }`} />
           </button>
         </div>
-        <p className={`mt-3 text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+        <p className={`mt-3 text-[9px] text-muted-foreground/70`}>
           Khi tắt, dashboard sẽ chỉ hiển thị dữ liệu thật từ NIDS. Mặc định: TẮT.
         </p>
       </div>
 
       {/* Recovery Banner */}
       {pendingDelete && (
-        <div className={`p-4 rounded-lg border-2 animate-pulse ${isDarkMode ? 'bg-[#422006] border-[#f59e0b]' : 'bg-[#fef3c7] border-[#f59e0b]'}`}>
+        <div className={`p-4 rounded-md border-2 animate-pulse ${isDarkMode ? 'bg-[#422006] border-[#f59e0b]' : 'bg-[#fef3c7] border-[#f59e0b]'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <AlertTriangle className="w-5 h-5 text-[#f59e0b]" />
@@ -960,7 +946,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             </div>
             <button
               onClick={handleRecoverData}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#22c55e] text-white text-[11px] font-semibold hover:bg-[#16a34a] transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-md bg-[#22c55e] text-white text-[11px] font-semibold hover:bg-[#16a34a] transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
               Khôi phục ({pendingDelete.countdown}s)
@@ -976,12 +962,12 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       )}
 
       {/* Delete Data Section */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-        <div className={`text-[11px] font-semibold mb-3 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+      <div className={`p-4 rounded-md border bg-background/40 border-border`}>
+        <div className={`text-[11px] font-semibold mb-3 flex items-center gap-2 text-foreground`}>
           <Trash2 className="w-4 h-4 text-[#dc2626]" />
           Xóa Dữ Liệu Sự Kiện
         </div>
-        <p className={`text-[10px] mb-4 ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+        <p className={`text-[10px] mb-4 text-muted-foreground`}>
           Xóa các sự kiện trong khoảng thời gian. Dữ liệu có thể khôi phục trong vòng 2 phút sau khi xóa.
         </p>
         
@@ -991,16 +977,16 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               key={range.value}
               onClick={() => handleDeleteData(range.value)}
               disabled={!!pendingDelete}
-              className={`p-3 rounded-lg border text-center transition-all ${
+              className={`p-3 rounded-md border text-center transition-all ${
                 isDarkMode
                   ? 'bg-[#18181b] border-[#27272a] text-[#a1a1aa] hover:border-[#dc2626] hover:text-[#f87171] disabled:opacity-50'
                   : 'bg-white border-[#e5e7eb] text-[#6b7280] hover:border-[#dc2626] hover:text-[#dc2626] disabled:opacity-50'
               }`}
             >
-              <div className={`text-[12px] font-medium ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+              <div className={`text-[12px] font-medium text-foreground`}>
                 {range.label}
               </div>
-              <div className={`text-[9px] mt-0.5 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+              <div className={`text-[9px] mt-0.5 text-muted-foreground/70`}>
                 {range.value === 'all' ? 'Xóa toàn bộ' : `Trong ${range.label} qua`}
               </div>
             </button>
@@ -1009,19 +995,19 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       </div>
 
       {/* Add Mock Data Section */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-        <div className={`text-[11px] font-semibold mb-3 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+      <div className={`p-4 rounded-md border bg-background/40 border-border`}>
+        <div className={`text-[11px] font-semibold mb-3 flex items-center gap-2 text-foreground`}>
           <Plus className="w-4 h-4 text-[#3b82f6]" />
           Thêm Dữ Liệu Demo
         </div>
-        <p className={`text-[10px] mb-4 ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+        <p className={`text-[10px] mb-4 text-muted-foreground`}>
           Thêm 1000 sự kiện giả lập (70% Suricata, 30% Zeek) phân bổ trong 24h để demo dashboard. Lưu ý: Zeek không có ALERT, chỉ Suricata mới có.
         </p>
         
         <button
           onClick={handleAddMockData}
           disabled={addingMockData}
-          className={`w-full p-3 rounded-lg border flex items-center justify-center gap-2 transition-all ${
+          className={`w-full p-3 rounded-md border flex items-center justify-center gap-2 transition-all ${
             isDarkMode
               ? 'bg-[#1e3a5f] border-[#3b82f6] text-[#60a5fa] hover:bg-[#1e40af] disabled:opacity-50'
               : 'bg-[#eff6ff] border-[#3b82f6] text-[#2563eb] hover:bg-[#dbeafe] disabled:opacity-50'
@@ -1042,7 +1028,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       </div>
 
       {/* Warning */}
-      <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#450a0a] border-[#dc2626]/30' : 'bg-[#fef2f2] border-[#fecaca]'}`}>
+      <div className={`p-3 rounded-md border ${isDarkMode ? 'bg-[#450a0a] border-[#dc2626]/30' : 'bg-[#fef2f2] border-[#fecaca]'}`}>
         <div className={`text-[10px] ${isDarkMode ? 'text-[#fca5a5]' : 'text-[#b91c1c]'}`}>
           <strong>Lưu ý:</strong> Sau 2 phút, dữ liệu sẽ bị xóa vĩnh viễn và không thể khôi phục. 
           Hãy đảm bảo bạn đã sao lưu dữ liệu quan trọng trước khi xóa.
@@ -1053,16 +1039,16 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
 
   const renderSourcesSection = () => (
     <div className="space-y-6">
-      <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+      <div className={`text-sm font-semibold text-foreground`}>
         Connected NIDS Sources
       </div>
-      <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+      <p className={`text-[11px] text-muted-foreground`}>
         View IP addresses of machines sending logs (Suricata/Zeek) to this dashboard.
       </p>
 
       {/* API URL Configuration */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-        <div className={`text-[11px] font-semibold mb-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+      <div className={`p-4 rounded-md border bg-background/40 border-border`}>
+        <div className={`text-[11px] font-semibold mb-2 text-foreground`}>
           Backend API URL
         </div>
         <div className="flex gap-2">
@@ -1071,29 +1057,25 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             placeholder="http://192.168.1.100:3001"
             value={apiUrlInput}
             onChange={(e) => setApiUrlInput(e.target.value)}
-            className={`flex-1 h-9 px-3 text-[11px] border rounded-lg ${
-              isDarkMode 
-                ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7] placeholder-[#52525b]' 
-                : 'bg-white border-[#d1d5db] text-[#111827] placeholder-[#9ca3af]'
-            }`}
+            className={`flex-1 h-9 px-3 text-[11px] border rounded-md bg-background border-border text-foreground placeholder:text-muted-foreground/60`}
           />
           <button
             onClick={handleSaveApiUrl}
-            className="px-4 h-9 text-[11px] font-medium bg-[#3b82f6] text-white rounded-lg hover:bg-[#2563eb]"
+            className="px-4 h-9 text-[11px] font-medium bg-[#3b82f6] text-white rounded-md hover:bg-[#2563eb]"
           >
             Save & Test
           </button>
         </div>
-        <p className={`mt-2 text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+        <p className={`mt-2 text-[10px] text-muted-foreground/70`}>
           Enter the URL of your self-hosted SOC backend server
         </p>
       </div>
 
       {/* Connected Sources List */}
-      <div className={`border rounded-lg overflow-hidden ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
+      <div className={`border rounded-md overflow-hidden ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
         <div className={`p-3 border-b ${isDarkMode ? 'bg-[#18181b] border-[#27272a]' : 'bg-[#f3f4f6] border-[#e5e7eb]'}`}>
           <div className="flex items-center justify-between">
-            <span className={`text-[11px] font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+            <span className={`text-[11px] font-medium text-muted-foreground`}>
               NIDS Machines Sending Logs
             </span>
             <button
@@ -1106,17 +1088,17 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         </div>
 
         {loadingSources ? (
-          <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+          <div className={`p-8 text-center text-muted-foreground/70`}>
             <div className="animate-spin w-6 h-6 border-2 border-[#3b82f6] border-t-transparent rounded-full mx-auto mb-2"></div>
             Loading...
           </div>
         ) : !apiUrl ? (
-          <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+          <div className={`p-8 text-center text-muted-foreground/70`}>
             <WifiOff className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <div className="text-[11px]">Configure Backend API URL first</div>
           </div>
         ) : connectedSources.length === 0 ? (
-          <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+          <div className={`p-8 text-center text-muted-foreground/70`}>
             <Server className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <div className="text-[11px]">No NIDS sources connected yet</div>
             <div className="text-[10px] mt-1">Start sending logs from Suricata/Zeek</div>
@@ -1127,7 +1109,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               <div key={source.id} className={`p-4 ${isDarkMode ? 'hover:bg-[#18181b]' : 'hover:bg-[#f9fafb]'}`}>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    <div className={`w-10 h-10 rounded-md flex items-center justify-center ${
                       source.source_type.includes('Suricata') 
                         ? 'bg-[#dc2626]/20 text-[#f87171]' 
                         : 'bg-[#3b82f6]/20 text-[#60a5fa]'
@@ -1135,10 +1117,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                       <Wifi className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className={`text-[13px] font-mono font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+                      <div className={`text-[13px] font-mono font-semibold text-foreground`}>
                         {source.ip_address}
                       </div>
-                      <div className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+                      <div className={`text-[10px] text-muted-foreground`}>
                         {source.hostname}
                       </div>
                     </div>
@@ -1155,12 +1137,12 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                         </span>
                       ))}
                     </div>
-                    <div className={`text-[10px] mt-1 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+                    <div className={`text-[10px] mt-1 text-muted-foreground/70`}>
                       {source.total_events.toLocaleString()} events
                     </div>
                   </div>
                 </div>
-                <div className={`mt-2 text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+                <div className={`mt-2 text-[10px] text-muted-foreground/70`}>
                   Last seen: {new Date(source.last_seen).toLocaleString()}
                 </div>
               </div>
@@ -1171,11 +1153,11 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
 
       {/* Endpoint Info */}
       {apiUrl && (
-        <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-          <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+        <div className={`p-4 rounded-md border bg-background/40 border-border`}>
+          <div className={`text-[11px] font-semibold mb-3 text-foreground`}>
             Log Ingestion Endpoints
           </div>
-          <div className={`space-y-2 text-[11px] font-mono ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
+          <div className={`space-y-2 text-[11px] font-mono text-muted-foreground`}>
             <div className="flex items-center gap-2">
               <span className="px-1.5 py-0.5 bg-[#dc2626]/20 text-[#f87171] rounded text-[9px]">Suricata</span>
               <code className={`flex-1 p-2 rounded ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-[#f3f4f6]'}`}>
@@ -1214,21 +1196,21 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
 
     return (
       <div className="space-y-6">
-        <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+        <div className={`text-sm font-semibold text-foreground`}>
           NIDS Ingest Debug Logs
         </div>
-        <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+        <p className={`text-[11px] text-muted-foreground`}>
           Xem logs từ ai_log_shipper để debug khi không nhận được events. Logs được lưu trong bộ nhớ AI Engine (tối đa 500 entries).
         </p>
 
         {/* Controls */}
-        <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+        <div className={`p-4 rounded-md border bg-background/40 border-border`}>
           <div className="flex flex-wrap items-center gap-3 mb-4">
             {/* Level Filter */}
             <select
               value={nidsLogFilter}
               onChange={(e) => setNidsLogFilter(e.target.value as any)}
-              className={`h-8 px-2 text-[11px] border rounded-lg ${
+              className={`h-8 px-2 text-[11px] border rounded-md ${
                 isDarkMode 
                   ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7]' 
                   : 'bg-white border-[#d1d5db] text-[#111827]'
@@ -1244,7 +1226,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             <select
               value={nidsSourceFilter}
               onChange={(e) => setNidsSourceFilter(e.target.value as any)}
-              className={`h-8 px-2 text-[11px] border rounded-lg ${
+              className={`h-8 px-2 text-[11px] border rounded-md ${
                 isDarkMode 
                   ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7]' 
                   : 'bg-white border-[#d1d5db] text-[#111827]'
@@ -1258,7 +1240,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             {/* Auto Refresh Toggle */}
             <button
               onClick={() => setAutoRefreshLogs(!autoRefreshLogs)}
-              className={`flex items-center gap-1.5 h-8 px-3 text-[11px] rounded-lg border transition-colors ${
+              className={`flex items-center gap-1.5 h-8 px-3 text-[11px] rounded-md border transition-colors ${
                 autoRefreshLogs
                   ? 'bg-[#22c55e]/20 border-[#22c55e]/50 text-[#4ade80]'
                   : isDarkMode 
@@ -1274,7 +1256,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             <button
               onClick={fetchNidsLogs}
               disabled={nidsLogsLoading}
-              className={`flex items-center gap-1.5 h-8 px-3 text-[11px] rounded-lg transition-colors ${
+              className={`flex items-center gap-1.5 h-8 px-3 text-[11px] rounded-md transition-colors ${
                 isDarkMode 
                   ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:bg-[#27272a] disabled:text-[#52525b]' 
                   : 'bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:bg-[#e5e7eb] disabled:text-[#9ca3af]'
@@ -1287,7 +1269,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             {/* Clear Logs */}
             <button
               onClick={clearNidsLogs}
-              className={`flex items-center gap-1.5 h-8 px-3 text-[11px] rounded-lg transition-colors ${
+              className={`flex items-center gap-1.5 h-8 px-3 text-[11px] rounded-md transition-colors ${
                 isDarkMode 
                   ? 'bg-[#dc2626]/20 text-[#f87171] hover:bg-[#dc2626]/30' 
                   : 'bg-[#fef2f2] text-[#dc2626] hover:bg-[#fee2e2]'
@@ -1299,25 +1281,25 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </div>
 
           {/* Stats */}
-          <div className={`flex items-center gap-4 text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+          <div className={`flex items-center gap-4 text-[10px] text-muted-foreground/70`}>
             <span>Showing: {nidsLogs.length} logs</span>
           </div>
         </div>
 
         {/* Logs Display */}
-        <div className={`rounded-lg border overflow-hidden ${isDarkMode ? 'bg-[#0a0a0a] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+        <div className={`rounded-md border overflow-hidden ${isDarkMode ? 'bg-[#0a0a0a] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
           {!apiUrl ? (
-            <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+            <div className={`p-8 text-center text-muted-foreground/70`}>
               <Terminal className="w-10 h-10 mx-auto mb-3 opacity-50" />
               <div className="text-[12px]">Cấu hình Backend API URL trong mục General để xem logs</div>
             </div>
           ) : nidsLogsLoading && nidsLogs.length === 0 ? (
-            <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+            <div className={`p-8 text-center text-muted-foreground/70`}>
               <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin" />
               <div className="text-[11px]">Loading logs...</div>
             </div>
           ) : nidsLogs.length === 0 ? (
-            <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+            <div className={`p-8 text-center text-muted-foreground/70`}>
               <FileText className="w-10 h-10 mx-auto mb-3 opacity-50" />
               <div className="text-[12px] mb-1">Chưa có logs</div>
               <div className="text-[10px]">Logs sẽ xuất hiện khi ai_log_shipper gửi dữ liệu đến /ingest endpoint</div>
@@ -1333,7 +1315,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                 >
                   <div className="flex items-start gap-2 mb-1">
                     {/* Timestamp */}
-                    <span className={`text-[9px] font-mono shrink-0 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+                    <span className={`text-[9px] font-mono shrink-0 text-muted-foreground/70`}>
                       {new Date(log.timestamp).toLocaleTimeString('vi-VN')}
                     </span>
                     
@@ -1348,14 +1330,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                     </span>
                     
                     {/* Message */}
-                    <span className={`text-[11px] ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+                    <span className={`text-[11px] text-foreground`}>
                       {log.message}
                     </span>
                   </div>
                   
                   {/* Details (if any) */}
                   {log.details && Object.keys(log.details).length > 0 && (
-                    <div className={`ml-[60px] mt-1 text-[10px] font-mono ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+                    <div className={`ml-[60px] mt-1 text-[10px] font-mono text-muted-foreground`}>
                       {Object.entries(log.details).map(([key, value]) => (
                         <span key={key} className="mr-3">
                           <span className={isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}>{key}:</span>{' '}
@@ -1373,12 +1355,12 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         </div>
 
         {/* Help Info */}
-        <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-          <div className={`text-[11px] font-semibold mb-2 flex items-center gap-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+        <div className={`p-4 rounded-md border bg-background/40 border-border`}>
+          <div className={`text-[11px] font-semibold mb-2 flex items-center gap-2 text-foreground`}>
             <HelpCircle className="w-4 h-4 text-[#3b82f6]" />
             Troubleshooting
           </div>
-          <ul className={`text-[10px] space-y-1 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+          <ul className={`text-[10px] space-y-1 text-muted-foreground`}>
             <li>• Nếu không thấy logs: Kiểm tra ai_log_shipper.py đang chạy trên NIDS (172.16.16.20)</li>
             <li>• Kiểm tra AI_SERVER_URL trong shipper trỏ đúng: http://10.10.10.20:8000/ingest</li>
             <li>• Xác nhận firewall mở port 8000 trên máy AI</li>
@@ -1458,12 +1440,12 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
 
     return (
       <div className="space-y-6">
-        <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+        <div className={`text-sm font-semibold text-foreground`}>
           Blocked IP Addresses
         </div>
         
         {/* Explanation box */}
-        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#fef3c7] border-[#fcd34d]'}`}>
+        <div className={`p-3 rounded-md border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#fef3c7] border-[#fcd34d]'}`}>
           <div className={`text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-[#fbbf24]' : 'text-[#92400e]'}`}>
             Blocked IPs vs Blacklist - Sự khác biệt:
           </div>
@@ -1473,16 +1455,16 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </div>
         </div>
 
-        <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+        <p className={`text-[11px] text-muted-foreground`}>
           Các IP bên dưới đã bị chặn trên Firewall thông qua AI-SOC hoặc pfSense. Chúng không thể kết nối đến hệ thống của bạn.
         </p>
 
         {/* Local Blocked IPs */}
-        <div className={`border rounded-lg overflow-hidden ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
+        <div className={`border rounded-md overflow-hidden ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
           <div className={`p-3 border-b flex items-center justify-between ${isDarkMode ? 'bg-[#18181b] border-[#27272a]' : 'bg-[#f3f4f6] border-[#e5e7eb]'}`}>
             <div className="flex items-center gap-2">
               <Ban className="w-4 h-4 text-[#dc2626]" />
-              <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+              <span className={`text-[11px] font-semibold text-foreground`}>
                 Blocked IPs ({blockedIPsList.length})
               </span>
             </div>
@@ -1499,7 +1481,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </div>
 
           {blockedIPsList.length === 0 ? (
-            <div className={`p-8 text-center ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+            <div className={`p-8 text-center text-muted-foreground/70`}>
               <Ban className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <div className="text-[11px]">Chưa có IP nào bị block</div>
               <div className="text-[10px] mt-1">Các IP bị block sẽ hiển thị ở đây</div>
@@ -1509,14 +1491,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               {blockedIPsList.map((ip) => (
                 <div key={ip} className={`p-4 flex items-center justify-between ${isDarkMode ? 'hover:bg-[#18181b]' : 'hover:bg-[#f9fafb]'}`}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#dc2626]/20 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-md bg-[#dc2626]/20 flex items-center justify-center">
                       <Ban className="w-5 h-5 text-[#f87171]" />
                     </div>
                     <div>
-                      <div className={`text-[13px] font-mono font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+                      <div className={`text-[13px] font-mono font-semibold text-foreground`}>
                         {ip}
                       </div>
-                      <div className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+                      <div className={`text-[10px] text-muted-foreground`}>
                         Blocked by AI-SOC
                       </div>
                     </div>
@@ -1550,14 +1532,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
 
         {/* pfSense Sync Info */}
         {apiUrl && (
-          <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-            <div className={`text-[11px] font-semibold mb-2 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+          <div className={`p-4 rounded-md border bg-background/40 border-border`}>
+            <div className={`text-[11px] font-semibold mb-2 text-foreground`}>
               pfSense Integration
             </div>
-            <p className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+            <p className={`text-[10px] text-muted-foreground`}>
               Khi block IP thông qua dashboard, IP sẽ được gửi đến AI-Engine để thêm vào alias <code className="bg-[#27272a] px-1 rounded">AI_Blocked_IP</code> trên pfSense firewall.
             </p>
-            <div className={`mt-3 text-[10px] font-mono ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+            <div className={`mt-3 text-[10px] font-mono text-muted-foreground/70`}>
               API Endpoint: POST {apiUrl.replace(':3001', ':8000').replace(':3002', ':8000')}/block
             </div>
           </div>
@@ -1568,13 +1550,13 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   
   const renderListSection = () => (
     <div className="space-y-4">
-      <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
+      <div className={`text-sm font-semibold text-foreground`}>
         {activeSection === 'blacklist' ? t('list.blacklistTitle') : t('list.whitelistTitle')}
       </div>
       
       {/* Blacklist specific explanation */}
       {activeSection === 'blacklist' && (
-        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#18181b] border-[#27272a]' : 'bg-[#fef9c3] border-[#facc15]'}`}>
+        <div className={`p-3 rounded-md border ${isDarkMode ? 'bg-[#18181b] border-[#27272a]' : 'bg-[#fef9c3] border-[#facc15]'}`}>
           <div className={`text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-[#fbbf24]' : 'text-[#a16207]'}`}>
             Blacklist vs Blocked IPs:
           </div>
@@ -1586,7 +1568,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       
       {/* Whitelist specific explanation */}
       {activeSection === 'whitelist' && (
-        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#052e16] border-[#166534]' : 'bg-[#dcfce7] border-[#22c55e]'}`}>
+        <div className={`p-3 rounded-md border ${isDarkMode ? 'bg-[#052e16] border-[#166534]' : 'bg-[#dcfce7] border-[#22c55e]'}`}>
           <div className={`text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-[#4ade80]' : 'text-[#166534]'}`}>
             Lưu ý về Whitelist:
           </div>
@@ -1596,23 +1578,19 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         </div>
       )}
       
-      <p className={`text-[11px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+      <p className={`text-[11px] text-muted-foreground`}>
         {activeSection === 'blacklist' ? t('list.blacklistDesc') : t('list.whitelistDesc')}
       </p>
       
       {/* Add new item form */}
-      <div className={`p-3 border rounded-lg ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
+      <div className={`p-3 border rounded-md bg-background/40 border-border`}>
         <div className="grid grid-cols-12 gap-2">
           <input
             type="text"
             placeholder={t('list.ipOrDomain')}
             value={newItem.value}
             onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
-            className={`col-span-4 h-8 px-3 text-[11px] border rounded ${
-              isDarkMode 
-                ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7] placeholder-[#52525b]' 
-                : 'bg-white border-[#d1d5db] text-[#111827] placeholder-[#9ca3af]'
-            }`}
+            className={`col-span-4 h-8 px-3 text-[11px] border rounded bg-background border-border text-foreground placeholder:text-muted-foreground/60`}
           />
           <select
             value={newItem.type}
@@ -1631,11 +1609,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             placeholder={t('list.note')}
             value={newItem.note}
             onChange={(e) => setNewItem({ ...newItem, note: e.target.value })}
-            className={`col-span-4 h-8 px-3 text-[11px] border rounded ${
-              isDarkMode 
-                ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7] placeholder-[#52525b]' 
-                : 'bg-white border-[#d1d5db] text-[#111827] placeholder-[#9ca3af]'
-            }`}
+            className={`col-span-4 h-8 px-3 text-[11px] border rounded bg-background border-border text-foreground placeholder:text-muted-foreground/60`}
           />
           <button
             onClick={handleAddItem}
@@ -1652,26 +1626,26 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       </div>
       
       {/* List items */}
-      <div className={`border rounded-lg overflow-hidden ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
+      <div className={`border rounded-md overflow-hidden ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
         <table className="w-full text-[11px]">
           <thead>
             <tr className={isDarkMode ? 'bg-[#18181b]' : 'bg-[#f3f4f6]'}>
-              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{t('list.value')}</th>
-              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{t('list.type')}</th>
-              <th className={`text-left py-2 px-3 font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{t('list.note')}</th>
-              <th className={`text-right py-2 px-3 font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{t('list.actions')}</th>
+              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{t('list.value')}</th>
+              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{t('list.type')}</th>
+              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{t('list.note')}</th>
+              <th className={`text-right py-2 px-3 font-medium text-muted-foreground`}>{t('list.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {currentList.length === 0 ? (
               <tr>
-                <td colSpan={4} className={`text-center py-6 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+                <td colSpan={4} className={`text-center py-6 text-muted-foreground/70`}>
                   {t('list.empty')}
                 </td>
               </tr>
             ) : currentList.map((item) => (
               <tr key={item.id} className={`border-t ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
-                <td className={`py-2 px-3 font-mono ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
+                <td className={`py-2 px-3 font-mono text-foreground`}>
                   {editingId === item.id ? (
                     <input
                       type="text"
@@ -1685,7 +1659,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                     />
                   ) : item.value}
                 </td>
-                <td className={`py-2 px-3 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
+                <td className={`py-2 px-3 text-muted-foreground`}>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
                     item.type === 'ip' 
                       ? isDarkMode ? 'bg-[#1e3a5f] text-[#60a5fa]' : 'bg-[#dbeafe] text-[#2563eb]'
@@ -1694,7 +1668,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                     {item.type.toUpperCase()}
                   </span>
                 </td>
-                <td className={`py-2 px-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{item.note || '-'}</td>
+                <td className={`py-2 px-3 text-muted-foreground`}>{item.note || '-'}</td>
                 <td className="py-2 px-3 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <button
@@ -1717,7 +1691,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         </table>
       </div>
       
-      <div className={`text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+      <div className={`text-[10px] text-muted-foreground/70`}>
         {t('list.total')}: {currentList.length} {t('list.items')}
       </div>
     </div>
@@ -1847,7 +1821,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       />
       
       {/* Modal — soft rounded, big-tech SIEM (Datadog/Linear style) */}
-      <div className="relative w-[860px] max-h-[85vh] bg-card border border-border rounded-lg shadow-2xl overflow-hidden flex">
+      <div className="relative w-[860px] max-h-[85vh] bg-card border border-border rounded-md shadow-2xl overflow-hidden flex">
         {/* Sidebar — compact ghost nav */}
         <div className="w-48 border-r border-border flex-shrink-0 bg-background/40">
           <div className="px-4 py-3 border-b border-border">
