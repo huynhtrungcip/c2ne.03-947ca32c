@@ -15,7 +15,7 @@
 ## 🚀 Cài Đặt Nhanh (1 Lệnh)
 
 ```bash
-# Tải và chạy script cài đặt
+# Tải và chạy script cài đặt từ GitHub
 curl -fsSL https://raw.githubusercontent.com/huynhtrungcip/c2ne.03-947ca32c/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh
 ```
 
@@ -29,6 +29,27 @@ chmod +x install.sh
 ```
 
 ---
+
+## ⚡ Deploy Local Nhanh (Đã Có Source)
+
+Nếu bạn đã có source code (clone từ GitHub hoặc download zip), dùng `start-local.sh`:
+
+```bash
+chmod +x start-local.sh
+./start-local.sh            # Tự tạo .env + build + start
+./start-local.sh status     # Kiểm tra services
+./start-local.sh logs       # Xem logs realtime
+./start-local.sh rebuild    # Rebuild không cache
+./start-local.sh stop       # Dừng tất cả
+```
+
+Script tự động:
+- Detect IP server và tạo `.env` từ `.env.example`
+- Detect `docker compose` (v2) hoặc `docker-compose` (v1)
+- Build images + start containers + healthcheck
+
+---
+
 
 ## 📖 Script install.sh Chi Tiết
 
