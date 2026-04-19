@@ -255,6 +255,17 @@ const SOCDashboard = () => {
   const [selectedEvent, setSelectedEvent] = useState<SOCEvent | null>(null);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [blockedIPsCount, setBlockedIPsCount] = useState<number>(() => {
+    try { return (JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]') as string[]).length; } catch { return 0; }
+  });
+  useEffect(() => {
+    const update = () => {
+      try { setBlockedIPsCount((JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]') as string[]).length); } catch { setBlockedIPsCount(0); }
+    };
+    window.addEventListener('storage', update);
+    const interval = setInterval(update, 2000);
+    return () => { window.removeEventListener('storage', update); clearInterval(interval); };
+  }, []);
   const [showAnalysisOptions, setShowAnalysisOptions] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
@@ -1158,7 +1169,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           {/* Main Event Table */}
           <div className="col-span-9">
             {/* Event Statistics */}
-            <div className="grid grid-cols-6 gap-px mb-4" style={{ backgroundColor: 'hsl(var(--border))' }}>
+            <div className="grid grid-cols-7 gap-px mb-4" style={{ backgroundColor: 'hsl(var(--border))' }}>
               {[
                 { label: 'Total', value: sortedEvents.length, color: 'text-foreground' },
                 { label: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: 'text-[hsl(var(--soc-alert))]' },
@@ -1166,6 +1177,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                 { label: 'False Pos', value: sortedEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length, color: 'text-muted-foreground' },
                 { label: 'Benign', value: sortedEvents.filter(e => e.verdict === 'BENIGN').length, color: 'text-[hsl(var(--soc-success))]' },
                 { label: 'High Conf', value: sortedEvents.filter(e => e.confidence > 0.8).length, color: 'text-foreground' },
+                { label: 'Blocked IPs', value: blockedIPsCount, color: 'text-[hsl(var(--soc-alert))]' },
               ].map((s, i) => (
                 <div key={i} className="p-2 text-center bg-card">
                   <div className={`text-lg font-semibold font-mono ${s.color}`}>{s.value}</div>
