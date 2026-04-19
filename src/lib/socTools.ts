@@ -66,6 +66,22 @@ export const SOC_TOOLS: ToolDef[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'analyze_ip',
+      description: 'Build a complete behavioral profile for a single IP address: timeline buckets, targeted ports, attack types, destinations, verdict breakdown, and top alert samples. ALWAYS call this when the analyst asks about a specific IP — do NOT guess from the snapshot.',
+      parameters: {
+        type: 'object',
+        properties: {
+          ip: { type: 'string', description: 'IPv4 to analyze (matched as src_ip OR dst_ip)' },
+          since_minutes: { type: 'number', description: 'Time window in minutes', default: 60 },
+          bucket_minutes: { type: 'number', description: 'Timeline bucket size (default 5)', default: 5 },
+        },
+        required: ['ip'],
+      },
+    },
+  },
 ];
 
 // ===== Executors =====
