@@ -1221,7 +1221,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             </div>
 
             {/* Top Source IPs */}
-            <div className="border p-3 bg-card border-border">
+            <div className="border rounded-md p-3 bg-card border-border">
               <div className="text-[10px] uppercase tracking-wider font-medium mb-3 text-muted-foreground">Top Source IPs</div>
               <div className="space-y-2">
                 {topSources.length === 0 ? (
