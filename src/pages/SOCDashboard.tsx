@@ -647,16 +647,17 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           </div>
         )}
         
-        <div className="px-5 pb-5 flex gap-3">
-          {/* Ask ASSISTANT with dropdown */}
+        <div className="px-5 pb-5 flex gap-2">
+          {/* Ask ASSISTANT - neutral secondary button */}
           <div className="flex-1">
             <Popover open={showAnalysisOptions} onOpenChange={setShowAnalysisOptions}>
               <PopoverTrigger asChild>
                 <button 
                   disabled={analysisLoading}
-                  className="w-full px-4 py-2.5 text-[11px] font-semibold bg-[hsl(var(--chart-1)/0.1)] text-[hsl(var(--chart-1))] border border-[hsl(var(--chart-1)/0.3)] rounded-md hover:bg-[hsl(var(--chart-1)/0.2)] transition-colors disabled:opacity-50"
+                  className="w-full h-9 px-3 text-[11px] font-mono font-medium uppercase tracking-wider text-foreground bg-muted/40 border border-border rounded-sm hover:bg-muted hover:border-foreground/40 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {analysisLoading ? 'Đang phân tích...' : 'Ask ASSISTANT About This Flow'}
+                  <span className="text-muted-foreground">›_</span>
+                  {analysisLoading ? 'analyzing…' : 'analyze flow'}
                 </button>
               </PopoverTrigger>
               <PopoverContent
@@ -685,17 +686,22 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             </Popover>
           </div>
           
-          {/* Block IP Button */}
+          {/* Block IP - destructive, neutral with red accent on hover */}
           <button 
             onClick={handleBlockIP}
             disabled={blockingIP || isAlreadyBlocked}
-            className={`flex-1 px-4 py-2.5 text-[11px] font-semibold rounded-md transition-colors ${
+            className={`flex-1 h-9 px-3 text-[11px] font-mono font-medium uppercase tracking-wider rounded-sm transition-colors flex items-center justify-center gap-2 ${
               isAlreadyBlocked
-                ? 'bg-muted text-muted-foreground border border-border cursor-not-allowed'
-                : 'bg-[hsl(var(--soc-alert)/0.1)] text-[hsl(var(--soc-alert))] border border-[hsl(var(--soc-alert)/0.3)] hover:bg-[hsl(var(--soc-alert)/0.2)]'
+                ? 'bg-muted/40 text-muted-foreground border border-border cursor-not-allowed'
+                : 'bg-muted/40 text-foreground border border-border hover:bg-[hsl(var(--soc-alert)/0.08)] hover:border-[hsl(var(--soc-alert)/0.5)] hover:text-[hsl(var(--soc-alert))]'
             } disabled:opacity-50`}
           >
-            {blockingIP ? 'Đang block...' : isAlreadyBlocked ? `IP đã bị block` : `Block IP ${selectedEvent.src_ip}`}
+            {!isAlreadyBlocked && <span className="text-[hsl(var(--soc-alert))]">●</span>}
+            {blockingIP 
+              ? 'blocking…' 
+              : isAlreadyBlocked 
+                ? 'ip blocked' 
+                : <>block <span className="opacity-70">{selectedEvent.src_ip}</span></>}
           </button>
         </div>
 
