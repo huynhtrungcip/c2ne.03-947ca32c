@@ -627,7 +627,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                     Copy
                   </button>
                 </div>
-                <pre className="text-[11px] font-mono leading-relaxed text-foreground/90 bg-background/70 p-3 rounded-md border border-border/70 overflow-auto max-h-72 [scrollbar-width:thin] shadow-inner">
+                <pre className="text-[11px] font-mono leading-relaxed text-foreground/90 bg-muted/30 p-3 rounded-md border border-border overflow-auto max-h-72 [scrollbar-width:thin]">
                   {pretty}
                 </pre>
               </>
