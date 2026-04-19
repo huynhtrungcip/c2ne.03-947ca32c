@@ -32,6 +32,22 @@ import { SOC_TOOLS, executeTool, TOOLS_REQUIRING_CONFIRMATION } from '@/lib/socT
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
 
+// ===== Module-level helpers for Reports tab (avoid re-creating components on every render) =====
+const DeltaBadge = ({ value }: { value: number }) => {
+  const positive = value >= 0;
+  const color = positive ? 'text-[hsl(var(--soc-alert))]' : 'text-[hsl(var(--soc-success))]';
+  const arrow = positive ? '▲' : '▼';
+  return <span className={`text-[10px] font-mono ${color}`}>{arrow} {Math.abs(value).toFixed(1)}%</span>;
+};
+
+const Sparkline = ({ data, color }: { data: { i: number; v: number }[]; color: string }) => (
+  <ResponsiveContainer width="100%" height={28}>
+    <RLineChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+      <Line type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+    </RLineChart>
+  </ResponsiveContainer>
+);
+
 // Legacy MegaLLM constants — only used by the inline "analyze.flow" panel (Event Inspector)
 const MEGALLM_API_KEY = 'sk-mega-7bd02bf1c5720f9bde518db892d4da8ef94671adcca28dd19299b1c2d8d4e753';
 const MEGALLM_BASE_URL = 'https://ai.megallm.io/v1';
@@ -1782,21 +1798,6 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
       URL.revokeObjectURL(url);
     };
     const exportPDF = () => window.print();
-
-    const DeltaBadge = ({ value }: { value: number }) => {
-      const positive = value >= 0;
-      const color = positive ? 'text-[hsl(var(--soc-alert))]' : 'text-[hsl(var(--soc-success))]';
-      const arrow = positive ? '▲' : '▼';
-      return <span className={`text-[10px] font-mono ${color}`}>{arrow} {Math.abs(value).toFixed(1)}%</span>;
-    };
-
-    const Sparkline = ({ data, color }: { data: { i: number; v: number }[]; color: string }) => (
-      <ResponsiveContainer width="100%" height={28}>
-        <RLineChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-          <Line type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
-        </RLineChart>
-      </ResponsiveContainer>
-    );
 
     return (
       <>
