@@ -1811,65 +1811,93 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      
-      {/* Modal — soft rounded, big-tech SIEM (Datadog/Linear style) */}
-      <div className="relative w-[860px] h-[85vh] bg-card border border-border rounded-lg shadow-2xl overflow-hidden flex">
-        {/* Sidebar — compact ghost nav */}
-        <div className="w-48 border-r border-border flex-shrink-0 bg-background/40">
-          <div className="px-4 py-3 border-b border-border">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-mono">
-              {t('settings.title')}
-            </div>
-          </div>
-          <div className="p-3 flex flex-col gap-2.5">
-            {sections.map((section) => {
-              const active = activeSection === section.id;
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id as any)}
-                  className={`w-full flex items-center gap-3 px-3 py-3 text-[11px] rounded-md transition-colors ${
-                    active
-                      ? 'bg-muted text-foreground font-medium'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  }`}
-                >
-                  <section.icon className="w-3.5 h-3.5 opacity-80" strokeWidth={1.5} />
-                  <span>{section.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
-        {/* Content */}
-        <div className="flex-1 flex flex-col min-w-0 bg-card">
-          <div className="flex items-center justify-between px-6 py-3 border-b border-border">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-mono">
-              {sections.find(s => s.id === activeSection)?.label}
-            </div>
+      {/* Modal — SIEM/Splunk-style flat panel */}
+      <div className="relative w-[920px] h-[86vh] bg-card border border-border rounded-md shadow-2xl overflow-hidden flex flex-col">
+        {/* Top command bar — matches Event Inspector / Confirm Dialog header */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30 shrink-0">
+          <div className="flex items-baseline gap-2.5 min-w-0">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-foreground/60" />
+            <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.14em] text-foreground">
+              SYSTEM
+            </span>
+            <span className="text-[10px] font-mono text-muted-foreground/60">/</span>
+            <span className="text-[11px] font-mono text-muted-foreground truncate">
+              settings.{activeSection}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-[10px] font-mono text-muted-foreground/60 hidden sm:inline">
+              esc to close
+            </span>
             <button
               onClick={onClose}
               aria-label="Close"
-              className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="h-6 w-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
-              <X className="w-4 h-4" strokeWidth={1.5} />
+              <X className="w-3.5 h-3.5" strokeWidth={1.5} />
             </button>
           </div>
+        </div>
 
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            {activeSection === 'general' && renderGeneralSection()}
-            {activeSection === 'health' && renderHealthSection()}
-            {activeSection === 'telegram' && renderTelegramSection()}
-            {activeSection === 'data' && renderDataManagementSection()}
-            {activeSection === 'sources' && renderSourcesSection()}
-            {activeSection === 'nids_debug' && renderNidsDebugSection()}
-            {activeSection === 'blocked' && renderBlockedIPsSection()}
-            {(activeSection === 'blacklist' || activeSection === 'whitelist') && renderListSection()}
+        <div className="flex flex-1 min-h-0">
+          {/* Sidebar — log-like nav with mono labels */}
+          <div className="w-52 border-r border-border flex-shrink-0 bg-background/30 flex flex-col">
+            <div className="px-3 py-2 border-b border-border">
+              <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground font-mono">
+                navigation
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto py-1.5">
+              {sections.map((section) => {
+                const active = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id as any)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] font-mono transition-colors border-l-2 ${
+                      active
+                        ? 'bg-muted/60 text-foreground border-foreground'
+                        : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/30 hover:border-border'
+                    }`}
+                  >
+                    <section.icon className="w-3.5 h-3.5 opacity-70 shrink-0" strokeWidth={1.5} />
+                    <span className="truncate">{section.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 flex flex-col min-w-0 bg-card">
+            {/* Sub-header showing current section */}
+            <div className="flex items-center justify-between px-5 py-2 border-b border-border bg-muted/15 shrink-0">
+              <div className="flex items-baseline gap-3 min-w-0">
+                <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.14em] text-foreground shrink-0">
+                  {sections.find(s => s.id === activeSection)?.label}
+                </span>
+                <span className="text-[10px] font-mono text-muted-foreground/60">·</span>
+                <span className="text-[10px] font-mono text-muted-foreground truncate">
+                  scope=local · persisted=localStorage
+                </span>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              {activeSection === 'general' && renderGeneralSection()}
+              {activeSection === 'health' && renderHealthSection()}
+              {activeSection === 'telegram' && renderTelegramSection()}
+              {activeSection === 'data' && renderDataManagementSection()}
+              {activeSection === 'sources' && renderSourcesSection()}
+              {activeSection === 'nids_debug' && renderNidsDebugSection()}
+              {activeSection === 'blocked' && renderBlockedIPsSection()}
+              {(activeSection === 'blacklist' || activeSection === 'whitelist') && renderListSection()}
+            </div>
           </div>
         </div>
       </div>
