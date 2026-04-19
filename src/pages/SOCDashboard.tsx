@@ -1174,7 +1174,9 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
               ))}
             </div>
             
-            {renderEventTable(displayEvents)}
+            <div className="h-[560px] flex flex-col">
+              {renderEventTable(displayEvents)}
+            </div>
           </div>
           
           {/* Sidebar */}
@@ -1309,7 +1311,9 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                 <div className={`text-xs uppercase tracking-wider font-semibold ${'text-muted-foreground'}`}>Active Threats</div>
                 <span className="text-[9px] text-[#dc2626]">{criticalEvents.length} threats detected</span>
               </div>
-              {renderEventTable(criticalEvents.slice(0, 50))}
+              <div className="h-[560px] flex flex-col">
+                {renderEventTable(criticalEvents.slice(0, 50))}
+              </div>
             </div>
           </div>
         </div>
