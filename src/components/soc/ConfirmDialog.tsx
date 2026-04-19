@@ -4,14 +4,11 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, AlertTriangle, Shield, ShieldAlert, ShieldCheck, Ban, Plus, Trash2, Database } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
-export type ConfirmActionType = 
+export type ConfirmActionType =
   | 'block_ip'
   | 'unblock_ip'
   | 'add_blacklist'
@@ -28,98 +25,113 @@ interface ConfirmDialogProps {
   onClose: () => void;
   onConfirm: () => Promise<void> | void;
   actionType: ConfirmActionType;
-  targetValue?: string; // IP, domain, etc.
+  targetValue?: string;
   details?: string;
   isDarkMode?: boolean;
 }
 
+type Severity = 'critical' | 'warning' | 'info';
+
 const ACTION_CONFIG: Record<ConfirmActionType, {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
+  action: string;       // command-style identifier, e.g. firewall.block
+  title: string;        // short imperative title
+  description: string;  // single sentence
   confirmText: string;
-  confirmClass: string;
-  severity: 'danger' | 'warning' | 'info';
+  severity: Severity;
 }> = {
   block_ip: {
-    title: 'Xác nhận Block IP',
-    description: 'Bạn có chắc muốn block IP này trên pfSense Firewall? Hành động này sẽ ngăn chặn tất cả traffic từ/đến IP này.',
-    icon: <ShieldAlert className="w-6 h-6 text-red-500" />,
-    confirmText: 'Block IP',
-    confirmClass: 'bg-red-600 hover:bg-red-700 text-white',
-    severity: 'danger',
+    action: 'firewall.block',
+    title: 'Block source IP on pfSense',
+    description: 'Tất cả traffic từ/đến địa chỉ này sẽ bị chặn ngay lập tức.',
+    confirmText: 'Confirm block',
+    severity: 'critical',
   },
   unblock_ip: {
-    title: 'Xác nhận Unblock IP',
-    description: 'Bạn có chắc muốn gỡ block IP này khỏi pfSense Firewall? Traffic từ/đến IP này sẽ được cho phép trở lại.',
-    icon: <ShieldCheck className="w-6 h-6 text-green-500" />,
-    confirmText: 'Unblock IP',
-    confirmClass: 'bg-green-600 hover:bg-green-700 text-white',
+    action: 'firewall.unblock',
+    title: 'Unblock source IP',
+    description: 'Traffic từ/đến địa chỉ này sẽ được khôi phục.',
+    confirmText: 'Confirm unblock',
     severity: 'warning',
   },
   add_blacklist: {
-    title: 'Thêm vào Blacklist',
-    description: 'Bạn có chắc muốn thêm địa chỉ này vào danh sách đen? Địa chỉ này sẽ được đánh dấu là nguy hiểm trong hệ thống.',
-    icon: <Ban className="w-6 h-6 text-orange-500" />,
-    confirmText: 'Thêm vào Blacklist',
-    confirmClass: 'bg-orange-600 hover:bg-orange-700 text-white',
+    action: 'list.blacklist.add',
+    title: 'Add to blacklist',
+    description: 'Đánh dấu địa chỉ này là độc hại trong hệ thống.',
+    confirmText: 'Add entry',
     severity: 'warning',
   },
   add_whitelist: {
-    title: 'Thêm vào Whitelist',
-    description: 'Bạn có chắc muốn thêm địa chỉ này vào danh sách trắng? Địa chỉ này sẽ được coi là an toàn và bỏ qua các cảnh báo.',
-    icon: <Plus className="w-6 h-6 text-blue-500" />,
-    confirmText: 'Thêm vào Whitelist',
-    confirmClass: 'bg-blue-600 hover:bg-blue-700 text-white',
+    action: 'list.whitelist.add',
+    title: 'Add to whitelist',
+    description: 'Bỏ qua mọi cảnh báo liên quan đến địa chỉ này.',
+    confirmText: 'Add entry',
     severity: 'info',
   },
   remove_blacklist: {
-    title: 'Xóa khỏi Blacklist',
-    description: 'Bạn có chắc muốn xóa địa chỉ này khỏi danh sách đen?',
-    icon: <Trash2 className="w-6 h-6 text-red-500" />,
-    confirmText: 'Xóa khỏi Blacklist',
-    confirmClass: 'bg-red-600 hover:bg-red-700 text-white',
-    severity: 'danger',
+    action: 'list.blacklist.remove',
+    title: 'Remove from blacklist',
+    description: 'Gỡ địa chỉ này khỏi danh sách đen.',
+    confirmText: 'Remove entry',
+    severity: 'warning',
   },
   remove_whitelist: {
-    title: 'Xóa khỏi Whitelist',
-    description: 'Bạn có chắc muốn xóa địa chỉ này khỏi danh sách trắng? Địa chỉ này sẽ không còn được bỏ qua trong các cảnh báo.',
-    icon: <Trash2 className="w-6 h-6 text-orange-500" />,
-    confirmText: 'Xóa khỏi Whitelist',
-    confirmClass: 'bg-orange-600 hover:bg-orange-700 text-white',
+    action: 'list.whitelist.remove',
+    title: 'Remove from whitelist',
+    description: 'Địa chỉ này sẽ không còn được bỏ qua trong cảnh báo.',
+    confirmText: 'Remove entry',
     severity: 'warning',
   },
   enable_auto_block: {
-    title: 'Bật Auto-Block',
-    description: 'Bạn có chắc muốn bật tính năng tự động block IP? Hệ thống sẽ tự động block các IP được AI đánh giá là nguy hiểm.',
-    icon: <Shield className="w-6 h-6 text-yellow-500" />,
-    confirmText: 'Bật Auto-Block',
-    confirmClass: 'bg-yellow-600 hover:bg-yellow-700 text-white',
+    action: 'policy.auto_block.enable',
+    title: 'Enable auto-block policy',
+    description: 'Hệ thống sẽ tự động block IP có confidence ≥ 0.8.',
+    confirmText: 'Enable policy',
     severity: 'warning',
   },
   disable_auto_block: {
-    title: 'Tắt Auto-Block',
-    description: 'Bạn có chắc muốn tắt tính năng tự động block IP? Hệ thống sẽ không tự động block các IP nguy hiểm nữa.',
-    icon: <Shield className="w-6 h-6 text-gray-500" />,
-    confirmText: 'Tắt Auto-Block',
-    confirmClass: 'bg-gray-600 hover:bg-gray-700 text-white',
+    action: 'policy.auto_block.disable',
+    title: 'Disable auto-block policy',
+    description: 'Auto-block sẽ ngừng. IP nguy hiểm phải block thủ công.',
+    confirmText: 'Disable policy',
     severity: 'info',
   },
   analyze_ip: {
-    title: 'Phân tích IP',
-    description: 'Bạn có chắc muốn gửi tất cả dữ liệu traffic từ IP này đến AI Engine để phân tích chi tiết?',
-    icon: <AlertTriangle className="w-6 h-6 text-blue-500" />,
-    confirmText: 'Phân tích',
-    confirmClass: 'bg-blue-600 hover:bg-blue-700 text-white',
+    action: 'analyze.source',
+    title: 'Run AI analysis on source',
+    description: 'Gửi toàn bộ flow của IP này tới AI Engine.',
+    confirmText: 'Run analysis',
     severity: 'info',
   },
   delete_data: {
-    title: 'Xóa Dữ Liệu',
-    description: 'Bạn có chắc muốn xóa dữ liệu sự kiện? Dữ liệu có thể khôi phục trong vòng 2 phút sau khi xóa.',
-    icon: <Database className="w-6 h-6 text-red-500" />,
-    confirmText: 'Xóa Dữ Liệu',
-    confirmClass: 'bg-red-600 hover:bg-red-700 text-white',
-    severity: 'danger',
+    action: 'data.purge',
+    title: 'Delete event data',
+    description: 'Có thể khôi phục trong vòng 2 phút sau khi xoá.',
+    confirmText: 'Delete data',
+    severity: 'critical',
+  },
+};
+
+const SEVERITY_LABEL: Record<Severity, string> = {
+  critical: 'CRITICAL',
+  warning: 'WARNING',
+  info: 'INFO',
+};
+
+const SEVERITY_TONE: Record<Severity, { text: string; border: string; accent: string }> = {
+  critical: {
+    text: 'text-[hsl(var(--soc-alert))]',
+    border: 'border-[hsl(var(--soc-alert)/0.4)]',
+    accent: 'bg-[hsl(var(--soc-alert))]',
+  },
+  warning: {
+    text: 'text-[hsl(var(--soc-warning))]',
+    border: 'border-[hsl(var(--soc-warning)/0.4)]',
+    accent: 'bg-[hsl(var(--soc-warning))]',
+  },
+  info: {
+    text: 'text-muted-foreground',
+    border: 'border-border',
+    accent: 'bg-muted-foreground',
   },
 };
 
@@ -130,10 +142,10 @@ export const ConfirmDialog = ({
   actionType,
   targetValue,
   details,
-  isDarkMode = true,
 }: ConfirmDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const config = ACTION_CONFIG[actionType];
+  const tone = SEVERITY_TONE[config.severity];
 
   const handleConfirm = async () => {
     setIsLoading(true);
@@ -147,75 +159,99 @@ export const ConfirmDialog = ({
     }
   };
 
-  const severityBorderColor = {
-    danger: 'border-red-500/50',
-    warning: 'border-orange-500/50',
-    info: 'border-blue-500/50',
-  }[config.severity];
+  const isDestructive = config.severity === 'critical';
 
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className={`max-w-md ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-white border-gray-200'} ${severityBorderColor} border-l-4`}>
-        <AlertDialogHeader>
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-[#18181b]' : 'bg-gray-100'}`}>
-              {config.icon}
-            </div>
-            <AlertDialogTitle className={`text-lg font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-gray-900'}`}>
-              {config.title}
-            </AlertDialogTitle>
+      <AlertDialogContent className="max-w-md p-0 gap-0 bg-card border border-border rounded-md shadow-lg overflow-hidden">
+        {/* Header bar — Splunk/Elastic-style command title */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${tone.accent}`} />
+            <span className={`text-[10px] font-mono font-semibold uppercase tracking-[0.14em] ${tone.text}`}>
+              {SEVERITY_LABEL[config.severity]}
+            </span>
+            <span className="text-[10px] font-mono text-muted-foreground/60">/</span>
+            <span className="text-[11px] font-mono text-muted-foreground truncate">
+              {config.action}
+            </span>
           </div>
-          <AlertDialogDescription className={`mt-3 text-sm ${isDarkMode ? 'text-[#a1a1aa]' : 'text-gray-600'}`}>
-            {config.description}
-          </AlertDialogDescription>
-          
-          {/* Target Value Display */}
+          <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">
+            confirm
+          </span>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-4">
+          <div className="space-y-1.5">
+            <div className="text-sm font-semibold text-foreground leading-snug">
+              {config.title}
+            </div>
+            <div className="text-[12px] text-muted-foreground leading-relaxed">
+              {config.description}
+            </div>
+          </div>
+
+          {/* Target — log-line style key/value */}
           {targetValue && (
-            <div className={`mt-4 p-3 rounded-lg ${isDarkMode ? 'bg-[#18181b] border border-[#27272a]' : 'bg-gray-50 border border-gray-200'}`}>
-              <div className={`text-[10px] uppercase tracking-wider mb-1 ${isDarkMode ? 'text-[#52525b]' : 'text-gray-500'}`}>
-                Đối tượng
-              </div>
-              <div className={`font-mono text-sm font-semibold ${isDarkMode ? 'text-[#3b82f6]' : 'text-blue-600'}`}>
-                {targetValue}
+            <div className="border border-border rounded-sm bg-muted/20 divide-y divide-border">
+              <div className="flex items-baseline gap-3 px-3 py-2">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground w-16 shrink-0">
+                  target
+                </span>
+                <span className="text-[12px] font-mono font-semibold text-foreground break-all">
+                  {targetValue}
+                </span>
               </div>
               {details && (
-                <div className={`mt-2 text-xs ${isDarkMode ? 'text-[#71717a]' : 'text-gray-500'}`}>
-                  {details}
+                <div className="flex items-baseline gap-3 px-3 py-2">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground w-16 shrink-0">
+                    context
+                  </span>
+                  <span className="text-[11px] font-mono text-muted-foreground break-all">
+                    {details}
+                  </span>
                 </div>
               )}
             </div>
           )}
 
-          {/* Warning for dangerous actions */}
-          {config.severity === 'danger' && (
-            <div className={`mt-4 p-3 rounded-lg border ${isDarkMode ? 'bg-red-500/10 border-red-500/30' : 'bg-red-50 border-red-200'}`}>
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-                <div className={`text-xs ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
-                  <strong>Cảnh báo:</strong> Hành động này có thể ảnh hưởng đến hoạt động của hệ thống mạng. 
-                  Vui lòng xác nhận bạn hiểu rõ tác động trước khi tiếp tục.
-                </div>
+          {/* Critical notice — flat, text-only */}
+          {isDestructive && (
+            <div className={`border-l-2 ${tone.border} pl-3 py-1`}>
+              <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground mb-0.5">
+                impact
+              </div>
+              <div className="text-[12px] text-foreground/90 leading-relaxed">
+                Hành động không thể hoàn tác tự động. Vui lòng xác nhận trước khi tiếp tục.
               </div>
             </div>
           )}
-        </AlertDialogHeader>
+        </div>
 
-        <AlertDialogFooter className="mt-6 gap-2">
-          <AlertDialogCancel 
+        {/* Footer */}
+        <AlertDialogFooter className="px-4 py-3 border-t border-border bg-muted/20 gap-2 sm:gap-2">
+          <AlertDialogCancel
             disabled={isLoading}
-            className={`${isDarkMode ? 'bg-[#18181b] border-[#27272a] text-[#a1a1aa] hover:bg-[#27272a] hover:text-[#e4e4e7]' : 'bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200'}`}
+            className="h-8 mt-0 px-3 text-[11px] font-mono uppercase tracking-wider rounded-sm bg-transparent border-border text-muted-foreground hover:bg-muted hover:text-foreground"
           >
-            Hủy bỏ
+            Cancel
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
             disabled={isLoading}
-            className={`${config.confirmClass} min-w-[120px]`}
+            className={`h-8 px-3 min-w-[120px] text-[11px] font-mono uppercase tracking-wider rounded-sm border ${
+              isDestructive
+                ? 'bg-[hsl(var(--soc-alert))] hover:bg-[hsl(var(--soc-alert)/0.85)] text-white border-[hsl(var(--soc-alert))]'
+                : config.severity === 'warning'
+                  ? 'bg-[hsl(var(--soc-warning))] hover:bg-[hsl(var(--soc-warning)/0.85)] text-black border-[hsl(var(--soc-warning))]'
+                  : 'bg-foreground hover:bg-foreground/85 text-background border-foreground'
+            }`}
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Đang xử lý...
+                <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                executing…
               </>
             ) : (
               config.confirmText
