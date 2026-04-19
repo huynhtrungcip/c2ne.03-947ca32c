@@ -26,9 +26,9 @@ set -e
 
 # ==================== CONFIGURATION ====================
 INSTALL_DIR="/opt/soc-dashboard"
-REPO_URL="https://github.com/huynhtrungcip/insight-dashboard.git"
-PROJECT_DIR="insight-dashboard"
-SCRIPT_VERSION="2.0"
+REPO_URL="https://github.com/huynhtrungcip/c2ne.03-947ca32c.git"
+PROJECT_DIR="c2ne.03-947ca32c"
+SCRIPT_VERSION="2.1"
 
 # ==================== COLORS ====================
 RED='\033[0;31m'
