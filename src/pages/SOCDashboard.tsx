@@ -594,10 +594,43 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
         </div>
         
         <div className="px-5 pb-4">
-          <div className="text-[10px] text-[#71717a] uppercase tracking-wider mb-2">Raw Payload</div>
-          <pre className="text-[10px] font-mono text-[#a1a1aa] bg-[#000] p-3 rounded-lg border border-[#27272a] overflow-auto max-h-32">
-            {selectedEvent.raw_log}
-          </pre>
+          {(() => {
+            const raw = selectedEvent.raw_log || '{}';
+            let pretty = raw;
+            try {
+              pretty = JSON.stringify(JSON.parse(raw), null, 2);
+            } catch {
+              // keep raw if not valid JSON
+            }
+            const sizeBytes = new Blob([raw]).size;
+            const sizeLabel = sizeBytes > 1024 ? `${(sizeBytes / 1024).toFixed(1)} KB` : `${sizeBytes} B`;
+            const lineCount = pretty.split('\n').length;
+
+            return (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Raw Payload</span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
+                      JSON · {lineCount} lines · {sizeLabel}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(pretty);
+                      toast.success('Copied to clipboard');
+                    }}
+                    className="text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded border border-border hover:border-border/80"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <pre className="text-[11px] font-mono leading-relaxed text-foreground/90 bg-background p-3 rounded-md border border-border overflow-auto max-h-72 [scrollbar-width:thin]">
+                  {pretty}
+                </pre>
+              </>
+            );
+          })()}
         </div>
         
         {/* Block Result Feedback */}
