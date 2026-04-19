@@ -9,6 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import SettingsModal from '@/components/soc/SettingsModal';
 import VirtualizedEventTable from '@/components/soc/VirtualizedEventTable';
+import { SystemResourcesPanel } from '@/components/soc/SystemResourcesPanel';
 
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
@@ -833,27 +834,30 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           {renderEventTable(displayEvents)}
         </div>
 
-        {/* Top Sources - themed */}
-        <div className={`col-span-3 p-3 border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-          <div className={`text-[10px] uppercase tracking-wider mb-3 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Top Sources</div>
-          {barData.length === 0 ? (
-            <div className={`h-40 flex items-center justify-center text-xs ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No data</div>
-          ) : (
-            <div className="space-y-2">
-              {barData.slice(0, 8).map((d, i) => (
-                <div key={d.ip} className="flex items-center gap-2">
-                  <span className={`text-[9px] font-mono w-24 truncate ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>{d.ip}</span>
-                  <div className={`flex-1 h-2.5 overflow-hidden ${isDarkMode ? 'bg-[#18181b]' : 'bg-[#f3f4f6]'}`}>
-                    <div 
-                      className="h-full bg-[#f97316]"
-                      style={{ width: `${(d.count / barData[0].count) * 100}%` }}
-                    />
+        {/* Top Sources + System Resources */}
+        <div className="col-span-3 space-y-3">
+          <div className={`p-3 border rounded-md ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+            <div className={`text-[10px] uppercase tracking-wider mb-3 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Top Sources</div>
+            {barData.length === 0 ? (
+              <div className={`h-40 flex items-center justify-center text-xs ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No data</div>
+            ) : (
+              <div className="space-y-2">
+                {barData.slice(0, 8).map((d, i) => (
+                  <div key={d.ip} className="flex items-center gap-2">
+                    <span className={`text-[9px] font-mono w-24 truncate ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>{d.ip}</span>
+                    <div className={`flex-1 h-2.5 overflow-hidden rounded-sm ${isDarkMode ? 'bg-[#18181b]' : 'bg-[#f3f4f6]'}`}>
+                      <div 
+                        className="h-full bg-[#f97316]"
+                        style={{ width: `${(d.count / barData[0].count) * 100}%` }}
+                      />
+                    </div>
+                    <span className={`text-[9px] font-mono w-6 text-right ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{d.count}</span>
                   </div>
-                  <span className={`text-[9px] font-mono w-6 text-right ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{d.count}</span>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
+          <SystemResourcesPanel apiUrl={apiUrl} />
         </div>
       </div>
 
