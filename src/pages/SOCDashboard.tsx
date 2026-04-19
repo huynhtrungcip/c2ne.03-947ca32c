@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSOCData } from '@/hooks/useSOCData';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { SOCEvent } from '@/types/soc';
 import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, LineChart as RLineChart, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
-import { Settings, Wifi, WifiOff, Brain, Loader2 } from 'lucide-react';
+import { Settings, Wifi, WifiOff, Brain, Loader2, Sliders, Square, AlertTriangle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import SettingsModal from '@/components/soc/SettingsModal';
@@ -17,6 +17,16 @@ import { Tooltip as UITooltip, TooltipTrigger, TooltipContent } from '@/componen
 import { toast } from 'sonner';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { ConfirmDialog, useConfirmDialog } from '@/components/soc/ConfirmDialog';
+import { AISettingsModal } from '@/components/soc/AISettingsModal';
+import { AIToolCallCard } from '@/components/soc/AIToolCallCard';
+import {
+  streamChat,
+  getActiveProvider,
+  loadProviders,
+  type AIProviderConfig,
+  type ChatMessage as AIMessage,
+} from '@/lib/aiProviders';
+import { SOC_TOOLS, executeTool, TOOLS_REQUIRING_CONFIRMATION } from '@/lib/socTools';
 
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
