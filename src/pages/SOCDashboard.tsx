@@ -788,32 +788,50 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              <ResponsiveContainer width="100%" height={160}>
-                <PieChart>
-                  <Pie 
-                    data={pieData} 
-                    cx="50%" 
-                    cy="50%" 
-                    innerRadius={45} 
-                    outerRadius={70} 
-                    paddingAngle={1} 
-                    dataKey="value" 
-                    stroke={isDarkMode ? '#0c0c0c' : '#fff'}
-                    strokeWidth={2}
-                  >
-                    {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: isDarkMode ? '#1a1a1a' : '#fff', 
-                      border: `1px solid ${isDarkMode ? '#2a2a2a' : '#e5e7eb'}`, 
-                      borderRadius: 2, 
-                      fontSize: 10 
-                    }}
-                    labelStyle={{ color: isDarkMode ? '#e4e4e7' : '#111827' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="relative w-full" style={{ height: 160 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie 
+                      data={pieData} 
+                      cx="50%" 
+                      cy="50%" 
+                      innerRadius={45} 
+                      outerRadius={70} 
+                      paddingAngle={1} 
+                      dataKey="value" 
+                      stroke="hsl(var(--card))"
+                      strokeWidth={2}
+                    >
+                      {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'hsl(var(--popover))', 
+                        border: '1px solid hsl(var(--border))', 
+                        borderRadius: 6, 
+                        fontSize: 11,
+                        padding: '6px 10px',
+                        color: 'hsl(var(--foreground))',
+                      }}
+                      itemStyle={{ color: 'hsl(var(--foreground))' }}
+                      labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
+                      formatter={(value: number, name: string) => [
+                        `${value} (${((value / pieData.reduce((s, d) => s + d.value, 0)) * 100).toFixed(1)}%)`,
+                        name,
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Center label */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <div className="text-[20px] font-mono font-semibold text-foreground tabular-nums leading-none">
+                    {pieData.reduce((s, d) => s + d.value, 0).toLocaleString()}
+                  </div>
+                  <div className="text-[8px] uppercase tracking-wider text-muted-foreground mt-1">
+                    {pieData.length} types
+                  </div>
+                </div>
+              </div>
               <div className="w-full grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
                 {pieData.slice(0, 6).map((d, i) => (
                   <div key={d.name} className="flex items-center gap-1.5 text-[9px]">
