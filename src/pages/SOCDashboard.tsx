@@ -714,9 +714,9 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
       {/* Main Grid */}
       <div className="grid grid-cols-12 gap-4">
         {/* Traffic Chart - Professional SIEM Style */}
-        <div className={`col-span-8 ${isDarkMode ? 'bg-[#0c0c0c] border-[#1a1a1a]' : 'bg-white border-[#e5e7eb]'} border p-4`}>
+        <div className={`col-span-8 border rounded-md p-4 ${isDarkMode ? 'bg-card border-border' : 'bg-white border-[#e5e7eb]'}`}>
           <div className="flex items-center justify-between mb-3">
-            <div className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>
+            <div className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${isDarkMode ? 'text-muted-foreground' : 'text-[#374151]'}`}>
               Traffic & Alerts
             </div>
             <div className="flex items-center gap-4 text-[10px]">
