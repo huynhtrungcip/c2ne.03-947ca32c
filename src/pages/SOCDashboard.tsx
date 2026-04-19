@@ -795,37 +795,52 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                 </ResponsiveContainer>
               </div>
 
-              {/* Mini sparkline - Alerts intensity */}
-              <div className="flex-1 min-h-[40px] flex flex-col">
-                <div className={`flex items-center justify-between text-[9px] uppercase tracking-wider mb-0.5 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-                  <span>Alert Intensity</span>
-                  <span className="font-mono normal-case tracking-normal">
-                    peak {Math.max(0, ...chartData.map(d => d.Alerts))}
-                  </span>
-                </div>
-                <div className="flex-1 min-h-[28px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="alertSparkGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0.5} />
-                          <stop offset="100%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <Area 
-                        type="monotone" 
-                        dataKey="Alerts" 
-                        stroke="hsl(0, 84%, 60%)" 
-                        strokeWidth={1} 
-                        fill="url(#alertSparkGrad)"
-                        dot={false}
-                        activeDot={false}
-                        isAnimationActive={false}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+              {/* Stat note - text summary instead of chart */}
+              {(() => {
+                const trafficVals = chartData.map(d => d.Traffic);
+                const alertVals = chartData.map(d => d.Alerts);
+                const trafficPeak = Math.max(0, ...trafficVals);
+                const trafficAvg = trafficVals.length ? Math.round(trafficVals.reduce((s, v) => s + v, 0) / trafficVals.length) : 0;
+                const alertPeak = Math.max(0, ...alertVals);
+                const alertTotal = alertVals.reduce((s, v) => s + v, 0);
+                const trafficTotal = trafficVals.reduce((s, v) => s + v, 0);
+                const alertRate = trafficTotal ? ((alertTotal / trafficTotal) * 100) : 0;
+                // Trend: compare last 25% vs first 25%
+                const q = Math.max(1, Math.floor(trafficVals.length / 4));
+                const firstAvg = trafficVals.slice(0, q).reduce((s, v) => s + v, 0) / q;
+                const lastAvg = trafficVals.slice(-q).reduce((s, v) => s + v, 0) / q;
+                const trendPct = firstAvg ? ((lastAvg - firstAvg) / firstAvg) * 100 : 0;
+                const trendUp = trendPct >= 0;
+                const trendColor = Math.abs(trendPct) < 5
+                  ? (isDarkMode ? '#71717a' : '#9ca3af')
+                  : trendUp ? 'hsl(0, 84%, 60%)' : 'hsl(142, 71%, 45%)';
+
+                const Stat = ({ label, value, color }: { label: string; value: string; color?: string }) => (
+                  <div className="flex flex-col">
+                    <span className={`text-[8px] uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{label}</span>
+                    <span
+                      className="text-[12px] font-mono font-semibold tabular-nums leading-tight"
+                      style={{ color: color || (isDarkMode ? '#e4e4e7' : '#111827') }}
+                    >
+                      {value}
+                    </span>
+                  </div>
+                );
+
+                return (
+                  <div className={`flex-1 min-h-[44px] grid grid-cols-5 gap-3 px-1 pt-2 border-t ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#f1f5f9]'}`}>
+                    <Stat label="Traffic Peak" value={trafficPeak.toLocaleString()} />
+                    <Stat label="Traffic Avg" value={trafficAvg.toLocaleString()} />
+                    <Stat label="Alert Peak" value={alertPeak.toLocaleString()} color="hsl(0, 84%, 60%)" />
+                    <Stat label="Alert Rate" value={`${alertRate.toFixed(1)}%`} color={alertRate > 20 ? 'hsl(0, 84%, 60%)' : undefined} />
+                    <Stat
+                      label="Trend"
+                      value={`${trendUp ? '▲' : '▼'} ${Math.abs(trendPct).toFixed(0)}%`}
+                      color={trendColor}
+                    />
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
