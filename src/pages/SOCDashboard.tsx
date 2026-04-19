@@ -51,21 +51,35 @@ const SOC_SYSTEM_PROMPT = `You are an AI SOC analyst (Tier 2) on a hybrid NIDS s
 
 You receive:
 1) A natural language question from the analyst.
-2) A compact JSON snapshot of recent SOC alerts.
-3) Optional tool results when you call functions.
+2) A LIGHTWEIGHT SOC snapshot (only counts + top sources — NO raw events).
+3) Tool results when you call functions.
 
-Available tools (use proactively when needed):
-- query_events(filters): get raw events
-- get_top_sources(): rank attacker IPs
-- summarize_range(): aggregate stats
-- block_ip(ip, reason): block via pfSense (USER WILL BE ASKED TO CONFIRM)
+=== TOOL ROUTING (CRITICAL) ===
+The snapshot is intentionally minimal to save tokens. You MUST call tools to fetch real data:
 
-Rules:
-- Correlate patterns across events (DDoS, PortScan, BruteForce, WebAttack...).
-- NEVER invent log entries. If data is missing, call a tool.
-- Propose CLEAR next actions: BLOCK / INVESTIGATE / IGNORE with reasoning.
-- Answer concisely in Vietnamese; keep technical terms in English.
-- Use markdown tables and bullet points when helpful.`;
+- Question about a SPECIFIC IP (e.g. "what did 1.2.3.4 do?", "phân tích IP X") →
+  → ALWAYS call \`analyze_ip(ip, since_minutes)\` FIRST. NEVER guess from the snapshot.
+
+- Question about top attackers / ranking →
+  → call \`get_top_sources(limit, verdict_filter, since_minutes)\`.
+
+- Question needing aggregated stats (overview, summary) →
+  → call \`summarize_range(since_minutes)\`.
+
+- Question filtering events (by verdict, port, attack type, src_ip, dst_ip) →
+  → call \`query_events(filters)\`.
+
+- Decision to block a malicious IP →
+  → call \`block_ip(ip, reason)\`. User WILL be asked to confirm.
+
+You MAY chain tools (e.g. summarize_range → analyze_ip on top attacker → block_ip).
+
+=== ANALYSIS RULES ===
+- Correlate patterns: DDoS, PortScan, BruteForce, WebAttack, C2, Exfiltration, Recon.
+- Map to MITRE ATT&CK techniques when relevant.
+- NEVER invent log entries. If data missing → call a tool.
+- Final answer: concise Vietnamese, technical terms in English, markdown tables/bullets.
+- For each finding propose: BLOCK / INVESTIGATE / IGNORE with reasoning.`;
 
 interface ChatTurn {
   role: 'user' | 'assistant' | 'tool' | 'system';
@@ -123,35 +137,36 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [turns, isStreaming]);
 
-  // Build snapshot context
+  // Build LIGHTWEIGHT snapshot — counts + top sources only.
+  // Raw events are fetched on-demand via tools (analyze_ip, query_events, ...).
   const buildSnapshot = useCallback(() => {
     const evs = eventsRef.current;
-    if (evs.length === 0) return 'No SOC events loaded.';
-    const recent = evs.slice(0, 50).map((e) => ({
-      time: e.timestamp.toISOString(),
-      verdict: e.verdict,
-      src: e.src_ip,
-      dst: e.dst_ip,
-      port: e.dst_port,
-      proto: e.protocol,
-      sig: e.attack_type,
-      conf: Number(e.confidence?.toFixed?.(2) ?? e.confidence),
-      engine: e.source_engine,
-    }));
+    if (evs.length === 0) return JSON.stringify({ status: 'No SOC events loaded.' });
+
+    const now = Date.now();
+    const cutoff = now - 60 * 60_000;
+    const last1h = evs.filter((e) => e.timestamp.getTime() >= cutoff);
+
+    const counts = { ALERT: 0, SUSPICIOUS: 0, BENIGN: 0, FALSE_POSITIVE: 0 } as Record<string, number>;
     const ipMap: Record<string, { c: number; a: number; s: number }> = {};
-    for (const e of evs) {
+    for (const e of last1h) {
+      counts[e.verdict] = (counts[e.verdict] || 0) + 1;
       const r = (ipMap[e.src_ip] ||= { c: 0, a: 0, s: 0 });
       r.c++;
       if (e.verdict === 'ALERT') r.a++;
       if (e.verdict === 'SUSPICIOUS') r.s++;
     }
-    const top = Object.entries(ipMap)
-      .sort((a, b) => b[1].a + b[1].s - (a[1].a + a[1].s))
-      .slice(0, 10);
+    const topSources = Object.entries(ipMap)
+      .sort((a, b) => b[1].a * 3 + b[1].s - (a[1].a * 3 + a[1].s))
+      .slice(0, 8)
+      .map(([ip, s]) => ({ ip, total: s.c, alert: s.a, susp: s.s }));
+
     return JSON.stringify({
-      total: evs.length,
-      top_sources: top.map(([ip, s]) => ({ ip, ...s })),
-      recent_sample: recent,
+      window_minutes: 60,
+      total_events_loaded: evs.length,
+      events_in_window: last1h.length,
+      verdict_counts: counts,
+      top_sources_hint: topSources,
       selected_event: selectedEvent
         ? {
             time: selectedEvent.timestamp.toISOString(),
@@ -161,6 +176,7 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
             sig: selectedEvent.attack_type,
           }
         : null,
+      hint: 'This snapshot has NO raw events. Call analyze_ip / query_events / summarize_range to get details.',
     });
   }, [selectedEvent]);
 
