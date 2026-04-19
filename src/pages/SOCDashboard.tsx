@@ -255,6 +255,17 @@ const SOCDashboard = () => {
   const [selectedEvent, setSelectedEvent] = useState<SOCEvent | null>(null);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [blockedIPsCount, setBlockedIPsCount] = useState<number>(() => {
+    try { return (JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]') as string[]).length; } catch { return 0; }
+  });
+  useEffect(() => {
+    const update = () => {
+      try { setBlockedIPsCount((JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]') as string[]).length); } catch { setBlockedIPsCount(0); }
+    };
+    window.addEventListener('storage', update);
+    const interval = setInterval(update, 2000);
+    return () => { window.removeEventListener('storage', update); clearInterval(interval); };
+  }, []);
   const [showAnalysisOptions, setShowAnalysisOptions] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
