@@ -10,6 +10,7 @@ import remarkGfm from 'remark-gfm';
 import SettingsModal from '@/components/soc/SettingsModal';
 import VirtualizedEventTable from '@/components/soc/VirtualizedEventTable';
 import { SystemResourcesPanel } from '@/components/soc/SystemResourcesPanel';
+import { EventsRatePanel } from '@/components/soc/EventsRatePanel';
 
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
@@ -858,6 +859,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             )}
           </div>
           <SystemResourcesPanel apiUrl={apiUrl} />
+          <EventsRatePanel events={sortedEvents} windowMinutes={30} />
         </div>
       </div>
 
