@@ -781,8 +781,8 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
         </div>
 
         {/* Attack Types - Professional Style */}
-        <div className={`col-span-4 ${isDarkMode ? 'bg-[#0c0c0c] border-[#1a1a1a]' : 'bg-white border-[#e5e7eb]'} border p-4`}>
-          <div className={`text-[10px] font-semibold uppercase tracking-[0.12em] mb-2 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Attack Distribution</div>
+        <div className={`col-span-4 border rounded-md p-4 ${isDarkMode ? 'bg-card border-border' : 'bg-white border-[#e5e7eb]'}`}>
+          <div className={`text-[10px] font-semibold uppercase tracking-[0.12em] mb-2 ${isDarkMode ? 'text-muted-foreground' : 'text-[#374151]'}`}>Attack Distribution</div>
           {pieData.length === 0 ? (
             <div className="h-48 flex flex-col items-center justify-center">
               <span className={`text-2xl mb-2 ${isDarkMode ? 'text-[#22c55e]' : 'text-[#16a34a]'}`}>✓</span>
@@ -831,14 +831,14 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
         </div>
 
         {/* Event Table */}
-        <div className="col-span-9">
+        <div className="col-span-9 flex flex-col">
           {renderEventTable(displayEvents)}
         </div>
 
         {/* Top Sources + System Resources */}
-        <div className="col-span-3 space-y-3">
-          <div className={`p-3 border rounded-md ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-            <div className={`text-[10px] uppercase tracking-wider mb-3 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Top Sources</div>
+        <div className="col-span-3 space-y-3 flex flex-col">
+          <div className={`p-3 border rounded-md ${isDarkMode ? 'bg-card border-border' : 'bg-white border-[#e5e7eb]'}`}>
+            <div className={`text-[10px] uppercase tracking-wider mb-3 ${isDarkMode ? 'text-muted-foreground' : 'text-[#9ca3af]'}`}>Top Sources</div>
             {barData.length === 0 ? (
               <div className={`h-40 flex items-center justify-center text-xs ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No data</div>
             ) : (
@@ -846,7 +846,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                 {barData.slice(0, 8).map((d, i) => (
                   <div key={d.ip} className="flex items-center gap-2">
                     <span className={`text-[9px] font-mono w-24 truncate ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>{d.ip}</span>
-                    <div className={`flex-1 h-2.5 overflow-hidden rounded-sm ${isDarkMode ? 'bg-[#18181b]' : 'bg-[#f3f4f6]'}`}>
+                    <div className={`flex-1 h-2.5 overflow-hidden rounded-sm ${isDarkMode ? 'bg-muted' : 'bg-[#f3f4f6]'}`}>
                       <div 
                         className="h-full bg-[#f97316]"
                         style={{ width: `${(d.count / barData[0].count) * 100}%` }}
