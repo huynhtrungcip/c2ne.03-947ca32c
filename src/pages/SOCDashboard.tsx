@@ -11,6 +11,7 @@ import SettingsModal from '@/components/soc/SettingsModal';
 import VirtualizedEventTable from '@/components/soc/VirtualizedEventTable';
 import { SystemResourcesPanel } from '@/components/soc/SystemResourcesPanel';
 import { EventsRatePanel } from '@/components/soc/EventsRatePanel';
+import { VerdictDistributionPanel } from '@/components/soc/VerdictDistributionPanel';
 
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
@@ -860,6 +861,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           </div>
           <SystemResourcesPanel apiUrl={apiUrl} />
           <EventsRatePanel events={sortedEvents} windowMinutes={30} />
+          <VerdictDistributionPanel events={sortedEvents} />
         </div>
       </div>
 
