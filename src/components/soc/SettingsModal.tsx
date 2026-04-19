@@ -1741,10 +1741,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             <button
               key={value}
               onClick={() => setLanguage(value as 'en' | 'vi')}
-              className={`h-7 px-3 text-[11px] font-mono uppercase tracking-wider rounded-sm border transition-colors ${
+              className={`h-8 px-3.5 text-[11px] font-medium tracking-normal rounded-md border transition-all ${
                 language === value
-                  ? 'bg-primary/10 border-primary/60 text-primary'
-                  : 'bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+                  ? 'bg-muted border-border text-foreground shadow-sm'
+                  : 'bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'
               }`}
             >
               {label}
@@ -1769,10 +1769,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             <button
               key={value}
               onClick={() => setTheme(value as Theme)}
-              className={`h-7 px-3 text-[11px] font-mono uppercase tracking-wider rounded-sm border transition-colors ${
+              className={`h-8 px-3.5 text-[11px] font-medium tracking-normal rounded-md border transition-all ${
                 theme === value
-                  ? 'bg-primary/10 border-primary/60 text-primary'
-                  : 'bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+                  ? 'bg-muted border-border text-foreground shadow-sm'
+                  : 'bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'
               }`}
             >
               {label}
@@ -1793,7 +1793,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           <select
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            className="w-full h-7 px-2 text-[11px] font-mono bg-transparent border border-border rounded-sm text-foreground focus:outline-none focus:border-primary"
+            className="w-full h-8 px-3 text-[11px] bg-background/60 border border-border rounded-md text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-colors"
           >
             {TIMEZONES.map(tz => (
               <option key={tz.value} value={tz.value}>{tz.label}</option>
@@ -1807,18 +1807,16 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2 font-mono">
           {t('settings.sysInfo')}
         </div>
-        <div className="border border-border rounded-sm divide-y divide-border">
+        <div className="border border-border rounded-md divide-y divide-border bg-background/40 overflow-hidden">
           {[
-            { label: t('settings.version'), value: '2.0.0', accent: false },
-            { label: t('settings.engine'), value: 'Hybrid NIDS', accent: false },
-            { label: 'Mode', value: 'False Positive Reduction', accent: true },
-            { label: t('settings.timezone'), value: timezone, accent: false },
+            { label: t('settings.version'), value: '2.0.0' },
+            { label: t('settings.engine'), value: 'Hybrid NIDS' },
+            { label: 'Mode', value: 'False Positive Reduction' },
+            { label: t('settings.timezone'), value: timezone },
           ].map((row, i) => (
-            <div key={i} className="flex items-center justify-between px-3 py-2 text-[11px]">
+            <div key={i} className="flex items-center justify-between px-3.5 py-2.5 text-[11px]">
               <span className="text-muted-foreground">{row.label}</span>
-              <span className={`font-mono ${row.accent ? 'text-[hsl(var(--soc-success))]' : 'text-foreground'}`}>
-                {row.value}
-              </span>
+              <span className="font-mono text-foreground">{row.value}</span>
             </div>
           ))}
         </div>
@@ -1829,10 +1827,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2 font-mono">
           {t('help.devTeam')}
         </div>
-        <div className="border border-border rounded-sm px-3 py-2.5 text-[11px] space-y-0.5">
+        <div className="border border-border rounded-md bg-background/40 px-3.5 py-3 text-[11px] space-y-0.5">
           <div className="text-foreground font-medium">C1NE.03 Team</div>
           <div className="text-muted-foreground">Cybersecurity K28 · Duy Tan University</div>
-          <div className="text-muted-foreground/70 text-[10px] pt-1.5 mt-1.5 border-t border-border font-mono">
+          <div className="text-muted-foreground/70 text-[10px] pt-2 mt-2 border-t border-border font-mono">
             © 2025 SOC Dashboard
           </div>
         </div>
@@ -1848,8 +1846,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         onClick={onClose}
       />
       
-      {/* Modal — flat, sharp, big-tech */}
-      <div className="relative w-[860px] max-h-[85vh] bg-card border border-border rounded-sm overflow-hidden flex">
+      {/* Modal — soft rounded, big-tech SIEM (Datadog/Linear style) */}
+      <div className="relative w-[860px] max-h-[85vh] bg-card border border-border rounded-lg shadow-2xl overflow-hidden flex">
         {/* Sidebar — compact ghost nav */}
         <div className="w-48 border-r border-border flex-shrink-0 bg-background/40">
           <div className="px-4 py-3 border-b border-border">
@@ -1866,8 +1864,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                   onClick={() => setActiveSection(section.id as any)}
                   className={`w-full flex items-center gap-2.5 pl-4 pr-3 py-2 text-[11px] transition-colors border-l-2 ${
                     active
-                      ? 'bg-primary/10 border-l-primary text-foreground font-medium'
-                      : 'border-l-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      ? 'bg-muted/60 border-l-foreground/70 text-foreground font-medium'
+                      : 'border-l-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40'
                   }`}
                 >
                   <section.icon className="w-3.5 h-3.5 opacity-70" strokeWidth={1.5} />
@@ -1887,7 +1885,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             <button
               onClick={onClose}
               aria-label="Close"
-              className="h-6 w-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <X className="w-4 h-4" strokeWidth={1.5} />
             </button>
