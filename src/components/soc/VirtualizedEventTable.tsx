@@ -195,8 +195,8 @@ const VirtualizedEventTable = ({
       {/* Virtualized Rows */}
       <div
         ref={parentRef}
-        className="overflow-auto"
-        style={{ height: '400px' }}
+        className="overflow-auto flex-1"
+        style={{ minHeight: '400px' }}
       >
         {paginatedEvents.length === 0 ? (
           <div className={`text-center py-8 ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No events</div>
