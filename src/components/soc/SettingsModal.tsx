@@ -1895,7 +1895,13 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
 
           <div className="flex-1 overflow-y-auto px-6 py-4">
             {activeSection === 'general' && renderGeneralSection()}
-...
+            {activeSection === 'health' && renderHealthSection()}
+            {activeSection === 'telegram' && renderTelegramSection()}
+            {activeSection === 'data' && renderDataManagementSection()}
+            {activeSection === 'sources' && renderSourcesSection()}
+            {activeSection === 'nids_debug' && renderNidsDebugSection()}
+            {activeSection === 'blocked' && renderBlockedIPsSection()}
+            {(activeSection === 'blacklist' || activeSection === 'whitelist') && renderListSection()}
             {activeSection === 'help' && renderHelpSection()}
           </div>
         </div>
