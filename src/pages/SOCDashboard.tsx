@@ -820,10 +820,10 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                       onMouseEnter={(_, idx) => setPieHoverIdx(idx)}
                       onMouseLeave={() => setPieHoverIdx(null)}
                     >
-                      {pieData.map((_, i) => (
+                      {pieData.map((d, i) => (
                         <Cell 
                           key={i} 
-                          fill={COLORS[i % COLORS.length]}
+                          fill={d.isOther ? OTHER_COLOR : COLORS[i % COLORS.length]}
                           opacity={pieHoverIdx === null || pieHoverIdx === i ? 1 : 0.35}
                         />
                       ))}
