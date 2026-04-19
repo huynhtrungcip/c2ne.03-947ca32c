@@ -1582,29 +1582,8 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
               </div>
             </div>
 
-            {/* Top Source IPs */}
-            <div className="border rounded-md p-3 bg-card border-border">
-              <div className="text-[10px] uppercase tracking-wider font-medium mb-3 text-muted-foreground">Top Source IPs</div>
-              <div className="space-y-2">
-                {topSources.length === 0 ? (
-                  <div className="text-[10px] text-muted-foreground/50">No sources</div>
-                ) : topSources.slice(0, 6).map((src) => {
-                  let isBlocked = false;
-                  try {
-                    const blockedIPs = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]') as string[];
-                    isBlocked = blockedIPs.includes(src.ip);
-                  } catch {}
-                  return (
-                    <div key={src.ip} className="flex items-center justify-between gap-2">
-                      <span className={`text-[10px] font-mono truncate ${isBlocked ? 'text-[hsl(var(--soc-alert))] line-through' : 'text-muted-foreground'}`}>
-                        {src.ip}
-                      </span>
-                      <span className="text-[11px] font-mono text-foreground">{src.count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Top Blocked IPs (synced with pfSense) */}
+            <TopBlockedIPsPanel apiUrl={apiUrl} refreshKey={blockedIPsCount} />
 
             </div>
           </div>
