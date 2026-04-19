@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts';
+import { RadialBarChart, RadialBar, ResponsiveContainer, PolarAngleAxis } from 'recharts';
 import { SOCEvent } from '@/types/soc';
 
 export type MetricKind =
@@ -12,60 +12,13 @@ export type MetricKind =
 interface MetricStatCardProps {
   label: string;
   value: number;
-  accent: string; // hex or hsl(var())
+  accent: string;
   kind: MetricKind;
   events: SOCEvent[];
   delta?: string;
-  windowMinutes?: number;
+  /** Total to compute percentage against. If omitted, falls back to events.length. */
+  total?: number;
 }
-
-// Build per-minute series counting events matching `kind`
-const buildSeries = (events: SOCEvent[], kind: MetricKind, windowMinutes: number) => {
-  const now = Date.now();
-  const bucketMs = 60 * 1000;
-  const buckets: { t: number; v: number }[] = [];
-  for (let i = windowMinutes - 1; i >= 0; i--) {
-    buckets.push({ t: now - i * bucketMs, v: 0 });
-  }
-
-  // For 'sources' we need per-bucket unique IP counts
-  const ipSets: Set<string>[] = kind === 'sources'
-    ? buckets.map(() => new Set<string>())
-    : [];
-
-  for (const ev of events) {
-    const ts = ev.timestamp.getTime();
-    const idx = windowMinutes - 1 - Math.floor((now - ts) / bucketMs);
-    if (idx < 0 || idx >= windowMinutes) continue;
-
-    const v = (ev.verdict || '').toUpperCase();
-    let match = false;
-    switch (kind) {
-      case 'total':
-        match = true;
-        break;
-      case 'alert':
-        match = v === 'ALERT';
-        break;
-      case 'suspicious':
-        match = v === 'SUSPICIOUS';
-        break;
-      case 'false_positive':
-        match = v === 'FALSE_POSITIVE';
-        break;
-      case 'sources':
-        if (ipSets[idx]) ipSets[idx].add(ev.src_ip);
-        continue;
-    }
-    if (match) buckets[idx].v += 1;
-  }
-
-  if (kind === 'sources') {
-    ipSets.forEach((s, i) => (buckets[i].v = s.size));
-  }
-
-  return buckets;
-};
 
 export const MetricStatCard = ({
   label,
@@ -74,22 +27,62 @@ export const MetricStatCard = ({
   kind,
   events,
   delta,
-  windowMinutes = 30,
+  total,
 }: MetricStatCardProps) => {
-  const series = useMemo(
-    () => buildSeries(events, kind, windowMinutes),
-    [events, kind, windowMinutes]
-  );
+  // Compute percentage for the radial gauge.
+  // 'total' kind shows 100% of itself; 'sources' uses unique src IPs cap; others = % of all events.
+  const pct = useMemo(() => {
+    if (kind === 'total') return 100;
+    if (kind === 'sources') {
+      const uniq = new Set(events.map(e => e.src_ip)).size || 1;
+      return Math.min(100, (value / uniq) * 100);
+    }
+    const denom = total ?? events.length;
+    if (!denom) return 0;
+    return Math.min(100, (value / denom) * 100);
+  }, [kind, value, events, total]);
 
-  const gradId = `metric-grad-${kind}`;
+  const data = [{ name: label, value: pct, fill: accent }];
 
   return (
     <div
-      className="bg-card p-4 flex items-center justify-between gap-3"
+      className="bg-card p-4 flex items-center gap-4"
       style={{ borderTop: `2px solid ${accent}` }}
     >
-      {/* Left: label + value + delta */}
-      <div className="flex flex-col min-w-0">
+      {/* Radial gauge */}
+      <div className="relative shrink-0" style={{ width: 64, height: 64 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <RadialBarChart
+            cx="50%"
+            cy="50%"
+            innerRadius="72%"
+            outerRadius="100%"
+            barSize={6}
+            data={data}
+            startAngle={90}
+            endAngle={-270}
+          >
+            <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+            <RadialBar
+              dataKey="value"
+              cornerRadius={3}
+              background={{ fill: 'hsl(var(--muted))' }}
+              isAnimationActive={false}
+            />
+          </RadialBarChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span
+            className="text-[10px] font-mono font-semibold tabular-nums"
+            style={{ color: accent }}
+          >
+            {kind === 'total' ? '100' : pct.toFixed(0)}%
+          </span>
+        </div>
+      </div>
+
+      {/* Right: label + value + delta */}
+      <div className="flex flex-col min-w-0 flex-1">
         <div className="text-[10px] font-medium uppercase tracking-wider mb-1 text-muted-foreground">
           {label}
         </div>
@@ -101,24 +94,6 @@ export const MetricStatCard = ({
             {delta}
           </div>
         )}
-      </div>
-
-      {/* Right: thin sparkline, no fill */}
-      <div className="w-[55%] h-12 shrink-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={series} margin={{ top: 4, right: 0, left: 0, bottom: 2 }}>
-            <YAxis hide domain={[0, 'dataMax + 1']} />
-            <Area
-              type="linear"
-              dataKey="v"
-              stroke={accent}
-              strokeWidth={1.25}
-              fill="none"
-              isAnimationActive={false}
-              dot={false}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
       </div>
     </div>
   );
