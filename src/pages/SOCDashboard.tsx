@@ -557,20 +557,21 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
     };
     
     return (
-      <div className="mt-4 bg-[#0a0a0a] border-2 rounded-lg shadow-xl" style={{ borderColor: verdictBorderColor }}>
-        <div className="p-4 border-b border-[#1f1f1f] flex items-center justify-between bg-[#0f0f0f] rounded-t-lg">
+      <div className="mt-4 bg-card border rounded-md shadow-lg" style={{ borderColor: verdictBorderColor }}>
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/30 rounded-t-md">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-[#e4e4e7] uppercase tracking-wider">Event Inspector</span>
+            <span className="text-[11px] font-semibold text-foreground uppercase tracking-[0.12em]">Event Inspector</span>
             <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
-              selectedEvent.verdict === 'ALERT' ? 'bg-[#450a0a] text-[#f87171]' :
-              selectedEvent.verdict === 'SUSPICIOUS' ? 'bg-[#451a03] text-[#fbbf24]' : 'bg-[#052e16] text-[#4ade80]'
+              selectedEvent.verdict === 'ALERT' ? 'bg-[hsl(var(--soc-alert)/0.15)] text-[hsl(var(--soc-alert))] border border-[hsl(var(--soc-alert)/0.3)]' :
+              selectedEvent.verdict === 'SUSPICIOUS' ? 'bg-[hsl(var(--soc-warning)/0.15)] text-[hsl(var(--soc-warning))] border border-[hsl(var(--soc-warning)/0.3)]' :
+              'bg-[hsl(var(--soc-success)/0.15)] text-[hsl(var(--soc-success))] border border-[hsl(var(--soc-success)/0.3)]'
             }`}>
               {selectedEvent.verdict}
             </span>
           </div>
           <button 
             onClick={() => setSelectedEvent(null)}
-            className="w-6 h-6 flex items-center justify-center text-[#71717a] hover:text-[#e4e4e7] hover:bg-[#27272a] rounded transition-colors"
+            className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
           >
             ✕
           </button>
@@ -578,17 +579,17 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
         
         <div className="p-5 grid grid-cols-4 gap-x-6 gap-y-4">
           {[
-            { label: 'Timestamp', value: selectedEvent.timestamp.toLocaleString(), className: 'text-[#e4e4e7]' },
-            { label: 'Signature', value: selectedEvent.attack_type, className: 'font-semibold text-[#fbbf24]' },
-            { label: 'Engine', value: selectedEvent.source_engine, className: 'text-[#e4e4e7]' },
-            { label: 'Confidence', value: `${(selectedEvent.confidence * 100).toFixed(0)}%`, className: 'text-[#e4e4e7]' },
-            { label: 'Source IP', value: selectedEvent.src_ip, className: 'text-[#60a5fa] font-mono' },
-            { label: 'Destination', value: `${selectedEvent.dst_ip}:${selectedEvent.dst_port || '-'}`, className: 'font-mono text-[#e4e4e7]' },
-            { label: 'Protocol', value: selectedEvent.protocol, className: 'text-[#e4e4e7]' },
-            { label: 'Community ID', value: selectedEvent.community_id, className: 'font-mono text-[10px] text-[#e4e4e7]' },
+            { label: 'Timestamp', value: selectedEvent.timestamp.toLocaleString(), className: 'text-foreground' },
+            { label: 'Signature', value: selectedEvent.attack_type, className: 'font-semibold text-[hsl(var(--soc-warning))]' },
+            { label: 'Engine', value: selectedEvent.source_engine, className: 'text-foreground' },
+            { label: 'Confidence', value: `${(selectedEvent.confidence * 100).toFixed(0)}%`, className: 'text-foreground' },
+            { label: 'Source IP', value: selectedEvent.src_ip, className: 'text-[hsl(var(--chart-1))] font-mono' },
+            { label: 'Destination', value: `${selectedEvent.dst_ip}:${selectedEvent.dst_port || '-'}`, className: 'font-mono text-foreground' },
+            { label: 'Protocol', value: selectedEvent.protocol, className: 'text-foreground' },
+            { label: 'Community ID', value: selectedEvent.community_id, className: 'font-mono text-[10px] text-foreground' },
           ].map((field, i) => (
             <div key={i}>
-              <div className="text-[10px] text-[#71717a] uppercase tracking-wider mb-1">{field.label}</div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{field.label}</div>
               <div className={`text-[12px] ${field.className}`}>{field.value}</div>
             </div>
           ))}
