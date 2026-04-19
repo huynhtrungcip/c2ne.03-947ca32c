@@ -32,7 +32,7 @@ export const TopBlockedIPsPanel = ({ apiUrl, refreshKey = 0 }: Props) => {
   const [error, setError] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<Date | null>(null);
 
-  const { dialogState, confirmAction, handleConfirm, handleCancel } = useConfirmDialog();
+  const { dialogState, showConfirm, closeConfirm } = useConfirmDialog();
 
   const aiEngineUrl = apiUrl
     ? apiUrl.replace(':3001', ':8000').replace(':3002', ':8000')
@@ -109,7 +109,7 @@ export const TopBlockedIPsPanel = ({ apiUrl, refreshKey = 0 }: Props) => {
   };
 
   const handleUnblock = (ip: string) => {
-    confirmAction(
+    showConfirm(
       'unblock_ip',
       () => executeUnblock(ip),
       ip,
@@ -214,12 +214,12 @@ export const TopBlockedIPsPanel = ({ apiUrl, refreshKey = 0 }: Props) => {
       </div>
 
       <ConfirmDialog
-        open={dialogState.open}
-        action={dialogState.action}
-        target={dialogState.target}
+        isOpen={dialogState.isOpen}
+        actionType={dialogState.actionType}
+        targetValue={dialogState.targetValue}
         details={dialogState.details}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
+        onConfirm={dialogState.onConfirm}
+        onClose={closeConfirm}
       />
     </>
   );
