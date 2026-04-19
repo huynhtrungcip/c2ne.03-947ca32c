@@ -192,7 +192,7 @@ Kiểm tra:
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-primary/15 border border-primary/30 shrink-0">
             <Brain className="h-3.5 w-3.5 text-primary" />
-            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-card animate-pulse" />
+            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-success ring-2 ring-card animate-pulse" />
           </div>
           <div className="min-w-0">
             <div className="text-[11px] font-bold text-foreground uppercase tracking-wider leading-tight">SOC AI Assistant</div>
