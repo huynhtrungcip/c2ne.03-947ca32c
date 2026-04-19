@@ -1446,9 +1446,9 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
   };
 
   return (
-    <div className={`min-h-screen font-['Inter',system-ui,sans-serif] transition-colors ${isDarkMode ? 'bg-[#0a0a0a] text-[#e4e4e7]' : 'bg-[#f8f9fa] text-[#111827]'}`}>
+    <div className="min-h-screen font-['Inter',system-ui,sans-serif] transition-colors bg-background text-foreground">
       {/* Top Bar */}
-      <header className={`h-10 flex items-center justify-between px-4 border-b ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+      <header className="h-10 flex items-center justify-between px-4 border-b bg-card border-border">
         <div className="flex items-center gap-6">
           <button 
             onClick={() => setActiveTab('overview')}
