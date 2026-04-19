@@ -26,9 +26,9 @@ set -e
 
 # ==================== CONFIGURATION ====================
 INSTALL_DIR="/opt/soc-dashboard"
-REPO_URL="https://github.com/huynhtrungcip/insight-dashboard.git"
-PROJECT_DIR="insight-dashboard"
-SCRIPT_VERSION="2.0"
+REPO_URL="https://github.com/huynhtrungcip/c2ne.03-947ca32c.git"
+PROJECT_DIR="c2ne.03-947ca32c"
+SCRIPT_VERSION="2.1"
 
 # ==================== COLORS ====================
 RED='\033[0;31m'
@@ -117,7 +117,7 @@ check_existing_installation() {
     fi
     
     # Check 3: Docker images
-    if docker images --format '{{.Repository}}' 2>/dev/null | grep -qE 'soc-|insight'; then
+    if docker images --format '{{.Repository}}' 2>/dev/null | grep -qE 'soc-|c2ne'; then
         status=1
     fi
     
@@ -360,21 +360,21 @@ uninstall_files_only() {
     # 2. Xóa Docker images
     print_info "Bước 2/5: Xóa Docker images..."
     docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' 2>/dev/null | \
-        grep -E 'insight-dashboard|soc-' | awk '{print $2}' | \
+        grep -E 'c2ne|soc-' | awk '{print $2}' | \
         xargs -r docker rmi -f 2>/dev/null || true
     print_success "Đã xóa images"
     
     # 3. Xóa Docker volumes
     print_info "Bước 3/5: Xóa Docker volumes..."
     docker volume ls --format '{{.Name}}' 2>/dev/null | \
-        grep -E 'insight-dashboard|soc-' | \
+        grep -E 'c2ne|soc-' | \
         xargs -r docker volume rm 2>/dev/null || true
     print_success "Đã xóa volumes"
     
     # 4. Xóa Docker networks
     print_info "Bước 4/5: Xóa Docker networks..."
     docker network ls --format '{{.Name}}' 2>/dev/null | \
-        grep -E 'insight-dashboard|soc-' | \
+        grep -E 'c2ne|soc-' | \
         xargs -r docker network rm 2>/dev/null || true
     print_success "Đã xóa networks"
     
@@ -448,19 +448,19 @@ clean_for_reinstall() {
     # Xóa images
     print_info "Xóa images cũ..."
     docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' 2>/dev/null | \
-        grep -E 'insight-dashboard|soc-' | awk '{print $2}' | \
+        grep -E 'c2ne|soc-' | awk '{print $2}' | \
         xargs -r docker rmi -f 2>/dev/null || true
     
     # Xóa volumes
     print_info "Xóa volumes cũ..."
     docker volume ls --format '{{.Name}}' 2>/dev/null | \
-        grep -E 'insight-dashboard|soc-' | \
+        grep -E 'c2ne|soc-' | \
         xargs -r docker volume rm 2>/dev/null || true
     
     # Xóa networks
     print_info "Xóa networks cũ..."
     docker network ls --format '{{.Name}}' 2>/dev/null | \
-        grep -E 'insight-dashboard|soc-' | \
+        grep -E 'c2ne|soc-' | \
         xargs -r docker network rm 2>/dev/null || true
     
     # Xóa thư mục
