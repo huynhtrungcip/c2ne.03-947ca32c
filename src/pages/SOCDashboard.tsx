@@ -1191,8 +1191,8 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             </div>
           </div>
           
-          {/* Sidebar */}
-          <div className="col-span-3 space-y-3">
+          {/* Sidebar - matches main column height (metric strip ~62px + mb-4 16px + table 560px = 638px) */}
+          <div className="col-span-3 space-y-3 overflow-y-auto pr-1" style={{ maxHeight: '638px' }}>
             {/* Detection Engines */}
             <div className={`border p-3 ${'bg-card border-border'}`}>
               <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Detection Engines</div>
