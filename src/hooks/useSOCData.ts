@@ -102,12 +102,23 @@ export const useSOCData = (
   const addEvent = useCallback((event: SOCEvent) => {
     const eventWithSource = { ...event, source: 'nids' as const };
     setNidsEvents(prev => {
-      const newEvents = [eventWithSource, ...prev].slice(0, 20000);
-      // Update NIDS-specific localStorage
-      localStorage.setItem('soc-nids-events', JSON.stringify(newEvents.map(e => ({
-        ...e,
-        timestamp: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
-      }))));
+      const newEvents = [eventWithSource, ...prev].slice(0, 2000);
+      try {
+        localStorage.setItem('soc-nids-events', JSON.stringify(newEvents.map(e => ({
+          ...e,
+          timestamp: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
+        }))));
+      } catch {
+        try {
+          const trimmed = newEvents.slice(0, 500);
+          localStorage.setItem('soc-nids-events', JSON.stringify(trimmed.map(e => ({
+            ...e,
+            timestamp: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
+          }))));
+        } catch {
+          localStorage.removeItem('soc-nids-events');
+        }
+      }
       return newEvents;
     });
     setLastUpdate(new Date());
