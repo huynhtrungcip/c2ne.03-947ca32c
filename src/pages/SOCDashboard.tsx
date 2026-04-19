@@ -1216,17 +1216,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             {now}
           </div>
 
-          {/* Stream status — flat pill, dot pulse only */}
-          <div
-            className="h-7 px-2.5 flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider text-foreground/80 bg-transparent border border-border rounded-sm"
-            title="Realtime stream — always on"
-          >
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--status-online))] opacity-60 animate-ping" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[hsl(var(--status-online))]" />
-            </span>
-            <span className="text-foreground/70">Live</span>
-          </div>
+          {/* Stream is always-on; no badge needed in header */}
 
           {/* Settings — icon only, flat */}
           <button
