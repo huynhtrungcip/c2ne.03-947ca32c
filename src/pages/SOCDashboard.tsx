@@ -16,6 +16,7 @@ import { MetricStatCard, MetricKind } from '@/components/soc/MetricStatCard';
 import { Tooltip as UITooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { ConfirmDialog, useConfirmDialog } from '@/components/soc/ConfirmDialog';
 
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
