@@ -379,7 +379,7 @@ const SOCDashboard = () => {
 
   // Unified filter component - themed
   const renderFilters = () => (
-    <div className={`border p-3 mb-4 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+    <div className="border border-border bg-card p-3 mb-4">
       <div className="flex items-center gap-3 flex-wrap">
         <div className={`text-[10px] uppercase tracking-wider font-medium ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Filters</div>
         <select 
