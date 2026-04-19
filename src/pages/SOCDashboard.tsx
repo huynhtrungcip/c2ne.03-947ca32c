@@ -801,40 +801,61 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                       dataKey="value" 
                       stroke="hsl(var(--card))"
                       strokeWidth={2}
+                      onMouseEnter={(_, idx) => setPieHoverIdx(idx)}
+                      onMouseLeave={() => setPieHoverIdx(null)}
                     >
-                      {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      {pieData.map((_, i) => (
+                        <Cell 
+                          key={i} 
+                          fill={COLORS[i % COLORS.length]}
+                          opacity={pieHoverIdx === null || pieHoverIdx === i ? 1 : 0.35}
+                        />
+                      ))}
                     </Pie>
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: 'hsl(var(--popover))', 
-                        border: '1px solid hsl(var(--border))', 
-                        borderRadius: 6, 
-                        fontSize: 11,
-                        padding: '6px 10px',
-                        color: 'hsl(var(--foreground))',
-                      }}
-                      itemStyle={{ color: 'hsl(var(--foreground))' }}
-                      labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}
-                      formatter={(value: number, name: string) => [
-                        `${value} (${((value / pieData.reduce((s, d) => s + d.value, 0)) * 100).toFixed(1)}%)`,
-                        name,
-                      ]}
-                    />
                   </PieChart>
                 </ResponsiveContainer>
-                {/* Center label */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <div className="text-[20px] font-mono font-semibold text-foreground tabular-nums leading-none">
-                    {pieData.reduce((s, d) => s + d.value, 0).toLocaleString()}
-                  </div>
-                  <div className="text-[8px] uppercase tracking-wider text-muted-foreground mt-1">
-                    {pieData.length} types
-                  </div>
+                {/* Center label - swaps to hovered slice info */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none px-2">
+                  {pieHoverIdx !== null && pieData[pieHoverIdx] ? (
+                    <>
+                      <div className="text-[16px] font-mono font-semibold text-foreground tabular-nums leading-none">
+                        {pieData[pieHoverIdx].value.toLocaleString()}
+                      </div>
+                      <div className="text-[9px] font-mono text-muted-foreground mt-0.5 tabular-nums">
+                        {((pieData[pieHoverIdx].value / pieData.reduce((s, d) => s + d.value, 0)) * 100).toFixed(1)}%
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[20px] font-mono font-semibold text-foreground tabular-nums leading-none">
+                        {pieData.reduce((s, d) => s + d.value, 0).toLocaleString()}
+                      </div>
+                      <div className="text-[8px] uppercase tracking-wider text-muted-foreground mt-1">
+                        {pieData.length} types
+                      </div>
+                    </>
+                  )}
                 </div>
+              </div>
+              {/* Hovered name strip - replaces floating tooltip to avoid overlap */}
+              <div className="w-full h-4 mt-1 flex items-center justify-center text-[10px] truncate">
+                {pieHoverIdx !== null && pieData[pieHoverIdx] ? (
+                  <span className="text-foreground font-medium truncate" title={pieData[pieHoverIdx].name}>
+                    {pieData[pieHoverIdx].name}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground/50 text-[9px] uppercase tracking-wider">Hover slice for details</span>
+                )}
               </div>
               <div className="w-full grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
                 {pieData.slice(0, 6).map((d, i) => (
-                  <div key={d.name} className="flex items-center gap-1.5 text-[9px]">
+                  <div 
+                    key={d.name} 
+                    className="flex items-center gap-1.5 text-[9px] cursor-pointer transition-opacity"
+                    style={{ opacity: pieHoverIdx === null || pieHoverIdx === i ? 1 : 0.4 }}
+                    onMouseEnter={() => setPieHoverIdx(i)}
+                    onMouseLeave={() => setPieHoverIdx(null)}
+                  >
                     <span className="w-2 h-2" style={{ background: COLORS[i % COLORS.length] }} />
                     <span className={`truncate flex-1 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{d.name}</span>
                     <span className={`font-mono font-medium ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{d.value}</span>
