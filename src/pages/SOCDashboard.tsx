@@ -335,8 +335,23 @@ const SOCDashboard = () => {
     Alerts: d.alerts
   }));
 
-  const pieData = attackTypeData.map(d => ({ name: d.type, value: d.count }));
   const COLORS = ['#2563eb', '#0891b2', '#7c3aed', '#ea580c', '#16a34a', '#ca8a04'];
+  const OTHER_COLOR = '#71717a';
+  const TOP_N = 5;
+  const totalAttackTypes = attackTypeData.length;
+  const pieData = (() => {
+    const sorted = [...attackTypeData].sort((a, b) => b.count - a.count);
+    if (sorted.length <= TOP_N + 1) {
+      return sorted.map(d => ({ name: d.type, value: d.count, isOther: false }));
+    }
+    const top = sorted.slice(0, TOP_N).map(d => ({ name: d.type, value: d.count, isOther: false }));
+    const rest = sorted.slice(TOP_N);
+    const otherSum = rest.reduce((s, d) => s + d.count, 0);
+    return [
+      ...top,
+      { name: `Other (${rest.length})`, value: otherSum, isOther: true as const },
+    ];
+  })();
 
   const barData = topSources.map(d => ({ ip: d.ip, count: d.count }));
   const sortedEvents = [...events].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
