@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { RadialBarChart, RadialBar, ResponsiveContainer, PolarAngleAxis } from 'recharts';
 import { SOCEvent } from '@/types/soc';
 
 export type MetricKind =
@@ -29,8 +28,7 @@ export const MetricStatCard = ({
   delta,
   total,
 }: MetricStatCardProps) => {
-  // Compute percentage for the radial gauge.
-  // 'total' kind shows 100% of itself; 'sources' uses unique src IPs cap; others = % of all events.
+  // Compute percentage for the bar gauge.
   const pct = useMemo(() => {
     if (kind === 'total') return 100;
     if (kind === 'sources') {
@@ -42,58 +40,53 @@ export const MetricStatCard = ({
     return Math.min(100, (value / denom) * 100);
   }, [kind, value, events, total]);
 
-  const data = [{ name: label, value: pct, fill: accent }];
+  // Tick marks at 25 / 50 / 75
+  const ticks = [25, 50, 75];
 
   return (
     <div
-      className="bg-card p-4 flex items-center gap-4"
+      className="bg-card p-4 flex flex-col justify-between gap-3"
       style={{ borderTop: `2px solid ${accent}` }}
     >
-      {/* Radial gauge */}
-      <div className="relative shrink-0" style={{ width: 64, height: 64 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <RadialBarChart
-            cx="50%"
-            cy="50%"
-            innerRadius="72%"
-            outerRadius="100%"
-            barSize={6}
-            data={data}
-            startAngle={90}
-            endAngle={-270}
-          >
-            <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
-            <RadialBar
-              dataKey="value"
-              cornerRadius={3}
-              background={{ fill: 'hsl(var(--muted))' }}
-              isAnimationActive={false}
-            />
-          </RadialBarChart>
-        </ResponsiveContainer>
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span
-            className="text-[10px] font-mono font-semibold tabular-nums"
-            style={{ color: accent }}
-          >
-            {kind === 'total' ? '100' : pct.toFixed(0)}%
-          </span>
-        </div>
-      </div>
-
-      {/* Right: label + value + delta */}
-      <div className="flex flex-col min-w-0 flex-1">
-        <div className="text-[10px] font-medium uppercase tracking-wider mb-1 text-muted-foreground">
-          {label}
+      {/* Top: label + value + delta */}
+      <div>
+        <div className="flex items-baseline justify-between mb-1">
+          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
+          {delta && (
+            <div className="text-[10px] font-mono" style={{ color: accent }}>
+              {delta}
+            </div>
+          )}
         </div>
         <div className="text-2xl font-semibold font-mono tabular-nums text-foreground leading-tight">
           {value.toLocaleString()}
         </div>
-        {delta && (
-          <div className="text-[10px] font-mono mt-0.5" style={{ color: accent }}>
-            {delta}
-          </div>
-        )}
+      </div>
+
+      {/* Bottom: bar gauge with tick marks */}
+      <div>
+        <div className="relative h-1.5 w-full bg-muted overflow-hidden">
+          {/* Fill */}
+          <div
+            className="absolute inset-y-0 left-0 transition-all duration-500"
+            style={{ width: `${pct}%`, background: accent }}
+          />
+          {/* Tick marks */}
+          {ticks.map(t => (
+            <div
+              key={t}
+              className="absolute top-0 bottom-0 w-px bg-background/60"
+              style={{ left: `${t}%` }}
+            />
+          ))}
+        </div>
+        <div className="flex justify-between mt-1 text-[8px] font-mono text-muted-foreground/60 tabular-nums">
+          <span>0</span>
+          <span style={{ color: accent }}>{pct.toFixed(1)}%</span>
+          <span>100</span>
+        </div>
       </div>
     </div>
   );
