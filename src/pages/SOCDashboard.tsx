@@ -757,6 +757,16 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             )}
           </div>
         )}
+
+        <ConfirmDialog
+          isOpen={dialogState.isOpen}
+          onClose={closeConfirm}
+          onConfirm={dialogState.onConfirm}
+          actionType={dialogState.actionType}
+          targetValue={dialogState.targetValue}
+          details={dialogState.details}
+          isDarkMode={theme === 'dark'}
+        />
       </div>
     );
   };
