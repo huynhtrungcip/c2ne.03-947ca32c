@@ -14,6 +14,7 @@ import { EventsRatePanel } from '@/components/soc/EventsRatePanel';
 import { VerdictDistributionPanel } from '@/components/soc/VerdictDistributionPanel';
 import { MetricStatCard, MetricKind } from '@/components/soc/MetricStatCard';
 import { Tooltip as UITooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
