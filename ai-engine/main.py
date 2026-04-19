@@ -118,6 +118,32 @@ async def health_check():
     }
 
 
+@app.get("/system/resources")
+async def system_resources():
+    """Get host system resource usage (CPU, RAM, Disk) for dashboard gauges"""
+    try:
+        import psutil
+        cpu = psutil.cpu_percent(interval=0.3)
+        mem = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        return {
+            "cpu": {"percent": round(cpu, 1), "cores": psutil.cpu_count()},
+            "memory": {
+                "percent": round(mem.percent, 1),
+                "used_gb": round(mem.used / 1024**3, 2),
+                "total_gb": round(mem.total / 1024**3, 2),
+            },
+            "disk": {
+                "percent": round(disk.percent, 1),
+                "used_gb": round(disk.used / 1024**3, 2),
+                "total_gb": round(disk.total / 1024**3, 2),
+            },
+            "timestamp": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        return {"error": str(e), "cpu": {"percent": 0}, "memory": {"percent": 0}, "disk": {"percent": 0}}
+
+
 @app.get("/status")
 async def get_status():
     """Get detailed system status"""
