@@ -15,6 +15,7 @@ import { VerdictDistributionPanel } from '@/components/soc/VerdictDistributionPa
 import { MetricStatCard, MetricKind } from '@/components/soc/MetricStatCard';
 import { Tooltip as UITooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
@@ -648,18 +649,22 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
         
         <div className="px-5 pb-5 flex gap-3">
           {/* Ask ASSISTANT with dropdown */}
-          <div className="relative flex-1">
-            <button 
-              onClick={() => setShowAnalysisOptions(!showAnalysisOptions)}
-              disabled={analysisLoading}
-              className="w-full px-4 py-2.5 text-[11px] font-semibold bg-[hsl(var(--chart-1)/0.1)] text-[hsl(var(--chart-1))] border border-[hsl(var(--chart-1)/0.3)] rounded-md hover:bg-[hsl(var(--chart-1)/0.2)] transition-colors disabled:opacity-50"
-            >
-              {analysisLoading ? 'Đang phân tích...' : 'Ask ASSISTANT About This Flow'}
-            </button>
-            
-            {/* Dropdown options */}
-            {showAnalysisOptions && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-sm shadow-md z-10 overflow-hidden">
+          <div className="flex-1">
+            <Popover open={showAnalysisOptions} onOpenChange={setShowAnalysisOptions}>
+              <PopoverTrigger asChild>
+                <button 
+                  disabled={analysisLoading}
+                  className="w-full px-4 py-2.5 text-[11px] font-semibold bg-[hsl(var(--chart-1)/0.1)] text-[hsl(var(--chart-1))] border border-[hsl(var(--chart-1)/0.3)] rounded-md hover:bg-[hsl(var(--chart-1)/0.2)] transition-colors disabled:opacity-50"
+                >
+                  {analysisLoading ? 'Đang phân tích...' : 'Ask ASSISTANT About This Flow'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="top"
+                align="start"
+                sideOffset={6}
+                className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover border border-border rounded-sm shadow-lg"
+              >
                 <button
                   onClick={() => handleAnalyzeFlow(false)}
                   className="w-full px-3 py-2 text-left border-l-2 border-transparent hover:border-foreground hover:bg-muted/50 transition-colors border-b border-border/50"
@@ -676,8 +681,8 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">Phân tích toàn bộ flows từ IP này</div>
                 </button>
-              </div>
-            )}
+              </PopoverContent>
+            </Popover>
           </div>
           
           {/* Block IP Button */}
