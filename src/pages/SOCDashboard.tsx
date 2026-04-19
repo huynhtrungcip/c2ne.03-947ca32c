@@ -379,7 +379,7 @@ const SOCDashboard = () => {
 
   // Unified filter component - themed
   const renderFilters = () => (
-    <div className={`border p-3 mb-4 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+    <div className="border border-border bg-card p-3 mb-4">
       <div className="flex items-center gap-3 flex-wrap">
         <div className={`text-[10px] uppercase tracking-wider font-medium ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Filters</div>
         <select 
@@ -1530,11 +1530,11 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             </div>
           )}
 
-          <div className={`flex items-center gap-2 px-3 py-1.5 border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-            <span className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Auto Block</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 border border-border bg-card">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60">Auto Block</span>
             <button 
               onClick={() => setAutoBlock(!autoBlock)}
-              className={`w-8 h-4 rounded-full transition-colors relative ${autoBlock ? 'bg-[#ef4444]' : isDarkMode ? 'bg-[#27272a]' : 'bg-[#d1d5db]'}`}
+              className={`w-8 h-4 rounded-full transition-colors relative ${autoBlock ? 'bg-[hsl(var(--soc-alert))]' : 'bg-border'}`}
             >
               <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${autoBlock ? 'left-4' : 'left-0.5'}`} />
             </button>
@@ -1543,7 +1543,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           <select 
             value={timeRange} 
             onChange={(e) => setTimeRange(e.target.value)}
-            className={`h-7 px-2 text-[11px] border focus:outline-none focus:border-[#3b82f6] ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f] text-[#a1a1aa]' : 'bg-white border-[#e5e7eb] text-[#374151]'}`}
+            className="h-7 px-2 text-[11px] border border-border bg-card text-muted-foreground focus:outline-none focus:border-ring"
           >
             {timeRanges.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
@@ -1551,7 +1551,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           <select 
             value={viewMode} 
             onChange={(e) => setViewMode(e.target.value as 'all' | 'alerts')}
-            className={`h-7 px-2 text-[11px] border focus:outline-none focus:border-[#3b82f6] ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f] text-[#a1a1aa]' : 'bg-white border-[#e5e7eb] text-[#374151]'}`}
+            className="h-7 px-2 text-[11px] border border-border bg-card text-muted-foreground focus:outline-none focus:border-ring"
           >
             <option value="all">All Events</option>
             <option value="alerts">Alerts Only</option>
