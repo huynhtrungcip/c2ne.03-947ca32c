@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts';
 import { SOCEvent } from '@/types/soc';
 
 export type MetricKind =
@@ -18,11 +19,11 @@ interface MetricStatCardProps {
   windowMinutes?: number;
 }
 
-// Build per-minute series counting events matching `kind`
 const buildSeries = (events: SOCEvent[], kind: MetricKind, windowMinutes: number) => {
   const now = Date.now();
   const bucketMs = 60 * 1000;
-  const buckets: number[] = new Array(windowMinutes).fill(0);
+  const buckets: { v: number }[] = [];
+  for (let i = windowMinutes - 1; i >= 0; i--) buckets.push({ v: 0 });
   const ipSets: Set<string>[] = kind === 'sources'
     ? buckets.map(() => new Set<string>())
     : [];
@@ -43,9 +44,9 @@ const buildSeries = (events: SOCEvent[], kind: MetricKind, windowMinutes: number
         ipSets[idx]?.add(ev.src_ip);
         continue;
     }
-    if (match) buckets[idx] += 1;
+    if (match) buckets[idx].v += 1;
   }
-  if (kind === 'sources') ipSets.forEach((s, i) => (buckets[i] = s.size));
+  if (kind === 'sources') ipSets.forEach((s, i) => (buckets[i].v = s.size));
   return buckets;
 };
 
@@ -63,55 +64,50 @@ export const MetricStatCard = ({
     [events, kind, windowMinutes]
   );
 
-  const max = Math.max(1, ...series);
+  const gradId = `stat-grad-${kind}`;
 
   return (
-    <div
-      className="bg-card p-4 flex flex-col justify-between gap-3"
-      style={{ borderTop: `2px solid ${accent}` }}
-    >
-      {/* Top: label + value + delta */}
-      <div>
-        <div className="flex items-baseline justify-between mb-1">
-          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            {label}
-          </div>
-          {delta && (
-            <div className="text-[10px] font-mono" style={{ color: accent }}>
-              {delta}
-            </div>
-          )}
+    <div className="relative overflow-hidden bg-card h-[110px] flex flex-col">
+      {/* Foreground content - centered like Grafana Stat */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-3 pt-3">
+        <div className="text-[9px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          {label}
         </div>
-        <div className="text-2xl font-semibold font-mono tabular-nums text-foreground leading-tight">
+        <div
+          className="text-[28px] font-semibold font-mono tabular-nums leading-none mt-1"
+          style={{ color: accent }}
+        >
           {value.toLocaleString()}
         </div>
+        {delta && (
+          <div className="text-[9px] font-mono mt-1 text-muted-foreground">
+            {delta}
+          </div>
+        )}
       </div>
 
-      {/* Bottom: heatmap strip — 30 cells, intensity by event count */}
-      <div>
-        <div className="flex gap-[2px] h-4">
-          {series.map((v, i) => {
-            const intensity = v === 0 ? 0 : 0.15 + (v / max) * 0.85;
-            const minuteAgo = windowMinutes - 1 - i;
-            return (
-              <div
-                key={i}
-                className="flex-1 rounded-[1px]"
-                style={{
-                  backgroundColor: v === 0
-                    ? 'hsl(var(--muted))'
-                    : accent,
-                  opacity: v === 0 ? 0.4 : intensity,
-                }}
-                title={`${minuteAgo}m ago: ${v}`}
-              />
-            );
-          })}
-        </div>
-        <div className="flex justify-between mt-1 text-[8px] font-mono text-muted-foreground/60 tabular-nums">
-          <span>-{windowMinutes}m</span>
-          <span>now</span>
-        </div>
+      {/* Sparkline area — fills bottom ~35% like Grafana Stat panel */}
+      <div className="absolute inset-x-0 bottom-0 h-[38%] pointer-events-none">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={series} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={accent} stopOpacity={0.55} />
+                <stop offset="100%" stopColor={accent} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <YAxis hide domain={[0, 'dataMax + 1']} />
+            <Area
+              type="monotone"
+              dataKey="v"
+              stroke={accent}
+              strokeWidth={1}
+              fill={`url(#${gradId})`}
+              isAnimationActive={false}
+              dot={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
