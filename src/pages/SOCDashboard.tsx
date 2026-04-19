@@ -823,21 +823,30 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                   undefined;                                   // bình thường
 
                 const Stat = ({ label, value, color, hint }: { label: string; value: string; color?: string; hint: string }) => (
-                  <div
-                    className="flex flex-col cursor-help group relative"
-                    title={hint}
-                  >
-                    <span className={`text-[8px] uppercase tracking-wider flex items-center gap-1 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-                      {label}
-                      <span className={`text-[8px] opacity-50 group-hover:opacity-100 ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>ⓘ</span>
-                    </span>
-                    <span
-                      className="text-[12px] font-mono font-semibold tabular-nums leading-tight"
-                      style={{ color: color || (isDarkMode ? '#e4e4e7' : '#111827') }}
+                  <UITooltip delayDuration={150}>
+                    <TooltipTrigger asChild>
+                      <div className="flex flex-col cursor-help group">
+                        <span className={`text-[8px] uppercase tracking-wider flex items-center gap-1 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+                          {label}
+                          <span className="text-[8px] opacity-40 group-hover:opacity-100 transition-opacity">ⓘ</span>
+                        </span>
+                        <span
+                          className="text-[12px] font-mono font-semibold tabular-nums leading-tight"
+                          style={{ color: color || (isDarkMode ? '#e4e4e7' : '#111827') }}
+                        >
+                          {value}
+                        </span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="top"
+                      align="start"
+                      className="max-w-[260px] text-[11px] leading-relaxed font-normal bg-popover text-popover-foreground border border-border shadow-lg"
                     >
-                      {value}
-                    </span>
-                  </div>
+                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground mb-1">{label}</div>
+                      {hint}
+                    </TooltipContent>
+                  </UITooltip>
                 );
 
                 return (
