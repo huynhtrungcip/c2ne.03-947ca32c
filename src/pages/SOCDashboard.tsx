@@ -261,6 +261,7 @@ const SOCDashboard = () => {
   const [blockingIP, setBlockingIP] = useState(false);
   const [pieHoverIdx, setPieHoverIdx] = useState<number | null>(null);
   const [blockResult, setBlockResult] = useState<{ success: boolean; message: string } | null>(null);
+  const { dialogState, showConfirm, closeConfirm } = useConfirmDialog();
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem('soc-theme') as Theme;
     return stored || 'dark';
@@ -515,7 +516,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
       }
     };
     
-    const handleBlockIP = async () => {
+    const performBlockIP = async () => {
       if (!selectedEvent?.src_ip) return;
       setBlockingIP(true);
       setBlockResult(null);
@@ -556,6 +557,16 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
       } finally {
         setBlockingIP(false);
       }
+    };
+
+    const handleBlockIP = () => {
+      if (!selectedEvent?.src_ip) return;
+      showConfirm(
+        'block_ip',
+        performBlockIP,
+        selectedEvent.src_ip,
+        `Verdict: ${selectedEvent.verdict} • ${selectedEvent.attack_type || 'Unknown'} • ${selectedEvent.dst_ip ? `→ ${selectedEvent.dst_ip}` : ''}`
+      );
     };
     
     return (
