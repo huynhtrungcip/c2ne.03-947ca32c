@@ -143,13 +143,8 @@ export const SystemResourcesPanel = ({ apiUrl }: SystemResourcesPanelProps) => {
 
   return (
     <div className="p-3 border border-border rounded-md bg-card">
-      <div className="text-[10px] uppercase tracking-wider mb-3 text-muted-foreground flex items-center justify-between">
-        <span>System Resources</span>
-        {mockEnabled && (
-          <span className="text-[8px] font-mono text-[hsl(var(--soc-warning))] tracking-normal normal-case">
-            MOCK
-          </span>
-        )}
+      <div className="text-[10px] uppercase tracking-wider mb-3 text-muted-foreground">
+        System Resources
       </div>
       {!data ? (
         <div className="h-32 flex items-center justify-center text-[10px] text-muted-foreground/70">
