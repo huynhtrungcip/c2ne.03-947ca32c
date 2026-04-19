@@ -703,7 +703,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             kind={m.kind}
             delta={m.delta}
             events={sortedEvents}
-            total={metrics.totalEvents}
+            windowMinutes={30}
           />
         ))}
       </div>
