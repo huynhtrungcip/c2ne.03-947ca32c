@@ -413,7 +413,7 @@ const SOCDashboard = () => {
             type="range" min="0" max="1" step="0.05"
             value={minConfidence}
             onChange={(e) => setMinConfidence(parseFloat(e.target.value))}
-            className="w-20 h-1.5 bg-[#3b82f6] rounded appearance-none cursor-pointer"
+            className="w-20 h-1 bg-border rounded appearance-none cursor-pointer accent-muted-foreground"
           />
           <span className={`text-[11px] font-mono w-8 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>{(minConfidence * 100).toFixed(0)}%</span>
         </div>
