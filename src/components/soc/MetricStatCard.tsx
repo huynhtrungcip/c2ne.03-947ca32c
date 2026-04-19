@@ -15,9 +15,39 @@ interface MetricStatCardProps {
   kind: MetricKind;
   events: SOCEvent[];
   delta?: string;
-  /** Total to compute percentage against. If omitted, falls back to events.length. */
-  total?: number;
+  windowMinutes?: number;
 }
+
+// Build per-minute series counting events matching `kind`
+const buildSeries = (events: SOCEvent[], kind: MetricKind, windowMinutes: number) => {
+  const now = Date.now();
+  const bucketMs = 60 * 1000;
+  const buckets: number[] = new Array(windowMinutes).fill(0);
+  const ipSets: Set<string>[] = kind === 'sources'
+    ? buckets.map(() => new Set<string>())
+    : [];
+
+  for (const ev of events) {
+    const ts = ev.timestamp.getTime();
+    const idx = windowMinutes - 1 - Math.floor((now - ts) / bucketMs);
+    if (idx < 0 || idx >= windowMinutes) continue;
+
+    const v = (ev.verdict || '').toUpperCase();
+    let match = false;
+    switch (kind) {
+      case 'total': match = true; break;
+      case 'alert': match = v === 'ALERT'; break;
+      case 'suspicious': match = v === 'SUSPICIOUS'; break;
+      case 'false_positive': match = v === 'FALSE_POSITIVE'; break;
+      case 'sources':
+        ipSets[idx]?.add(ev.src_ip);
+        continue;
+    }
+    if (match) buckets[idx] += 1;
+  }
+  if (kind === 'sources') ipSets.forEach((s, i) => (buckets[i] = s.size));
+  return buckets;
+};
 
 export const MetricStatCard = ({
   label,
@@ -26,22 +56,14 @@ export const MetricStatCard = ({
   kind,
   events,
   delta,
-  total,
+  windowMinutes = 30,
 }: MetricStatCardProps) => {
-  // Compute percentage for the bar gauge.
-  const pct = useMemo(() => {
-    if (kind === 'total') return 100;
-    if (kind === 'sources') {
-      const uniq = new Set(events.map(e => e.src_ip)).size || 1;
-      return Math.min(100, (value / uniq) * 100);
-    }
-    const denom = total ?? events.length;
-    if (!denom) return 0;
-    return Math.min(100, (value / denom) * 100);
-  }, [kind, value, events, total]);
+  const series = useMemo(
+    () => buildSeries(events, kind, windowMinutes),
+    [events, kind, windowMinutes]
+  );
 
-  // Tick marks at 25 / 50 / 75
-  const ticks = [25, 50, 75];
+  const max = Math.max(1, ...series);
 
   return (
     <div
@@ -65,27 +87,30 @@ export const MetricStatCard = ({
         </div>
       </div>
 
-      {/* Bottom: bar gauge with tick marks */}
+      {/* Bottom: heatmap strip — 30 cells, intensity by event count */}
       <div>
-        <div className="relative h-1.5 w-full bg-muted overflow-hidden">
-          {/* Fill */}
-          <div
-            className="absolute inset-y-0 left-0 transition-all duration-500"
-            style={{ width: `${pct}%`, background: accent }}
-          />
-          {/* Tick marks */}
-          {ticks.map(t => (
-            <div
-              key={t}
-              className="absolute top-0 bottom-0 w-px bg-background/60"
-              style={{ left: `${t}%` }}
-            />
-          ))}
+        <div className="flex gap-[2px] h-4">
+          {series.map((v, i) => {
+            const intensity = v === 0 ? 0 : 0.15 + (v / max) * 0.85;
+            const minuteAgo = windowMinutes - 1 - i;
+            return (
+              <div
+                key={i}
+                className="flex-1 rounded-[1px]"
+                style={{
+                  backgroundColor: v === 0
+                    ? 'hsl(var(--muted))'
+                    : accent,
+                  opacity: v === 0 ? 0.4 : intensity,
+                }}
+                title={`${minuteAgo}m ago: ${v}`}
+              />
+            );
+          })}
         </div>
         <div className="flex justify-between mt-1 text-[8px] font-mono text-muted-foreground/60 tabular-nums">
-          <span>0</span>
-          <span style={{ color: accent }}>{pct.toFixed(1)}%</span>
-          <span>100</span>
+          <span>-{windowMinutes}m</span>
+          <span>now</span>
         </div>
       </div>
     </div>
