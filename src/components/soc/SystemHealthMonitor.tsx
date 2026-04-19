@@ -228,57 +228,57 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
   const getStatusIcon = (status: HealthStatus['status']) => {
     switch (status) {
       case 'checking':
-        return <RefreshCw className="w-4 h-4 text-[#3b82f6] animate-spin" />;
+        return <RefreshCw className="w-3.5 h-3.5 text-muted-foreground animate-spin" />;
       case 'healthy':
-        return <CheckCircle className="w-4 h-4 text-[#22c55e]" />;
+        return <CheckCircle className="w-3.5 h-3.5 text-[hsl(var(--soc-success))]" />;
       case 'warning':
-        return <AlertCircle className="w-4 h-4 text-[#f59e0b]" />;
+        return <AlertCircle className="w-3.5 h-3.5 text-[hsl(var(--soc-warning))]" />;
       case 'error':
-        return <XCircle className="w-4 h-4 text-[#ef4444]" />;
+        return <XCircle className="w-3.5 h-3.5 text-[hsl(var(--soc-alert))]" />;
       default:
-        return <Activity className="w-4 h-4 text-[#71717a]" />;
+        return <Activity className="w-3.5 h-3.5 text-muted-foreground" />;
     }
   };
 
-  const getStatusColor = (status: HealthStatus['status']) => {
+  const getStatusTone = (status: HealthStatus['status']) => {
     switch (status) {
-      case 'checking': return 'border-[#3b82f6]/30 bg-[#3b82f6]/5';
-      case 'healthy': return 'border-[#22c55e]/30 bg-[#22c55e]/5';
-      case 'warning': return 'border-[#f59e0b]/30 bg-[#f59e0b]/5';
-      case 'error': return 'border-[#ef4444]/30 bg-[#ef4444]/5';
-      default: return isDarkMode ? 'border-[#27272a] bg-[#18181b]' : 'border-[#e5e7eb] bg-[#f9fafb]';
+      case 'checking': return { border: 'border-border', label: 'CHECK', text: 'text-muted-foreground' };
+      case 'healthy':  return { border: 'border-[hsl(var(--soc-success)/0.4)]', label: 'OK',    text: 'text-[hsl(var(--soc-success))]' };
+      case 'warning':  return { border: 'border-[hsl(var(--soc-warning)/0.4)]', label: 'WARN',  text: 'text-[hsl(var(--soc-warning))]' };
+      case 'error':    return { border: 'border-[hsl(var(--soc-alert)/0.4)]',   label: 'ERR',   text: 'text-[hsl(var(--soc-alert))]' };
+      default:         return { border: 'border-border',                         label: 'IDLE',  text: 'text-muted-foreground' };
     }
   };
 
   const services = [
-    { key: 'nids', label: 'NIDS (Shipper)', icon: Activity, data: health.nids },
-    { key: 'aiEngine', label: 'AI Engine', icon: Bot, data: health.aiEngine },
-    { key: 'pfsense', label: 'pfSense Firewall', icon: Shield, data: health.pfsense },
-    { key: 'telegram', label: 'Telegram Bot', icon: Activity, data: health.telegram },
+    { key: 'nids', label: 'nids.shipper', icon: Activity, data: health.nids },
+    { key: 'aiEngine', label: 'ai.engine', icon: Bot, data: health.aiEngine },
+    { key: 'pfsense', label: 'pfsense.firewall', icon: Shield, data: health.pfsense },
+    { key: 'telegram', label: 'telegram.bot', icon: Activity, data: health.telegram },
   ];
 
   return (
-    <div className={`rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-white border-[#e5e7eb]'}`}>
-      {/* Header */}
-      <div className={`flex items-center justify-between px-4 py-3 border-b ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
-        <div className="flex items-center gap-2">
-          <Activity className={`w-4 h-4 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`} />
-          <span className={`text-xs font-semibold uppercase tracking-wider ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#374151]'}`}>
-            System Health Monitor
+    <div className="rounded-md border border-border bg-card overflow-hidden">
+      {/* Header — command bar style */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
+        <div className="flex items-baseline gap-2.5 min-w-0">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-foreground/60" />
+          <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.14em] text-foreground">
+            HEALTH
+          </span>
+          <span className="text-[10px] font-mono text-muted-foreground/60">/</span>
+          <span className="text-[10px] font-mono text-muted-foreground truncate">
+            system.monitor
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Refresh Interval Selector */}
-          <div className="flex items-center gap-2">
-            <span className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>Interval:</span>
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Refresh Interval */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">interval</span>
             <select
               value={refreshInterval}
               onChange={(e) => setRefreshInterval(Number(e.target.value))}
-              className={`h-6 px-2 text-[10px] border rounded ${
-                isDarkMode 
-                  ? 'bg-[#0a0a0a] border-[#27272a] text-[#a1a1aa]' 
-                  : 'bg-white border-[#d1d5db] text-[#374151]'
-              }`}
+              className="h-6 px-1.5 text-[10px] font-mono bg-background border border-border rounded-sm text-foreground focus:outline-none focus:border-foreground/40"
             >
               <option value={10}>10s</option>
               <option value={30}>30s</option>
@@ -288,70 +288,74 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
           </div>
 
           {/* Auto Refresh Toggle */}
-          <div className="flex items-center gap-2">
-            <span className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>Auto:</span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">auto</span>
             <button
               onClick={() => setIsAutoRefresh(!isAutoRefresh)}
-              className={`w-8 h-4 rounded-full transition-colors relative ${
-                isAutoRefresh ? 'bg-[#22c55e]' : isDarkMode ? 'bg-[#27272a]' : 'bg-[#d1d5db]'
+              className={`w-7 h-3.5 rounded-full transition-colors relative ${
+                isAutoRefresh ? 'bg-[hsl(var(--soc-success))]' : 'bg-muted'
               }`}
             >
-              <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${
+              <span className={`absolute top-0.5 w-2.5 h-2.5 bg-background rounded-full shadow transition-transform ${
                 isAutoRefresh ? 'left-4' : 'left-0.5'
               }`} />
             </button>
           </div>
 
-          {/* Manual Refresh Button */}
+          {/* Manual Refresh */}
           <button
             onClick={runHealthChecks}
             disabled={isRefreshing}
-            className={`flex items-center gap-1 h-6 px-2 text-[10px] font-medium rounded transition-colors ${
-              isDarkMode 
-                ? 'bg-[#1e3a5f] text-[#60a5fa] hover:bg-[#1e40af] disabled:opacity-50' 
-                : 'bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] disabled:opacity-50'
-            }`}
+            className="flex items-center gap-1.5 h-6 px-2 text-[10px] font-mono uppercase tracking-wider rounded-sm bg-muted/40 border border-border text-foreground hover:bg-muted disabled:opacity-50 transition-colors"
           >
             <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Check Now
+            check now
           </button>
         </div>
       </div>
 
       {/* Services Grid */}
-      <div className="p-4 grid grid-cols-2 gap-3">
-        {services.map(({ key, label, icon: Icon, data }) => (
-          <div 
-            key={key}
-            className={`p-3 rounded-lg border transition-all ${getStatusColor(data.status)}`}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <Icon className={`w-4 h-4 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`} />
-              <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#374151]'}`}>
-                {label}
-              </span>
-              <div className="ml-auto">
-                {getStatusIcon(data.status)}
+      <div className="p-3 grid grid-cols-2 gap-2.5 bg-card">
+        {services.map(({ key, label, icon: Icon, data }) => {
+          const tone = getStatusTone(data.status);
+          return (
+            <div
+              key={key}
+              className={`border-l-2 ${tone.border} bg-muted/20 rounded-sm p-3 transition-colors`}
+            >
+              <div className="flex items-center justify-between mb-1.5 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+                  <span className="text-[11px] font-mono text-foreground truncate">
+                    {label}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className={`text-[9px] font-mono font-semibold uppercase tracking-wider ${tone.text}`}>
+                    {tone.label}
+                  </span>
+                  {getStatusIcon(data.status)}
+                </div>
               </div>
-            </div>
-            <p className={`text-[10px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
-              {data.message}
-            </p>
-            {data.lastCheck && (
-              <p className={`text-[9px] mt-1 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-                Last: {data.lastCheck.toLocaleTimeString()}
+              <p className="text-[10.5px] font-mono text-muted-foreground leading-relaxed break-words">
+                {data.message}
               </p>
-            )}
-          </div>
-        ))}
+              {data.lastCheck && (
+                <p className="text-[9px] font-mono text-muted-foreground/60 mt-1.5">
+                  ts={data.lastCheck.toLocaleTimeString()}
+                </p>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Footer */}
       {lastRefresh && (
-        <div className={`px-4 py-2 border-t text-center ${isDarkMode ? 'border-[#27272a]' : 'border-[#e5e7eb]'}`}>
-          <span className={`text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-            Last full check: {lastRefresh.toLocaleString()} 
-            {isAutoRefresh && ` • Next in ${refreshInterval}s`}
+        <div className="px-3 py-1.5 border-t border-border bg-muted/20">
+          <span className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
+            last_check={lastRefresh.toLocaleString()}
+            {isAutoRefresh && ` · next=${refreshInterval}s`}
           </span>
         </div>
       )}
