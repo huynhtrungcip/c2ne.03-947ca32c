@@ -1194,7 +1194,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           {/* Sidebar - matches full main column height via items-stretch */}
           <div className="col-span-3 h-full space-y-3 overflow-y-auto pr-1">
             {/* Recent Alerts */}
-            <div className={`border p-3 ${'bg-card border-[hsl(var(--soc-alert)/0.3)]'}`}>
+            <div className="border rounded-md p-3 bg-card border-[hsl(var(--soc-alert)/0.3)]">
               <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Recent Alerts</div>
               <div className="space-y-2">
                 {recentAlerts.length === 0 ? (
