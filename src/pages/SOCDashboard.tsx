@@ -181,23 +181,27 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
     });
   }, [selectedEvent]);
 
-  // Block IP executor (used by tool)
+  // Block IP executor (used by tool) — đồng bộ với pfSense alias AI_Blocked_IP
   const performBlockIP = useCallback(
     async (ip: string, reason: string): Promise<{ ok: boolean; error?: string }> => {
       try {
         if (apiUrl) {
-          const aiEngineUrl = apiUrl.replace(':3001', ':5000');
+          const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
           const resp = await fetch(`${aiEngineUrl}/block`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ip, reason }),
+            signal: AbortSignal.timeout(10_000),
           });
           if (!resp.ok) return { ok: false, error: `pfSense API HTTP ${resp.status}` };
+          const data = await resp.json().catch(() => ({}));
+          if (data.success === false) return { ok: false, error: data.message || 'pfSense returned failure' };
         }
         const cur = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
         if (!cur.includes(ip)) {
           cur.push(ip);
           localStorage.setItem('soc-blocked-ips', JSON.stringify(cur));
+          window.dispatchEvent(new Event('soc-blocked-ips-changed'));
         }
         return { ok: true };
       } catch (e) {
