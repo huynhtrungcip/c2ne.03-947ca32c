@@ -12,6 +12,7 @@ import VirtualizedEventTable from '@/components/soc/VirtualizedEventTable';
 import { SystemResourcesPanel } from '@/components/soc/SystemResourcesPanel';
 import { EventsRatePanel } from '@/components/soc/EventsRatePanel';
 import { VerdictDistributionPanel } from '@/components/soc/VerdictDistributionPanel';
+import { TopBlockedIPsPanel } from '@/components/soc/TopBlockedIPsPanel';
 import { MetricStatCard, MetricKind } from '@/components/soc/MetricStatCard';
 import { Tooltip as UITooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
@@ -180,23 +181,27 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
     });
   }, [selectedEvent]);
 
-  // Block IP executor (used by tool)
+  // Block IP executor (used by tool) — đồng bộ với pfSense alias AI_Blocked_IP
   const performBlockIP = useCallback(
     async (ip: string, reason: string): Promise<{ ok: boolean; error?: string }> => {
       try {
         if (apiUrl) {
-          const aiEngineUrl = apiUrl.replace(':3001', ':5000');
+          const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
           const resp = await fetch(`${aiEngineUrl}/block`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ip, reason }),
+            signal: AbortSignal.timeout(10_000),
           });
           if (!resp.ok) return { ok: false, error: `pfSense API HTTP ${resp.status}` };
+          const data = await resp.json().catch(() => ({}));
+          if (data.success === false) return { ok: false, error: data.message || 'pfSense returned failure' };
         }
         const cur = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
         if (!cur.includes(ip)) {
           cur.push(ip);
           localStorage.setItem('soc-blocked-ips', JSON.stringify(cur));
+          window.dispatchEvent(new Event('soc-blocked-ips-changed'));
         }
         return { ok: true };
       } catch (e) {
@@ -894,9 +899,9 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
       setBlockResult(null);
       
       try {
-        // Try to call AI-Engine API if available
+        // Try to call AI-Engine API if available (đồng bộ pfSense alias AI_Blocked_IP)
         if (apiUrl) {
-          const aiEngineUrl = apiUrl.replace(':3001', ':5000');
+          const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
           const response = await fetch(`${aiEngineUrl}/block`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -915,11 +920,12 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           setBlockResult({ success: true, message: `IP ${selectedEvent.src_ip} đã được thêm vào danh sách block!` });
         }
         
-        // Save to local storage
+        // Save to local storage and notify
         const currentBlocked = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
         if (!currentBlocked.includes(selectedEvent.src_ip)) {
           currentBlocked.push(selectedEvent.src_ip);
           localStorage.setItem('soc-blocked-ips', JSON.stringify(currentBlocked));
+          window.dispatchEvent(new Event('soc-blocked-ips-changed'));
         }
       } catch (error) {
         setBlockResult({ 
@@ -1582,29 +1588,8 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
               </div>
             </div>
 
-            {/* Top Source IPs */}
-            <div className="border rounded-md p-3 bg-card border-border">
-              <div className="text-[10px] uppercase tracking-wider font-medium mb-3 text-muted-foreground">Top Source IPs</div>
-              <div className="space-y-2">
-                {topSources.length === 0 ? (
-                  <div className="text-[10px] text-muted-foreground/50">No sources</div>
-                ) : topSources.slice(0, 6).map((src) => {
-                  let isBlocked = false;
-                  try {
-                    const blockedIPs = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]') as string[];
-                    isBlocked = blockedIPs.includes(src.ip);
-                  } catch {}
-                  return (
-                    <div key={src.ip} className="flex items-center justify-between gap-2">
-                      <span className={`text-[10px] font-mono truncate ${isBlocked ? 'text-[hsl(var(--soc-alert))] line-through' : 'text-muted-foreground'}`}>
-                        {src.ip}
-                      </span>
-                      <span className="text-[11px] font-mono text-foreground">{src.count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Top Blocked IPs (synced with pfSense) */}
+            <TopBlockedIPsPanel apiUrl={apiUrl} refreshKey={blockedIPsCount} />
 
             </div>
           </div>
