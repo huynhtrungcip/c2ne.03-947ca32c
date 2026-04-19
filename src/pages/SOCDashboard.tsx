@@ -815,9 +815,21 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                   ? (isDarkMode ? '#71717a' : '#9ca3af')
                   : trendUp ? 'hsl(0, 84%, 60%)' : 'hsl(142, 71%, 45%)';
 
-                const Stat = ({ label, value, color }: { label: string; value: string; color?: string }) => (
-                  <div className="flex flex-col">
-                    <span className={`text-[8px] uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{label}</span>
+                // Color thresholds
+                const alertRateColor =
+                  alertRate > 10 ? 'hsl(0, 84%, 60%)' :       // đỏ: bất thường
+                  alertRate > 5  ? 'hsl(38, 92%, 50%)' :      // vàng: cần chú ý
+                  undefined;                                   // bình thường
+
+                const Stat = ({ label, value, color, hint }: { label: string; value: string; color?: string; hint: string }) => (
+                  <div
+                    className="flex flex-col cursor-help group relative"
+                    title={hint}
+                  >
+                    <span className={`text-[8px] uppercase tracking-wider flex items-center gap-1 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+                      {label}
+                      <span className={`text-[8px] opacity-50 group-hover:opacity-100 ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>ⓘ</span>
+                    </span>
                     <span
                       className="text-[12px] font-mono font-semibold tabular-nums leading-tight"
                       style={{ color: color || (isDarkMode ? '#e4e4e7' : '#111827') }}
@@ -829,14 +841,33 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
 
                 return (
                   <div className={`flex-1 min-h-[44px] grid grid-cols-5 gap-3 px-1 pt-2 border-t ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#f1f5f9]'}`}>
-                    <Stat label="Traffic Peak" value={trafficPeak.toLocaleString()} />
-                    <Stat label="Traffic Avg" value={trafficAvg.toLocaleString()} />
-                    <Stat label="Alert Peak" value={alertPeak.toLocaleString()} color="hsl(0, 84%, 60%)" />
-                    <Stat label="Alert Rate" value={`${alertRate.toFixed(1)}%`} color={alertRate > 20 ? 'hsl(0, 84%, 60%)' : undefined} />
+                    <Stat
+                      label="Traffic Peak"
+                      value={trafficPeak.toLocaleString()}
+                      hint="Lưu lượng cao nhất ghi nhận trong 1 khoảng (bucket) — đỉnh traffic của khoảng thời gian đang xem."
+                    />
+                    <Stat
+                      label="Traffic Avg"
+                      value={trafficAvg.toLocaleString()}
+                      hint="Số events trung bình mỗi khoảng — mức nền bình thường của hệ thống."
+                    />
+                    <Stat
+                      label="Alert Peak"
+                      value={alertPeak.toLocaleString()}
+                      color="hsl(0, 84%, 60%)"
+                      hint="Số cảnh báo cao nhất trong 1 khoảng — có thể là burst tấn công hoặc scan dồn dập."
+                    />
+                    <Stat
+                      label="Alert Rate"
+                      value={`${alertRate.toFixed(1)}%`}
+                      color={alertRateColor}
+                      hint={`Tỉ lệ % event là cảnh báo (alerts / total). Bình thường <5%. Vàng: >5% cần chú ý. Đỏ: >10% bất thường — kiểm tra Top Sources & Attack Distribution.`}
+                    />
                     <Stat
                       label="Trend"
                       value={`${trendUp ? '▲' : '▼'} ${Math.abs(trendPct).toFixed(0)}%`}
                       color={trendColor}
+                      hint="So sánh 25% cuối với 25% đầu của khoảng thời gian. ▲ đỏ = traffic tăng mạnh (đáng ngờ). ▼ xanh = đang giảm. Xám = ổn định (<5%)."
                     />
                   </div>
                 );
