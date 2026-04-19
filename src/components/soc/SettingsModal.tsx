@@ -1724,223 +1724,117 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   );
   
   const renderGeneralSection = () => (
-    <div className="space-y-6">
-      {/* Language Selection */}
-      <div>
-        <div className={`text-sm font-semibold mb-3 flex items-center gap-2 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
-          <Globe className="w-4 h-4" />
-          {t('settings.language')}
+    <div className="divide-y divide-border">
+      {/* Language */}
+      <div className="grid grid-cols-12 gap-4 py-4">
+        <div className="col-span-4">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-foreground/90">
+            {t('settings.language')}
+          </div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Interface language</div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-8 flex gap-1">
           {[
-            { value: 'en', label: t('settings.english'), flag: '🇺🇸' },
-            { value: 'vi', label: t('settings.vietnamese'), flag: '🇻🇳' },
-          ].map(({ value, label, flag }) => (
+            { value: 'en', label: 'English' },
+            { value: 'vi', label: 'Tiếng Việt' },
+          ].map(({ value, label }) => (
             <button
               key={value}
               onClick={() => setLanguage(value as 'en' | 'vi')}
-              className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+              className={`h-7 px-3 text-[11px] font-mono uppercase tracking-wider rounded-sm border transition-colors ${
                 language === value
-                  ? isDarkMode 
-                    ? 'bg-[#1e3a5f] border-[#3b82f6] text-[#60a5fa]'
-                    : 'bg-[#eff6ff] border-[#3b82f6] text-[#2563eb]'
-                  : isDarkMode
-                    ? 'bg-[#18181b] border-[#27272a] text-[#a1a1aa] hover:border-[#3f3f46]'
-                    : 'bg-[#f9fafb] border-[#e5e7eb] text-[#6b7280] hover:border-[#d1d5db]'
+                  ? 'bg-primary/10 border-primary/60 text-primary'
+                  : 'bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
-              <span className="text-xl">{flag}</span>
-              <div className="text-left">
-                <div className="text-[12px] font-medium">{label}</div>
-              </div>
+              {label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Theme Selection */}
-      <div>
-        <div className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>{t('settings.theme')}</div>
-        <div className="grid grid-cols-2 gap-3">
+      {/* Theme */}
+      <div className="grid grid-cols-12 gap-4 py-4">
+        <div className="col-span-4">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-foreground/90">
+            {t('settings.theme')}
+          </div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">Color scheme</div>
+        </div>
+        <div className="col-span-8 flex gap-1">
           {[
-            { value: 'light', icon: Sun, label: t('settings.light'), desc: t('settings.lightDesc') },
-            { value: 'dark', icon: Moon, label: t('settings.dark'), desc: t('settings.darkDesc') },
-          ].map(({ value, icon: Icon, label, desc }) => (
+            { value: 'light', label: 'Light' },
+            { value: 'dark', label: 'Dark' },
+          ].map(({ value, label }) => (
             <button
               key={value}
               onClick={() => setTheme(value as Theme)}
-              className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+              className={`h-7 px-3 text-[11px] font-mono uppercase tracking-wider rounded-sm border transition-colors ${
                 theme === value
-                  ? isDarkMode 
-                    ? 'bg-[#1e3a5f] border-[#3b82f6] text-[#60a5fa]'
-                    : 'bg-[#eff6ff] border-[#3b82f6] text-[#2563eb]'
-                  : isDarkMode
-                    ? 'bg-[#18181b] border-[#27272a] text-[#a1a1aa] hover:border-[#3f3f46]'
-                    : 'bg-[#f9fafb] border-[#e5e7eb] text-[#6b7280] hover:border-[#d1d5db]'
+                  ? 'bg-primary/10 border-primary/60 text-primary'
+                  : 'bg-transparent border-border text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
-              <Icon className="w-5 h-5" />
-              <div className="text-left">
-                <div className="text-[12px] font-medium">{label}</div>
-                <div className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{desc}</div>
-              </div>
+              {label}
             </button>
           ))}
         </div>
       </div>
-      
-      {/* Timezone Selection */}
-      <div>
-        <div className={`text-sm font-semibold mb-3 flex items-center gap-2 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
-          <Clock className="w-4 h-4" />
-          {t('settings.timezone')}
+
+      {/* Timezone */}
+      <div className="grid grid-cols-12 gap-4 py-4">
+        <div className="col-span-4">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-foreground/90">
+            {t('settings.timezone')}
+          </div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">{t('settings.timezoneHint')}</div>
         </div>
-        <select
-          value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-          className={`w-full h-10 px-3 text-[12px] border rounded-lg ${
-            isDarkMode 
-              ? 'bg-[#0a0a0a] border-[#27272a] text-[#e4e4e7]' 
-              : 'bg-white border-[#d1d5db] text-[#111827]'
-          }`}
-        >
-          {TIMEZONES.map(tz => (
-            <option key={tz.value} value={tz.value}>{tz.label}</option>
-          ))}
-        </select>
-        <p className={`mt-2 text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
-          {t('settings.timezoneHint')}
-        </p>
-      </div>
-      
-      {/* Dashboard Info */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-        <div className={`text-[10px] uppercase tracking-wider mb-3 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
-          {t('settings.sysInfo')}
+        <div className="col-span-8">
+          <select
+            value={timezone}
+            onChange={(e) => setTimezone(e.target.value)}
+            className="w-full h-7 px-2 text-[11px] font-mono bg-transparent border border-border rounded-sm text-foreground focus:outline-none focus:border-primary"
+          >
+            {TIMEZONES.map(tz => (
+              <option key={tz.value} value={tz.value}>{tz.label}</option>
+            ))}
+          </select>
         </div>
-        <div className={`space-y-2 text-[11px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
-          <div className="flex justify-between">
-            <span>{t('settings.version')}:</span>
-            <span className={`font-mono ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>2.0.0</span>
-          </div>
-          <div className="flex justify-between">
-            <span>{t('settings.engine')}:</span>
-            <span className={`font-mono ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>Hybrid NIDS</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Mode:</span>
-            <span className={`font-mono ${isDarkMode ? 'text-[#22c55e]' : 'text-[#16a34a]'}`}>False Positive Reduction</span>
-          </div>
-          <div className="flex justify-between">
-            <span>{t('settings.timezone')}:</span>
-            <span className={`font-mono ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>{timezone}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-  
-  const renderHelpSection = () => (
-    <div className="space-y-6">
-      <div className={`text-sm font-semibold ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
-        {t('help.title')}
       </div>
 
-      {/* System Architecture */}
-      <div className={`p-4 rounded-lg border-2 ${isDarkMode ? 'bg-[#0f0f0f] border-[#3b82f6]/30' : 'bg-[#eff6ff] border-[#3b82f6]/30'}`}>
-        <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>
-          False Positive Reduction System
+      {/* System Info */}
+      <div className="pt-5">
+        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2 font-mono">
+          {t('settings.sysInfo')}
         </div>
-        <div className={`space-y-2 text-[11px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-[#dc2626]/20 text-[#f87171] flex items-center justify-center text-[10px] font-bold">1</span>
-            <span>Suricata alert received → Status: <span className="text-[#f59e0b]">PENDING</span></span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-[#3b82f6]/20 text-[#60a5fa] flex items-center justify-center text-[10px] font-bold">2</span>
-            <span>Correlate with Zeek flow (community_id / 5-tuple)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-[#22c55e]/20 text-[#4ade80] flex items-center justify-center text-[10px] font-bold">3</span>
-            <span>AI analyzes combined data → Final verdict</span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Quick Guide */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-        <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
-          {t('help.tabOverview')}
-        </div>
-        <div className={`space-y-3 text-[11px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
-          <div>
-            <span className={`font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>Overview:</span> {t('help.overviewDesc')}
-          </div>
-          <div>
-            <span className={`font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>Events:</span> {t('help.eventsDesc')}
-          </div>
-          <div>
-            <span className={`font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>Threats:</span> {t('help.threatsDesc')}
-          </div>
-          <div>
-            <span className={`font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>Reports:</span> {t('help.reportsDesc')}
-          </div>
+        <div className="border border-border rounded-sm divide-y divide-border">
+          {[
+            { label: t('settings.version'), value: '2.0.0', accent: false },
+            { label: t('settings.engine'), value: 'Hybrid NIDS', accent: false },
+            { label: 'Mode', value: 'False Positive Reduction', accent: true },
+            { label: t('settings.timezone'), value: timezone, accent: false },
+          ].map((row, i) => (
+            <div key={i} className="flex items-center justify-between px-3 py-2 text-[11px]">
+              <span className="text-muted-foreground">{row.label}</span>
+              <span className={`font-mono ${row.accent ? 'text-[hsl(var(--soc-success))]' : 'text-foreground'}`}>
+                {row.value}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
-      
-      {/* Verdicts Guide */}
-      <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-        <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
-          {t('help.verdictMeaning')}
-        </div>
-        <div className="space-y-2 text-[11px]">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-[#f59e0b]"></span>
-            <span className={isDarkMode ? 'text-[#fbbf24]' : 'text-[#d97706]'}>PENDING:</span>
-            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>Waiting for Zeek correlation</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-[#dc2626]"></span>
-            <span className={isDarkMode ? 'text-[#f87171]' : 'text-[#dc2626]'}>ALERT:</span>
-            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>{t('help.alertDesc')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-[#f59e0b]"></span>
-            <span className={isDarkMode ? 'text-[#fbbf24]' : 'text-[#d97706]'}>SUSPICIOUS:</span>
-            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>{t('help.suspiciousDesc')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-[#22c55e]"></span>
-            <span className={isDarkMode ? 'text-[#4ade80]' : 'text-[#16a34a]'}>FALSE_POSITIVE:</span>
-            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>{t('help.falsePositiveDesc')}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded bg-[#71717a]"></span>
-            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>BENIGN:</span>
-            <span className={isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}>{t('help.benignDesc')}</span>
-          </div>
-        </div>
-      </div>
-      
+
       {/* Credits */}
-      <div className={`p-4 rounded-lg border-2 ${isDarkMode ? 'bg-[#0f0f0f] border-[#3b82f6]/30' : 'bg-[#eff6ff] border-[#3b82f6]/30'}`}>
-        <div className="flex items-center gap-2 mb-3">
-          <Users className="w-4 h-4 text-[#3b82f6]" />
-          <div className={`text-[11px] font-semibold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>
-            {t('help.devTeam')}
+      <div className="pt-5">
+        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2 font-mono">
+          {t('help.devTeam')}
+        </div>
+        <div className="border border-border rounded-sm px-3 py-2.5 text-[11px] space-y-0.5">
+          <div className="text-foreground font-medium">C1NE.03 Team</div>
+          <div className="text-muted-foreground">Cybersecurity K28 · Duy Tan University</div>
+          <div className="text-muted-foreground/70 text-[10px] pt-1.5 mt-1.5 border-t border-border font-mono">
+            © 2025 SOC Dashboard
           </div>
-        </div>
-        <div className={`text-[12px] font-medium ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>
-          C1NE.03 Team
-        </div>
-        <div className={`text-[11px] mt-1 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
-          Cybersecurity K28
-        </div>
-        <div className={`text-[11px] ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>
-          Duy Tan University
-        </div>
-        <div className={`mt-3 pt-3 border-t text-[10px] ${isDarkMode ? 'border-[#27272a] text-[#52525b]' : 'border-[#e5e7eb] text-[#9ca3af]'}`}>
-          © 2025 SOC Dashboard - All Rights Reserved
         </div>
       </div>
     </div>
@@ -1954,64 +1848,54 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         onClick={onClose}
       />
       
-      {/* Modal */}
-      <div className={`relative w-[800px] max-h-[85vh] rounded-xl shadow-2xl overflow-hidden flex ${
-        isDarkMode ? 'bg-[#0f0f0f] border border-[#27272a]' : 'bg-white border border-[#e5e7eb]'
-      }`}>
-        {/* Sidebar */}
-        <div className={`w-52 border-r flex-shrink-0 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-          <div className={`p-4 border-b ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#e5e7eb]'}`}>
-            <div className={`text-sm font-bold ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>{t('settings.title')}</div>
+      {/* Modal — flat, sharp, big-tech */}
+      <div className="relative w-[860px] max-h-[85vh] bg-card border border-border rounded-sm overflow-hidden flex">
+        {/* Sidebar — compact ghost nav */}
+        <div className="w-48 border-r border-border flex-shrink-0 bg-background/40">
+          <div className="px-4 py-3 border-b border-border">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-mono">
+              {t('settings.title')}
+            </div>
           </div>
-          <div className="p-2">
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id as any)}
-                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-[11px] font-medium transition-all ${
-                  activeSection === section.id
-                    ? isDarkMode 
-                      ? 'bg-[#1e3a5f] text-[#60a5fa]'
-                      : 'bg-[#eff6ff] text-[#2563eb]'
-                    : isDarkMode
-                      ? 'text-[#a1a1aa] hover:bg-[#18181b] hover:text-[#e4e4e7]'
-                      : 'text-[#6b7280] hover:bg-[#f3f4f6] hover:text-[#111827]'
-                }`}
-              >
-                <section.icon className="w-4 h-4" />
-                {section.label}
-              </button>
-            ))}
+          <div className="py-1">
+            {sections.map((section) => {
+              const active = activeSection === section.id;
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id as any)}
+                  className={`w-full flex items-center gap-2.5 pl-4 pr-3 py-2 text-[11px] transition-colors border-l-2 ${
+                    active
+                      ? 'bg-primary/10 border-l-primary text-foreground font-medium'
+                      : 'border-l-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  <section.icon className="w-3.5 h-3.5 opacity-70" strokeWidth={1.5} />
+                  <span>{section.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
-        
+
         {/* Content */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className={`flex items-center justify-between px-6 py-4 border-b ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#e5e7eb]'}`}>
-            <div className={`text-[11px] uppercase tracking-wider font-medium ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+        <div className="flex-1 flex flex-col min-w-0 bg-card">
+          <div className="flex items-center justify-between px-6 py-3 border-b border-border">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-mono">
               {sections.find(s => s.id === activeSection)?.label}
             </div>
-            <button 
+            <button
               onClick={onClose}
-              className={`p-1.5 rounded-lg transition-colors ${
-                isDarkMode 
-                  ? 'text-[#71717a] hover:text-[#e4e4e7] hover:bg-[#27272a]' 
-                  : 'text-[#9ca3af] hover:text-[#111827] hover:bg-[#f3f4f6]'
-              }`}
+              aria-label="Close"
+              className="h-6 w-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" strokeWidth={1.5} />
             </button>
           </div>
-          
-          <div className="flex-1 overflow-y-auto p-6">
+
+          <div className="flex-1 overflow-y-auto px-6 py-4">
             {activeSection === 'general' && renderGeneralSection()}
-            {activeSection === 'health' && renderHealthSection()}
-            {activeSection === 'telegram' && renderTelegramSection()}
-            {activeSection === 'data' && renderDataManagementSection()}
-            {activeSection === 'sources' && renderSourcesSection()}
-            {activeSection === 'nids_debug' && renderNidsDebugSection()}
-            {activeSection === 'blocked' && renderBlockedIPsSection()}
-            {(activeSection === 'blacklist' || activeSection === 'whitelist') && renderListSection()}
+...
             {activeSection === 'help' && renderHelpSection()}
           </div>
         </div>
