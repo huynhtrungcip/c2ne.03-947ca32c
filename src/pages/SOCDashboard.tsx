@@ -1209,7 +1209,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             </div>
             
             {/* Time Distribution */}
-            <div className="border p-3 bg-card border-border">
+            <div className="border rounded-md p-3 bg-card border-border">
               <div className="text-[10px] uppercase tracking-wider font-medium mb-3 text-muted-foreground">Event Timeline</div>
               <div className="h-16">
                 <ResponsiveContainer width="100%" height="100%">
