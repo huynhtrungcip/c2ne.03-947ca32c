@@ -4,7 +4,7 @@ import { useSOCData } from '@/hooks/useSOCData';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { SOCEvent } from '@/types/soc';
 import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, LineChart as RLineChart, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
-import { Settings, Wifi, WifiOff } from 'lucide-react';
+import { Settings, Wifi, WifiOff, Brain, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import SettingsModal from '@/components/soc/SettingsModal';
