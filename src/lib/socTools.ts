@@ -69,7 +69,7 @@ export const SOC_TOOLS: ToolDef[] = [
 ];
 
 // ===== Executors =====
-type ExecResult = { ok: true; data: unknown } | { ok: false; error: string };
+export type ExecResult = { ok: boolean; data?: unknown; error?: string };
 
 interface ExecutorContext {
   events: SOCEvent[];
