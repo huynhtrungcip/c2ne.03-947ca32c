@@ -1257,31 +1257,6 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
               </div>
             </div>
 
-            {/* Verdict Breakdown */}
-            <div className="border p-3 bg-card border-border">
-              <div className="text-[10px] uppercase tracking-wider font-medium mb-3 text-muted-foreground">Verdict Breakdown</div>
-              <div className="space-y-2">
-                {[
-                  { label: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: 'hsl(var(--soc-alert))' },
-                  { label: 'Suspicious', value: sortedEvents.filter(e => e.verdict === 'SUSPICIOUS').length, color: 'hsl(var(--soc-warning))' },
-                  { label: 'Benign', value: sortedEvents.filter(e => e.verdict === 'BENIGN').length, color: 'hsl(var(--soc-success))' },
-                  { label: 'False Pos', value: sortedEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length, color: 'hsl(var(--muted-foreground))' },
-                ].map((v) => {
-                  const pct = sortedEvents.length > 0 ? (v.value / sortedEvents.length) * 100 : 0;
-                  return (
-                    <div key={v.label}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-muted-foreground">{v.label}</span>
-                        <span className="text-[10px] font-mono text-muted-foreground">{v.value}</span>
-                      </div>
-                      <div className="h-1 bg-muted/30 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: v.color }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </div>
         </div>
         
