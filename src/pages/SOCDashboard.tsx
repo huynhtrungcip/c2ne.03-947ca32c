@@ -1346,53 +1346,6 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           </div>
         </div>
         
-        <div className="grid grid-cols-12 gap-4">
-          {/* Left Panel - Threat Analysis */}
-          <div className="col-span-4 space-y-3">
-            {/* Attack Type Breakdown */}
-            <div className={`border p-4 ${'bg-card border-border'}`}>
-              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Attack Signatures</div>
-              <div className="space-y-2 max-h-56 overflow-y-auto">
-                {attackCounts.map((attack, i) => (
-                  <div key={attack.type} className="flex items-center gap-2">
-                    <span className={`w-2 h-2 flex-shrink-0 ${attack.severity === 'critical' ? 'bg-[#ef4444]' : 'bg-[#f59e0b]'}`} />
-                    <span className={`text-[10px] flex-1 truncate ${'text-muted-foreground'}`}>{attack.type}</span>
-                    <span className={`text-[10px] font-mono ${'text-muted-foreground/70'}`}>{attack.count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Top Threat Sources */}
-            <div className={`border p-4 ${'bg-card border-border'}`}>
-              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Top Threat Sources</div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {topThreatSources.slice(0, 6).map((source, i) => (
-                  <div key={source.ip} className={`border-b pb-2 last:border-0 ${'border-border'}`}>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-mono text-[#3b82f6]">{source.ip}</span>
-                      <span className="text-[10px] font-mono text-[#ef4444]">{source.count}</span>
-                    </div>
-                    <div className={`text-[9px] truncate ${'text-muted-foreground/60'}`}>{source.attacks.slice(0, 2).join(', ')}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          {/* Right Panel - Threat Events */}
-          <div className="col-span-8">
-            <div className={`rounded ${'bg-card border border-[hsl(var(--soc-alert)/0.3)]'}`}>
-              <div className={`p-3 border-b flex items-center justify-between ${'border-border'}`}>
-                <div className={`text-xs uppercase tracking-wider font-semibold ${'text-muted-foreground'}`}>Active Threats</div>
-                <span className="text-[9px] text-[#dc2626]">{criticalEvents.length} threats detected</span>
-              </div>
-              <div className="h-[560px] flex flex-col">
-                {renderEventTable(criticalEvents.slice(0, 50))}
-              </div>
-            </div>
-          </div>
-        </div>
         {renderInspector()}
       </>
     );
