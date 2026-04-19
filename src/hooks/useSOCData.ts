@@ -165,11 +165,24 @@ export const useSOCData = (
         source: 'mock' as const,
       }));
       setMockEventsState(prev => {
-        const updated = [...newEvents, ...prev].slice(0, 20000);
-        localStorage.setItem('soc-mock-events', JSON.stringify(updated.map(e => ({
-          ...e,
-          timestamp: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
-        }))));
+        const updated = [...newEvents, ...prev].slice(0, 2000);
+        try {
+          localStorage.setItem('soc-mock-events', JSON.stringify(updated.map(e => ({
+            ...e,
+            timestamp: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
+          }))));
+        } catch (err) {
+          // Quota exceeded — trim further and retry once, then give up silently
+          try {
+            const trimmed = updated.slice(0, 500);
+            localStorage.setItem('soc-mock-events', JSON.stringify(trimmed.map(e => ({
+              ...e,
+              timestamp: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
+            }))));
+          } catch {
+            localStorage.removeItem('soc-mock-events');
+          }
+        }
         return updated;
       });
       setLastUpdate(new Date());
