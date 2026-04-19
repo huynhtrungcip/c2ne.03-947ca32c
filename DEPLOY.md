@@ -16,14 +16,14 @@
 
 ```bash
 # Tải và chạy script cài đặt
-curl -fsSL https://raw.githubusercontent.com/huynhtrungcip/insight-dashboard/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh
+curl -fsSL https://raw.githubusercontent.com/huynhtrungcip/c2ne.03-947ca32c/main/install.sh -o install.sh && chmod +x install.sh && ./install.sh
 ```
 
 **Hoặc clone trước rồi chạy:**
 
 ```bash
-git clone https://github.com/huynhtrungcip/insight-dashboard.git
-cd insight-dashboard
+git clone https://github.com/huynhtrungcip/c2ne.03-947ca32c.git
+cd c2ne.03-947ca32c
 chmod +x install.sh
 ./install.sh
 ```
@@ -114,7 +114,7 @@ Output mẫu:
   curl:            ✓ Đã cài
 
 === SOC DASHBOARD ===
-  Thư mục cài đặt: ✓ Có (/opt/soc-dashboard/insight-dashboard)
+  Thư mục cài đặt: ✓ Có (/opt/soc-dashboard/c2ne.03-947ca32c)
   Containers:      ✓ Đang chạy
     soc-frontend: Up 2 hours (healthy)
     soc-backend: Up 2 hours (healthy)
@@ -168,8 +168,8 @@ sudo mkdir -p /opt/soc-dashboard
 sudo chown $USER:$USER /opt/soc-dashboard
 cd /opt/soc-dashboard
 
-git clone https://github.com/huynhtrungcip/insight-dashboard.git
-cd insight-dashboard
+git clone https://github.com/huynhtrungcip/c2ne.03-947ca32c.git
+cd c2ne.03-947ca32c
 ```
 
 ### Bước 3: Tạo File .env
@@ -477,7 +477,7 @@ docker compose restart soc-backend
 ### Cập Nhật Phiên Bản Mới
 
 ```bash
-cd /opt/soc-dashboard/insight-dashboard
+cd /opt/soc-dashboard/c2ne.03-947ca32c
 
 # Dừng services
 docker compose down
@@ -539,7 +539,7 @@ docker compose up -d --build
 
 - **Team:** C1NE.03 - An ninh mạng K28
 - **University:** Đại học Duy Tân
-- **GitHub:** https://github.com/huynhtrungcip/insight-dashboard
+- **GitHub:** https://github.com/huynhtrungcip/c2ne.03-947ca32c
 
 ---
 
@@ -547,7 +547,7 @@ docker compose up -d --build
 
 ```bash
 # ===== Thư mục làm việc =====
-cd /opt/soc-dashboard/insight-dashboard
+cd /opt/soc-dashboard/c2ne.03-947ca32c
 
 # ===== Xem logs =====
 docker compose logs -f
