@@ -1852,14 +1852,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                 navigation
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
               {sections.map((section) => {
                 const active = activeSection === section.id;
                 return (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id as any)}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-[11px] font-mono rounded-sm transition-colors border-l-2 ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-mono rounded-sm transition-colors border-l-2 ${
                       active
                         ? 'bg-muted/60 text-foreground border-foreground'
                         : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/30 hover:border-border'
@@ -1871,7 +1871,6 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                 );
               })}
             </div>
-          </div>
 
           {/* Content */}
           <div className="flex-1 flex flex-col min-w-0 bg-background">
