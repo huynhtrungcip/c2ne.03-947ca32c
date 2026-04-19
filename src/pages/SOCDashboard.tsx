@@ -727,7 +727,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
       {/* Main Grid */}
       <div className="grid grid-cols-12 gap-4">
         {/* Traffic Chart - Professional SIEM Style */}
-        <div className={`col-span-8 border rounded-md p-4 ${isDarkMode ? 'bg-card border-border' : 'bg-white border-[#e5e7eb]'}`}>
+        <div className={`col-span-8 border rounded-md p-4 flex flex-col ${isDarkMode ? 'bg-card border-border' : 'bg-white border-[#e5e7eb]'}`}>
           <div className="flex items-center justify-between mb-3">
             <div className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${isDarkMode ? 'text-muted-foreground' : 'text-[#374151]'}`}>
               Traffic & Alerts
@@ -744,9 +744,10 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             </div>
           </div>
           {chartData.length === 0 ? (
-            <div className={`h-44 flex items-center justify-center text-xs ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No data available</div>
+            <div className={`flex-1 min-h-[180px] flex items-center justify-center text-xs ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No data available</div>
           ) : (
-            <ResponsiveContainer width="100%" height={180}>
+            <div className="flex-1 min-h-[180px]">
+            <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 2" stroke={isDarkMode ? '#1f1f1f' : '#f3f4f6'} vertical={false} />
                 <XAxis 
