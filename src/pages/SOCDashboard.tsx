@@ -1191,8 +1191,9 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             </div>
           </div>
           
-          {/* Sidebar - matches full main column height via items-stretch */}
-          <div className="col-span-3 h-full flex flex-col gap-3 min-h-0 pr-1">
+          {/* Sidebar - constrained to main column height */}
+          <div className="col-span-3 relative">
+            <div className="absolute inset-0 flex flex-col gap-3 min-h-0 pr-1 overflow-hidden">
             {/* Recent Alerts */}
             <div className="border rounded-md p-3 bg-card border-[hsl(var(--soc-alert)/0.3)] flex flex-col flex-1 min-h-0">
               <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Recent Alerts</div>
@@ -1244,6 +1245,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
               </div>
             </div>
 
+            </div>
           </div>
         </div>
         
