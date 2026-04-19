@@ -179,8 +179,8 @@ const VirtualizedEventTable = ({
       </div>
 
       {/* Table Header */}
-      <div className={`flex text-[10px] uppercase tracking-wider ${isDarkMode ? 'bg-[#0a0a0a] text-[#52525b]' : 'bg-[#f9fafb] text-[#9ca3af]'}`}
-           style={{ borderBottom: isDarkMode ? '1px solid #1f1f1f' : '1px solid #e5e7eb' }}>
+      <div className={`flex text-[10px] uppercase tracking-wider ${isDarkMode ? 'bg-card text-[#52525b]' : 'bg-[#f9fafb] text-[#9ca3af]'}`}
+           style={{ borderBottom: isDarkMode ? '1px solid hsl(var(--border))' : '1px solid #e5e7eb' }}>
         <div className="w-[7%] py-2 px-3 font-medium shrink-0">Time</div>
         <div className="w-[9%] py-2 px-3 font-medium shrink-0">Verdict</div>
         <div className="w-[14%] py-2 px-3 font-medium shrink-0">Source IP</div>
@@ -261,7 +261,7 @@ const VirtualizedEventTable = ({
       </div>
 
       {/* Pagination Footer */}
-      <div className={`flex items-center justify-between p-3 border-t ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#e5e7eb]'}`}>
+      <div className={`flex items-center justify-between p-3 border-t mt-auto ${isDarkMode ? 'border-border' : 'border-[#e5e7eb]'}`}>
         {/* Page Size Selector */}
         <div className="flex items-center gap-2">
           <span className={`text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Show:</span>
