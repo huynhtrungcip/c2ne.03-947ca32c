@@ -1169,7 +1169,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           {/* Main Event Table */}
           <div className="col-span-9 flex flex-col">
             {/* Event Statistics */}
-            <div className="grid grid-cols-7 gap-px mb-4" style={{ backgroundColor: 'hsl(var(--border))' }}>
+            <div className="grid grid-cols-7 gap-px mb-4 rounded-md overflow-hidden" style={{ backgroundColor: 'hsl(var(--border))' }}>
               {[
                 { label: 'Total', value: sortedEvents.length, color: 'text-foreground' },
                 { label: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: 'text-[hsl(var(--soc-alert))]' },
