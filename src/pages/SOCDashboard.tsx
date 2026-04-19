@@ -1192,11 +1192,11 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           </div>
           
           {/* Sidebar - matches full main column height via items-stretch */}
-          <div className="col-span-3 h-full space-y-3 overflow-y-auto pr-1">
+          <div className="col-span-3 h-full flex flex-col gap-3 min-h-0 pr-1">
             {/* Recent Alerts */}
-            <div className="border rounded-md p-3 bg-card border-[hsl(var(--soc-alert)/0.3)]">
+            <div className="border rounded-md p-3 bg-card border-[hsl(var(--soc-alert)/0.3)] flex flex-col flex-1 min-h-0">
               <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Recent Alerts</div>
-              <div className="space-y-2">
+              <div className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-1">
                 {recentAlerts.length === 0 ? (
                   <div className={`text-[10px] ${'text-muted-foreground/50'}`}>No alerts</div>
                 ) : recentAlerts.map((alert) => (
