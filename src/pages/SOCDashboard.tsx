@@ -557,20 +557,21 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
     };
     
     return (
-      <div className="mt-4 bg-[#0a0a0a] border-2 rounded-lg shadow-xl" style={{ borderColor: verdictBorderColor }}>
-        <div className="p-4 border-b border-[#1f1f1f] flex items-center justify-between bg-[#0f0f0f] rounded-t-lg">
+      <div className="mt-4 bg-card border rounded-md shadow-lg" style={{ borderColor: verdictBorderColor }}>
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/30 rounded-t-md">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-[#e4e4e7] uppercase tracking-wider">Event Inspector</span>
+            <span className="text-[11px] font-semibold text-foreground uppercase tracking-[0.12em]">Event Inspector</span>
             <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${
-              selectedEvent.verdict === 'ALERT' ? 'bg-[#450a0a] text-[#f87171]' :
-              selectedEvent.verdict === 'SUSPICIOUS' ? 'bg-[#451a03] text-[#fbbf24]' : 'bg-[#052e16] text-[#4ade80]'
+              selectedEvent.verdict === 'ALERT' ? 'bg-[hsl(var(--soc-alert)/0.15)] text-[hsl(var(--soc-alert))] border border-[hsl(var(--soc-alert)/0.3)]' :
+              selectedEvent.verdict === 'SUSPICIOUS' ? 'bg-[hsl(var(--soc-warning)/0.15)] text-[hsl(var(--soc-warning))] border border-[hsl(var(--soc-warning)/0.3)]' :
+              'bg-[hsl(var(--soc-success)/0.15)] text-[hsl(var(--soc-success))] border border-[hsl(var(--soc-success)/0.3)]'
             }`}>
               {selectedEvent.verdict}
             </span>
           </div>
           <button 
             onClick={() => setSelectedEvent(null)}
-            className="w-6 h-6 flex items-center justify-center text-[#71717a] hover:text-[#e4e4e7] hover:bg-[#27272a] rounded transition-colors"
+            className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
           >
             ✕
           </button>
@@ -578,17 +579,17 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
         
         <div className="p-5 grid grid-cols-4 gap-x-6 gap-y-4">
           {[
-            { label: 'Timestamp', value: selectedEvent.timestamp.toLocaleString(), className: 'text-[#e4e4e7]' },
-            { label: 'Signature', value: selectedEvent.attack_type, className: 'font-semibold text-[#fbbf24]' },
-            { label: 'Engine', value: selectedEvent.source_engine, className: 'text-[#e4e4e7]' },
-            { label: 'Confidence', value: `${(selectedEvent.confidence * 100).toFixed(0)}%`, className: 'text-[#e4e4e7]' },
-            { label: 'Source IP', value: selectedEvent.src_ip, className: 'text-[#60a5fa] font-mono' },
-            { label: 'Destination', value: `${selectedEvent.dst_ip}:${selectedEvent.dst_port || '-'}`, className: 'font-mono text-[#e4e4e7]' },
-            { label: 'Protocol', value: selectedEvent.protocol, className: 'text-[#e4e4e7]' },
-            { label: 'Community ID', value: selectedEvent.community_id, className: 'font-mono text-[10px] text-[#e4e4e7]' },
+            { label: 'Timestamp', value: selectedEvent.timestamp.toLocaleString(), className: 'text-foreground' },
+            { label: 'Signature', value: selectedEvent.attack_type, className: 'font-semibold text-[hsl(var(--soc-warning))]' },
+            { label: 'Engine', value: selectedEvent.source_engine, className: 'text-foreground' },
+            { label: 'Confidence', value: `${(selectedEvent.confidence * 100).toFixed(0)}%`, className: 'text-foreground' },
+            { label: 'Source IP', value: selectedEvent.src_ip, className: 'text-[hsl(var(--chart-1))] font-mono' },
+            { label: 'Destination', value: `${selectedEvent.dst_ip}:${selectedEvent.dst_port || '-'}`, className: 'font-mono text-foreground' },
+            { label: 'Protocol', value: selectedEvent.protocol, className: 'text-foreground' },
+            { label: 'Community ID', value: selectedEvent.community_id, className: 'font-mono text-[10px] text-foreground' },
           ].map((field, i) => (
             <div key={i}>
-              <div className="text-[10px] text-[#71717a] uppercase tracking-wider mb-1">{field.label}</div>
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{field.label}</div>
               <div className={`text-[12px] ${field.className}`}>{field.value}</div>
             </div>
           ))}
@@ -626,7 +627,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                     Copy
                   </button>
                 </div>
-                <pre className="text-[11px] font-mono leading-relaxed text-foreground/90 bg-background/70 p-3 rounded-md border border-border/70 overflow-auto max-h-72 [scrollbar-width:thin] shadow-inner">
+                <pre className="text-[11px] font-mono leading-relaxed text-foreground/90 bg-muted/30 p-3 rounded-md border border-border overflow-auto max-h-72 [scrollbar-width:thin]">
                   {pretty}
                 </pre>
               </>
@@ -636,10 +637,10 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
         
         {/* Block Result Feedback */}
         {blockResult && (
-          <div className={`mx-5 mb-4 p-3 rounded-lg border text-[11px] ${
+          <div className={`mx-5 mb-4 p-3 rounded-md border text-[11px] ${
             blockResult.success 
-              ? 'bg-[#052e16] border-[#166534] text-[#4ade80]' 
-              : 'bg-[#450a0a] border-[#7f1d1d] text-[#f87171]'
+              ? 'bg-[hsl(var(--soc-success)/0.1)] border-[hsl(var(--soc-success)/0.3)] text-[hsl(var(--soc-success))]' 
+              : 'bg-[hsl(var(--soc-alert)/0.1)] border-[hsl(var(--soc-alert)/0.3)] text-[hsl(var(--soc-alert))]'
           }`}>
             {blockResult.success ? '✓' : '✗'} {blockResult.message}
           </div>
@@ -651,27 +652,27 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             <button 
               onClick={() => setShowAnalysisOptions(!showAnalysisOptions)}
               disabled={analysisLoading}
-              className="w-full px-4 py-2.5 text-[11px] font-semibold bg-[#1e3a5f] text-[#60a5fa] border border-[#1e40af] rounded-lg hover:bg-[#1e40af]/50 transition-colors disabled:opacity-50"
+              className="w-full px-4 py-2.5 text-[11px] font-semibold bg-[hsl(var(--chart-1)/0.1)] text-[hsl(var(--chart-1))] border border-[hsl(var(--chart-1)/0.3)] rounded-md hover:bg-[hsl(var(--chart-1)/0.2)] transition-colors disabled:opacity-50"
             >
               {analysisLoading ? 'Đang phân tích...' : 'Ask ASSISTANT About This Flow'}
             </button>
             
             {/* Dropdown options */}
             {showAnalysisOptions && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-[#18181b] border border-[#27272a] rounded-lg shadow-xl z-10 overflow-hidden">
+              <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-xl z-10 overflow-hidden">
                 <button
                   onClick={() => handleAnalyzeFlow(false)}
-                  className="w-full px-4 py-3 text-left text-[11px] text-[#a1a1aa] hover:bg-[#27272a] hover:text-[#e4e4e7] transition-colors border-b border-[#27272a]"
+                  className="w-full px-4 py-3 text-left text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border-b border-border"
                 >
-                  <div className="font-semibold text-[#60a5fa]">Analyze This Flow</div>
-                  <div className="text-[10px] text-[#52525b] mt-0.5">Chỉ phân tích sự kiện đang chọn</div>
+                  <div className="font-semibold text-[hsl(var(--chart-1))]">Analyze This Flow</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Chỉ phân tích sự kiện đang chọn</div>
                 </button>
                 <button
                   onClick={() => handleAnalyzeFlow(true)}
-                  className="w-full px-4 py-3 text-left text-[11px] text-[#a1a1aa] hover:bg-[#27272a] hover:text-[#e4e4e7] transition-colors"
+                  className="w-full px-4 py-3 text-left text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                 >
-                  <div className="font-semibold text-[#fbbf24]">Analyze ALL from IP {selectedEvent.src_ip}</div>
-                  <div className="text-[10px] text-[#52525b] mt-0.5">Phân tích toàn bộ flows từ IP nguồn này</div>
+                  <div className="font-semibold text-[hsl(var(--soc-warning))]">Analyze ALL from IP {selectedEvent.src_ip}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Phân tích toàn bộ flows từ IP nguồn này</div>
                 </button>
               </div>
             )}
@@ -681,10 +682,10 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           <button 
             onClick={handleBlockIP}
             disabled={blockingIP || isAlreadyBlocked}
-            className={`flex-1 px-4 py-2.5 text-[11px] font-semibold rounded-lg transition-colors ${
+            className={`flex-1 px-4 py-2.5 text-[11px] font-semibold rounded-md transition-colors ${
               isAlreadyBlocked
-                ? 'bg-[#27272a] text-[#52525b] border border-[#3f3f46] cursor-not-allowed'
-                : 'bg-[#450a0a] text-[#f87171] border border-[#7f1d1d] hover:bg-[#7f1d1d]/50'
+                ? 'bg-muted text-muted-foreground border border-border cursor-not-allowed'
+                : 'bg-[hsl(var(--soc-alert)/0.1)] text-[hsl(var(--soc-alert))] border border-[hsl(var(--soc-alert)/0.3)] hover:bg-[hsl(var(--soc-alert)/0.2)]'
             } disabled:opacity-50`}
           >
             {blockingIP ? 'Đang block...' : isAlreadyBlocked ? `IP đã bị block` : `Block IP ${selectedEvent.src_ip}`}
