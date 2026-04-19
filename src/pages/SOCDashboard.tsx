@@ -746,51 +746,86 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           {chartData.length === 0 ? (
             <div className={`flex-1 min-h-[180px] flex items-center justify-center text-xs ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No data available</div>
           ) : (
-            <div className="flex-1 min-h-[180px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="2 2" stroke={isDarkMode ? '#1f1f1f' : '#f3f4f6'} vertical={false} />
-                <XAxis 
-                  dataKey="time" 
-                  tick={{ fill: isDarkMode ? '#525252' : '#9ca3af', fontSize: 9 }} 
-                  axisLine={{ stroke: isDarkMode ? '#1a1a1a' : '#e5e7eb' }} 
-                  tickLine={false} 
-                />
-                <YAxis 
-                  tick={{ fill: isDarkMode ? '#525252' : '#9ca3af', fontSize: 9 }} 
-                  axisLine={false} 
-                  tickLine={false} 
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: isDarkMode ? '#1a1a1a' : '#fff', 
-                    border: `1px solid ${isDarkMode ? '#2a2a2a' : '#e5e7eb'}`, 
-                    borderRadius: 2, 
-                    fontSize: 10,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-                  }}
-                  labelStyle={{ color: isDarkMode ? '#e4e4e7' : '#111827', fontWeight: 600, marginBottom: 4 }}
-                />
-                <Area 
-                  type="linear" 
-                  dataKey="Traffic" 
-                  stroke="hsl(217, 91%, 50%)" 
-                  strokeWidth={1.5} 
-                  fill="hsl(217, 91%, 50%)"
-                  fillOpacity={0.08}
-                  dot={{ fill: 'hsl(217, 91%, 50%)', strokeWidth: 0, r: 2 }}
-                  activeDot={{ fill: 'hsl(217, 91%, 50%)', strokeWidth: 2, stroke: isDarkMode ? '#fff' : '#000', r: 4 }}
-                />
-                <Line 
-                  type="linear" 
-                  dataKey="Alerts" 
-                  stroke="hsl(0, 84%, 60%)" 
-                  strokeWidth={1.5} 
-                  dot={{ fill: 'hsl(0, 84%, 60%)', strokeWidth: 0, r: 2 }}
-                  activeDot={{ fill: 'hsl(0, 84%, 60%)', strokeWidth: 2, stroke: isDarkMode ? '#fff' : '#000', r: 4 }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+            <div className="flex-1 flex flex-col gap-2 min-h-[240px]">
+              {/* Main chart - fixed nice ratio */}
+              <div style={{ height: 200 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="2 2" stroke={isDarkMode ? '#1f1f1f' : '#f3f4f6'} vertical={false} />
+                    <XAxis 
+                      dataKey="time" 
+                      tick={{ fill: isDarkMode ? '#525252' : '#9ca3af', fontSize: 9 }} 
+                      axisLine={{ stroke: isDarkMode ? '#1a1a1a' : '#e5e7eb' }} 
+                      tickLine={false} 
+                    />
+                    <YAxis 
+                      tick={{ fill: isDarkMode ? '#525252' : '#9ca3af', fontSize: 9 }} 
+                      axisLine={false} 
+                      tickLine={false} 
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: isDarkMode ? '#1a1a1a' : '#fff', 
+                        border: `1px solid ${isDarkMode ? '#2a2a2a' : '#e5e7eb'}`, 
+                        borderRadius: 2, 
+                        fontSize: 10,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                      }}
+                      labelStyle={{ color: isDarkMode ? '#e4e4e7' : '#111827', fontWeight: 600, marginBottom: 4 }}
+                    />
+                    <Area 
+                      type="linear" 
+                      dataKey="Traffic" 
+                      stroke="hsl(217, 91%, 50%)" 
+                      strokeWidth={1.5} 
+                      fill="hsl(217, 91%, 50%)"
+                      fillOpacity={0.08}
+                      dot={{ fill: 'hsl(217, 91%, 50%)', strokeWidth: 0, r: 2 }}
+                      activeDot={{ fill: 'hsl(217, 91%, 50%)', strokeWidth: 2, stroke: isDarkMode ? '#fff' : '#000', r: 4 }}
+                    />
+                    <Line 
+                      type="linear" 
+                      dataKey="Alerts" 
+                      stroke="hsl(0, 84%, 60%)" 
+                      strokeWidth={1.5} 
+                      dot={{ fill: 'hsl(0, 84%, 60%)', strokeWidth: 0, r: 2 }}
+                      activeDot={{ fill: 'hsl(0, 84%, 60%)', strokeWidth: 2, stroke: isDarkMode ? '#fff' : '#000', r: 4 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Mini sparkline - Alerts intensity */}
+              <div className="flex-1 min-h-[40px] flex flex-col">
+                <div className={`flex items-center justify-between text-[9px] uppercase tracking-wider mb-0.5 ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
+                  <span>Alert Intensity</span>
+                  <span className="font-mono normal-case tracking-normal">
+                    peak {Math.max(0, ...chartData.map(d => d.Alerts))}
+                  </span>
+                </div>
+                <div className="flex-1 min-h-[28px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="alertSparkGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Area 
+                        type="monotone" 
+                        dataKey="Alerts" 
+                        stroke="hsl(0, 84%, 60%)" 
+                        strokeWidth={1} 
+                        fill="url(#alertSparkGrad)"
+                        dot={false}
+                        activeDot={false}
+                        isAnimationActive={false}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
           )}
         </div>
