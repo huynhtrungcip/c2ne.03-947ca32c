@@ -562,7 +562,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       <div className={`p-4 rounded-md border bg-background/40 border-border`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-md flex items-center justify-center ${telegramConfig.enabled ? 'bg-[#3b82f6]/20 text-[#60a5fa]' : isDarkMode ? 'bg-[#27272a] text-[#52525b]' : 'bg-[#e5e7eb] text-[#9ca3af]'}`}>
+            <div className={`w-10 h-10 rounded-md flex items-center justify-center ${telegramConfig.enabled ? 'bg-muted text-foreground' : 'bg-muted/50 text-muted-foreground/60'}`}>
               <Send className="w-5 h-5" />
             </div>
             <div>
@@ -577,7 +577,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           <button
             onClick={() => setTelegramConfig({ ...telegramConfig, enabled: !telegramConfig.enabled })}
             className={`w-12 h-6 rounded-full transition-colors relative ${
-              telegramConfig.enabled ? 'bg-[#3b82f6]' : isDarkMode ? 'bg-[#27272a]' : 'bg-[#d1d5db]'
+              telegramConfig.enabled ? 'bg-foreground' : 'bg-muted'
             }`}
           >
             <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${
@@ -590,7 +590,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       {/* AI Engine URL - Required for Telegram */}
       <div className={`p-4 rounded-md border bg-background/40 border-border`}>
         <div className={`text-[11px] font-semibold mb-2 flex items-center gap-2 text-foreground`}>
-          <Server className="w-4 h-4 text-[#22c55e]" />
+          <Server className="w-4 h-4 text-muted-foreground" />
           AI Engine URL
         </div>
         <div className="flex gap-2">
@@ -613,8 +613,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         </p>
         {apiUrl && (
           <div className="mt-2 flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse" />
-            <span className={`text-[9px] ${isDarkMode ? 'text-[#22c55e]' : 'text-[#16a34a]'}`}>
+            <div className="w-2 h-2 rounded-full bg-[hsl(var(--soc-success))] animate-pulse" />
+            <span className={`text-[9px] text-[hsl(var(--soc-success))]`}>
               Đã kết nối: {apiUrl}
             </span>
           </div>
@@ -624,7 +624,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       {/* Bot Configuration */}
       <div className={`p-4 rounded-md border bg-background/40 border-border`}>
         <div className={`text-[11px] font-semibold mb-4 flex items-center gap-2 text-foreground`}>
-          <MessageCircle className="w-4 h-4 text-[#3b82f6]" />
+          <MessageCircle className="w-4 h-4 text-muted-foreground" />
           Bot Configuration
         </div>
 
@@ -668,13 +668,11 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             onClick={handleTestTelegram}
             disabled={telegramTestStatus === 'testing' || !telegramConfig.botToken || !telegramConfig.chatId}
             className={`w-full flex items-center justify-center gap-2 h-10 rounded-md font-medium text-[11px] transition-colors ${
-              telegramTestStatus === 'success' 
-                ? 'bg-[#22c55e] text-white' 
+              telegramTestStatus === 'success'
+                ? 'bg-[hsl(var(--soc-success))] text-background'
                 : telegramTestStatus === 'error'
-                  ? 'bg-[#dc2626] text-white'
-                  : isDarkMode 
-                    ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:bg-[#27272a] disabled:text-[#52525b]' 
-                    : 'bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:bg-[#e5e7eb] disabled:text-[#9ca3af]'
+                  ? 'bg-[hsl(var(--soc-alert))] text-background'
+                  : 'bg-foreground text-background hover:bg-foreground/90 disabled:bg-muted disabled:text-muted-foreground'
             }`}
           >
             {telegramTestStatus === 'testing' ? (
@@ -705,7 +703,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       {/* Alert Settings */}
       <div className={`p-4 rounded-md border bg-background/40 border-border`}>
         <div className={`text-[11px] font-semibold mb-4 flex items-center gap-2 text-foreground`}>
-          <Bell className="w-4 h-4 text-[#f59e0b]" />
+          <Bell className="w-4 h-4 text-muted-foreground" />
           Alert Settings
         </div>
 
@@ -716,8 +714,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               Confidence Threshold
             </label>
             <span className={`text-[12px] font-bold ${
-              telegramConfig.confidenceThreshold >= 90 ? 'text-[#dc2626]' : 
-              telegramConfig.confidenceThreshold >= 80 ? 'text-[#f59e0b]' : 'text-[#22c55e]'
+              telegramConfig.confidenceThreshold >= 90 ? 'text-[hsl(var(--soc-alert))]' :
+              telegramConfig.confidenceThreshold >= 80 ? 'text-[hsl(var(--soc-warning))]' : 'text-foreground'
             }`}>
               {telegramConfig.confidenceThreshold}%
             </span>
@@ -728,9 +726,9 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             max="99"
             value={telegramConfig.confidenceThreshold}
             onChange={(e) => setTelegramConfig({ ...telegramConfig, confidenceThreshold: parseInt(e.target.value) })}
-            className="w-full h-2 rounded-md appearance-none cursor-pointer bg-[#27272a]"
+            className="w-full h-2 rounded-md appearance-none cursor-pointer bg-muted"
             style={{
-              background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(telegramConfig.confidenceThreshold - 50) / 49 * 100}%, ${isDarkMode ? '#27272a' : '#e5e7eb'} ${(telegramConfig.confidenceThreshold - 50) / 49 * 100}%, ${isDarkMode ? '#27272a' : '#e5e7eb'} 100%)`
+              background: `linear-gradient(to right, hsl(var(--foreground)) 0%, hsl(var(--foreground)) ${(telegramConfig.confidenceThreshold - 50) / 49 * 100}%, hsl(var(--muted)) ${(telegramConfig.confidenceThreshold - 50) / 49 * 100}%, hsl(var(--muted)) 100%)`
             }}
           />
           <p className={`mt-2 text-[9px] text-muted-foreground/70`}>
@@ -755,12 +753,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                 }}
                 className={`p-2 rounded-md border text-[11px] font-medium transition-all ${
                   telegramConfig.alertTypes.includes(type)
-                    ? type === 'ALERT' 
-                      ? 'bg-[#dc2626]/20 border-[#dc2626] text-[#f87171]'
-                      : 'bg-[#f59e0b]/20 border-[#f59e0b] text-[#fbbf24]'
-                    : isDarkMode 
-                      ? 'bg-[#18181b] border-[#27272a] text-[#71717a]' 
-                      : 'bg-[#f9fafb] border-[#e5e7eb] text-[#9ca3af]'
+                    ? type === 'ALERT'
+                      ? 'bg-[hsl(var(--soc-alert))]/10 border-[hsl(var(--soc-alert))]/40 text-[hsl(var(--soc-alert))]'
+                      : 'bg-[hsl(var(--soc-warning))]/10 border-[hsl(var(--soc-warning))]/40 text-[hsl(var(--soc-warning))]'
+                    : 'bg-background/40 border-border text-muted-foreground hover:text-foreground hover:bg-muted/40'
                 }`}
               >
                 {type}
@@ -791,7 +787,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                 <button
                   onClick={() => setTelegramConfig({ ...telegramConfig, [key]: !telegramConfig[key as keyof typeof telegramConfig] })}
                   className={`w-10 h-5 rounded-full transition-colors relative ${
-                    telegramConfig[key as keyof typeof telegramConfig] ? 'bg-[#22c55e]' : isDarkMode ? 'bg-[#27272a]' : 'bg-[#d1d5db]'
+                    telegramConfig[key as keyof typeof telegramConfig] ? 'bg-foreground' : 'bg-muted'
                   }`}
                 >
                   <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${
@@ -805,25 +801,25 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       </div>
 
       {/* Telegram Bot Commands Info */}
-      <div className={`p-4 rounded-md border ${isDarkMode ? 'bg-[#1e3a5f]/30 border-[#3b82f6]/30' : 'bg-[#eff6ff] border-[#3b82f6]/30'}`}>
-        <div className={`text-[11px] font-semibold mb-3 ${isDarkMode ? 'text-[#60a5fa]' : 'text-[#2563eb]'}`}>
+      <div className={`p-4 rounded-md border bg-muted/30 border-border`}>
+        <div className={`text-[11px] font-semibold mb-3 text-foreground`}>
           Telegram Bot Commands
         </div>
         <div className={`space-y-2 text-[10px] font-mono text-muted-foreground`}>
           <div className="flex items-start gap-2">
-            <code className="px-1.5 py-0.5 bg-[#27272a] rounded text-[#60a5fa]">/status</code>
+            <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">/status</code>
             <span>- Xem trạng thái hệ thống (CPU, RAM, Disk, Network)</span>
           </div>
           <div className="flex items-start gap-2">
-            <code className="px-1.5 py-0.5 bg-[#27272a] rounded text-[#60a5fa]">/logs [5m|30m|1h|12h|1d]</code>
+            <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">/logs [5m|30m|1h|12h|1d]</code>
             <span>- Xem log theo thời gian</span>
           </div>
           <div className="flex items-start gap-2">
-            <code className="px-1.5 py-0.5 bg-[#27272a] rounded text-[#60a5fa]">/blocked</code>
+            <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">/blocked</code>
             <span>- Danh sách IP đang bị block</span>
           </div>
           <div className="flex items-start gap-2">
-            <code className="px-1.5 py-0.5 bg-[#27272a] rounded text-[#60a5fa]">/stats</code>
+            <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">/stats</code>
             <span>- Thống kê sự kiện hôm nay</span>
           </div>
         </div>
@@ -1821,7 +1817,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       />
       
       {/* Modal — soft rounded, big-tech SIEM (Datadog/Linear style) */}
-      <div className="relative w-[860px] max-h-[85vh] bg-card border border-border rounded-md shadow-2xl overflow-hidden flex">
+      <div className="relative w-[860px] max-h-[85vh] bg-card border border-border rounded-lg shadow-2xl overflow-hidden flex">
         {/* Sidebar — compact ghost nav */}
         <div className="w-48 border-r border-border flex-shrink-0 bg-background/40">
           <div className="px-4 py-3 border-b border-border">
