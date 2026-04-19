@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSOCData } from '@/hooks/useSOCData';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { SOCEvent } from '@/types/soc';
-import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
+import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, LineChart, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
 import { Settings, Wifi, WifiOff } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
