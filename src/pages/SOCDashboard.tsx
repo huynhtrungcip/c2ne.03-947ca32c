@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSOCData } from '@/hooks/useSOCData';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { SOCEvent } from '@/types/soc';
-import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, LineChart, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
+import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, LineChart as RLineChart, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
 import { Settings, Wifi, WifiOff } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -1446,9 +1446,9 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
 
     const Sparkline = ({ data, color }: { data: { i: number; v: number }[]; color: string }) => (
       <ResponsiveContainer width="100%" height={28}>
-        <LineChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+        <RLineChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
           <Line type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
-        </LineChart>
+        </RLineChart>
       </ResponsiveContainer>
     );
 
