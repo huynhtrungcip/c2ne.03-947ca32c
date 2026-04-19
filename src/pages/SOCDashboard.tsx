@@ -899,9 +899,9 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
       setBlockResult(null);
       
       try {
-        // Try to call AI-Engine API if available
+        // Try to call AI-Engine API if available (đồng bộ pfSense alias AI_Blocked_IP)
         if (apiUrl) {
-          const aiEngineUrl = apiUrl.replace(':3001', ':5000');
+          const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
           const response = await fetch(`${aiEngineUrl}/block`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -920,11 +920,12 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           setBlockResult({ success: true, message: `IP ${selectedEvent.src_ip} đã được thêm vào danh sách block!` });
         }
         
-        // Save to local storage
+        // Save to local storage and notify
         const currentBlocked = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
         if (!currentBlocked.includes(selectedEvent.src_ip)) {
           currentBlocked.push(selectedEvent.src_ip);
           localStorage.setItem('soc-blocked-ips', JSON.stringify(currentBlocked));
+          window.dispatchEvent(new Event('soc-blocked-ips-changed'));
         }
       } catch (error) {
         setBlockResult({ 
