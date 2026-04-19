@@ -832,7 +832,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
         </div>
 
         {/* Event Table */}
-        <div className="col-span-9 flex flex-col">
+        <div className="col-span-9 flex flex-col h-[720px]">
           {renderEventTable(displayEvents)}
         </div>
 
