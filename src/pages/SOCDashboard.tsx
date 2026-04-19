@@ -12,6 +12,7 @@ import VirtualizedEventTable from '@/components/soc/VirtualizedEventTable';
 import { SystemResourcesPanel } from '@/components/soc/SystemResourcesPanel';
 import { EventsRatePanel } from '@/components/soc/EventsRatePanel';
 import { VerdictDistributionPanel } from '@/components/soc/VerdictDistributionPanel';
+import { MetricStatCard, MetricKind } from '@/components/soc/MetricStatCard';
 
 type Theme = 'light' | 'dark';
 type TabType = 'overview' | 'events' | 'threats' | 'reports';
@@ -685,30 +686,25 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
 
   const renderOverviewTab = () => (
     <>
-      {/* Metrics Row - Clean Professional Style without icons */}
-      <div className="grid grid-cols-5 gap-px mb-4" style={{ backgroundColor: isDarkMode ? '#1a1a1a' : '#e5e7eb' }}>
-        {[
-          { label: 'EVENTS', value: metrics.totalEvents, accent: '#3b82f6' },
-          { label: 'CRITICAL', value: metrics.criticalAlerts, delta: `+${metrics.alertRate.toFixed(1)}%`, accent: '#ef4444' },
-          { label: 'SUSPICIOUS', value: metrics.suspicious, accent: '#f59e0b' },
-          { label: 'FALSE POS', value: metrics.falsePositives, accent: '#22c55e' },
-          { label: 'SOURCES', value: metrics.uniqueSources, accent: '#8b5cf6' },
-        ].map((m, i) => (
-          <div 
-            key={i} 
-            className={`p-4 ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}
-            style={{ borderTop: `2px solid ${m.accent}` }}
-          >
-            <div className={`text-[10px] font-medium uppercase tracking-wider mb-2 ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>
-              {m.label}
-            </div>
-            <div className={`text-2xl font-semibold font-mono tabular-nums ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>
-              {m.value.toLocaleString()}
-            </div>
-            {m.delta && (
-              <div className="text-[10px] text-[#ef4444] font-mono mt-1">{m.delta}</div>
-            )}
-          </div>
+      {/* Metrics Row - Grafana stat panel style with sparkline backgrounds */}
+      <div className="grid grid-cols-5 gap-px mb-4" style={{ backgroundColor: isDarkMode ? 'hsl(var(--border))' : '#e5e7eb' }}>
+        {([
+          { label: 'EVENTS', value: metrics.totalEvents, accent: '#3b82f6', kind: 'total' as MetricKind },
+          { label: 'CRITICAL', value: metrics.criticalAlerts, delta: `+${metrics.alertRate.toFixed(1)}%`, accent: '#ef4444', kind: 'alert' as MetricKind },
+          { label: 'SUSPICIOUS', value: metrics.suspicious, accent: '#f59e0b', kind: 'suspicious' as MetricKind },
+          { label: 'FALSE POS', value: metrics.falsePositives, accent: '#22c55e', kind: 'false_positive' as MetricKind },
+          { label: 'SOURCES', value: metrics.uniqueSources, accent: '#8b5cf6', kind: 'sources' as MetricKind },
+        ]).map((m) => (
+          <MetricStatCard
+            key={m.kind}
+            label={m.label}
+            value={m.value}
+            accent={m.accent}
+            kind={m.kind}
+            delta={m.delta}
+            events={sortedEvents}
+            windowMinutes={30}
+          />
         ))}
       </div>
 
