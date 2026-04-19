@@ -1816,10 +1816,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         onClick={onClose}
       />
 
-      {/* Modal — SIEM/Splunk-style flat panel */}
-      <div className="relative w-[920px] h-[86vh] bg-card border border-border rounded-md shadow-2xl overflow-hidden flex flex-col">
-        {/* Top command bar — matches Event Inspector / Confirm Dialog header */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30 shrink-0">
+      {/* Modal — SIEM/Splunk-style flat panel, matches dashboard background */}
+      <div className="relative w-[920px] h-[86vh] bg-background border border-border rounded-md shadow-2xl overflow-hidden flex flex-col">
+        {/* Top command bar */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-background shrink-0">
           <div className="flex items-baseline gap-2.5 min-w-0">
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-foreground/60" />
             <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.14em] text-foreground">
@@ -1845,21 +1845,21 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         </div>
 
         <div className="flex flex-1 min-h-0">
-          {/* Sidebar — log-like nav with mono labels */}
-          <div className="w-52 border-r border-border flex-shrink-0 bg-background/30 flex flex-col">
+          {/* Sidebar — same bg as dashboard, spaced nav items */}
+          <div className="w-52 border-r border-border flex-shrink-0 bg-background flex flex-col">
             <div className="px-3 py-2 border-b border-border">
               <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground font-mono">
                 navigation
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto py-1.5">
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {sections.map((section) => {
                 const active = activeSection === section.id;
                 return (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id as any)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] font-mono transition-colors border-l-2 ${
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-[11px] font-mono rounded-sm transition-colors border-l-2 ${
                       active
                         ? 'bg-muted/60 text-foreground border-foreground'
                         : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/30 hover:border-border'
@@ -1874,9 +1874,9 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </div>
 
           {/* Content */}
-          <div className="flex-1 flex flex-col min-w-0 bg-card">
+          <div className="flex-1 flex flex-col min-w-0 bg-background">
             {/* Sub-header showing current section */}
-            <div className="flex items-center justify-between px-5 py-2 border-b border-border bg-muted/15 shrink-0">
+            <div className="flex items-center justify-between px-5 py-2 border-b border-border bg-background shrink-0">
               <div className="flex items-baseline gap-3 min-w-0">
                 <span className="text-[10px] font-mono font-semibold uppercase tracking-[0.14em] text-foreground shrink-0">
                   {sections.find(s => s.id === activeSection)?.label}
@@ -1899,6 +1899,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               {(activeSection === 'blacklist' || activeSection === 'whitelist') && renderListSection()}
             </div>
           </div>
+        </div>
+      </div>
         </div>
       </div>
 
