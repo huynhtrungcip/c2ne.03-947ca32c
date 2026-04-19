@@ -1191,8 +1191,9 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             </div>
           </div>
           
-          {/* Sidebar - matches main column height (metric strip ~62px + mb-4 16px + table 560px = 638px) */}
-          <div className="col-span-3 space-y-3 overflow-y-auto pr-1" style={{ maxHeight: '638px' }}>
+          {/* Sidebar - aligned with main column (metric strip + table) */}
+          <div className="col-span-3 flex flex-col" style={{ height: '638px' }}>
+            <div className="flex-1 space-y-3 overflow-y-auto pr-1">
             {/* Recent Alerts */}
             <div className={`border p-3 ${'bg-card border-[hsl(var(--soc-alert)/0.3)]'}`}>
               <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Recent Alerts</div>
