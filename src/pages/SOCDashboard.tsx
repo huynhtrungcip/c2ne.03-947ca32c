@@ -335,8 +335,23 @@ const SOCDashboard = () => {
     Alerts: d.alerts
   }));
 
-  const pieData = attackTypeData.map(d => ({ name: d.type, value: d.count }));
   const COLORS = ['#2563eb', '#0891b2', '#7c3aed', '#ea580c', '#16a34a', '#ca8a04'];
+  const OTHER_COLOR = '#71717a';
+  const TOP_N = 5;
+  const totalAttackTypes = attackTypeData.length;
+  const pieData = (() => {
+    const sorted = [...attackTypeData].sort((a, b) => b.count - a.count);
+    if (sorted.length <= TOP_N + 1) {
+      return sorted.map(d => ({ name: d.type, value: d.count, isOther: false }));
+    }
+    const top = sorted.slice(0, TOP_N).map(d => ({ name: d.type, value: d.count, isOther: false }));
+    const rest = sorted.slice(TOP_N);
+    const otherSum = rest.reduce((s, d) => s + d.count, 0);
+    return [
+      ...top,
+      { name: `Other (${rest.length})`, value: otherSum, isOther: true as const },
+    ];
+  })();
 
   const barData = topSources.map(d => ({ ip: d.ip, count: d.count }));
   const sortedEvents = [...events].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -805,10 +820,10 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                       onMouseEnter={(_, idx) => setPieHoverIdx(idx)}
                       onMouseLeave={() => setPieHoverIdx(null)}
                     >
-                      {pieData.map((_, i) => (
+                      {pieData.map((d, i) => (
                         <Cell 
                           key={i} 
-                          fill={COLORS[i % COLORS.length]}
+                          fill={d.isOther ? OTHER_COLOR : COLORS[i % COLORS.length]}
                           opacity={pieHoverIdx === null || pieHoverIdx === i ? 1 : 0.35}
                         />
                       ))}
@@ -832,7 +847,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                         {pieData.reduce((s, d) => s + d.value, 0).toLocaleString()}
                       </div>
                       <div className="text-[8px] uppercase tracking-wider text-muted-foreground mt-1">
-                        {pieData.length} types
+                        {totalAttackTypes} types
                       </div>
                     </>
                   )}
@@ -849,7 +864,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                 )}
               </div>
               <div className="w-full grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
-                {pieData.slice(0, 6).map((d, i) => (
+                {pieData.map((d, i) => (
                   <div 
                     key={d.name} 
                     className="flex items-center gap-1.5 text-[9px] cursor-pointer transition-opacity"
@@ -857,8 +872,8 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                     onMouseEnter={() => setPieHoverIdx(i)}
                     onMouseLeave={() => setPieHoverIdx(null)}
                   >
-                    <span className="w-2 h-2" style={{ background: COLORS[i % COLORS.length] }} />
-                    <span className={`truncate flex-1 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{d.name}</span>
+                    <span className="w-2 h-2 shrink-0" style={{ background: d.isOther ? OTHER_COLOR : COLORS[i % COLORS.length] }} />
+                    <span className={`truncate flex-1 ${d.isOther ? 'italic' : ''} ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{d.name}</span>
                     <span className={`font-mono font-medium ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{d.value}</span>
                   </div>
                 ))}
