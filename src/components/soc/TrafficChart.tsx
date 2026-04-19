@@ -1,28 +1,29 @@
-import { Area, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, ComposedChart } from 'recharts';
+import { Bar, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart } from 'recharts';
 import { TrafficData } from '@/types/soc';
 
 interface TrafficChartProps {
   data: TrafficData[];
 }
 
+// Datadog/Grafana-style: discrete bars per bucket. No smoothing, no fake curves.
+// Two stacked series: total traffic (cool) + alerts (red) overlaid.
 export const TrafficChart = ({ data }: TrafficChartProps) => {
   const chartData = data.map(d => ({
-    time: d.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    total: d.total,
+    time: d.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+    benign: Math.max(0, d.total - d.alerts),
     alerts: d.alerts,
   }));
 
-  // Datadog-style: thinner strokes, soft monotone curves, layered gradient areas, no dots.
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <div className="soc-section-title mb-0">Traffic & Alerts</div>
         <div className="flex items-center gap-3 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-0.5 bg-[hsl(var(--chart-1))]" /> Traffic
+            <span className="w-2 h-2 rounded-[1px] bg-[hsl(var(--chart-1))]" /> Traffic
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-0.5 bg-[hsl(var(--soc-alert))]" /> Alerts
+            <span className="w-2 h-2 rounded-[1px] bg-[hsl(var(--soc-alert))]" /> Alerts
           </span>
         </div>
       </div>
@@ -33,21 +34,15 @@ export const TrafficChart = ({ data }: TrafficChartProps) => {
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={220}>
-          <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
-            <defs>
-              <linearGradient id="trafficGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="alertsGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(var(--soc-alert))" stopOpacity={0.28} />
-                <stop offset="100%" stopColor="hsl(var(--soc-alert))" stopOpacity={0} />
-              </linearGradient>
-            </defs>
+          <BarChart
+            data={chartData}
+            margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
+            barCategoryGap="18%"
+          >
             <CartesianGrid
               strokeDasharray="2 4"
               stroke="hsl(var(--border))"
-              strokeOpacity={0.5}
+              strokeOpacity={0.4}
               vertical={false}
             />
             <XAxis
@@ -55,18 +50,18 @@ export const TrafficChart = ({ data }: TrafficChartProps) => {
               tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
               axisLine={{ stroke: 'hsl(var(--border))' }}
               tickLine={false}
-              minTickGap={28}
+              minTickGap={32}
               interval="preserveStartEnd"
             />
             <YAxis
               tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontFamily: 'IBM Plex Mono, monospace' }}
               axisLine={false}
               tickLine={false}
-              width={36}
+              width={32}
               allowDecimals={false}
             />
             <Tooltip
-              cursor={{ stroke: 'hsl(var(--primary))', strokeWidth: 1, strokeDasharray: '3 3' }}
+              cursor={{ fill: 'hsl(var(--primary) / 0.08)' }}
               contentStyle={{
                 backgroundColor: 'hsl(var(--card))',
                 border: '1px solid hsl(var(--border))',
@@ -75,33 +70,33 @@ export const TrafficChart = ({ data }: TrafficChartProps) => {
                 fontSize: '11px',
                 fontFamily: 'IBM Plex Mono, monospace',
                 padding: '6px 10px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
               }}
               labelStyle={{ color: 'hsl(var(--muted-foreground))', fontSize: '10px', marginBottom: 4 }}
+              formatter={(value: number, name: string) => {
+                const label = name === 'benign' ? 'Traffic' : 'Alerts';
+                return [value, label];
+              }}
             />
-            <Area
-              type="basis"
-              dataKey="total"
-              stroke="hsl(var(--chart-1))"
-              strokeWidth={1.5}
-              fill="url(#trafficGradient)"
-              name="Traffic"
-              dot={false}
-              activeDot={{ fill: 'hsl(var(--chart-1))', strokeWidth: 2, stroke: 'hsl(var(--background))', r: 3 }}
+            {/* Stacked: benign traffic on bottom, alerts on top */}
+            <Bar
+              dataKey="benign"
+              stackId="events"
+              fill="hsl(var(--chart-1))"
+              fillOpacity={0.85}
               isAnimationActive={false}
+              maxBarSize={18}
             />
-            <Area
-              type="basis"
+            <Bar
               dataKey="alerts"
-              stroke="hsl(var(--soc-alert))"
-              strokeWidth={1.5}
-              fill="url(#alertsGradient)"
-              name="Alerts"
-              dot={false}
-              activeDot={{ fill: 'hsl(var(--soc-alert))', strokeWidth: 2, stroke: 'hsl(var(--background))', r: 3 }}
+              stackId="events"
+              fill="hsl(var(--soc-alert))"
+              fillOpacity={0.95}
               isAnimationActive={false}
+              maxBarSize={18}
+              radius={[2, 2, 0, 0]}
             />
-          </ComposedChart>
+          </BarChart>
         </ResponsiveContainer>
       )}
     </div>
