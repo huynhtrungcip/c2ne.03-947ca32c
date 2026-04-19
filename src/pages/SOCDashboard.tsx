@@ -1165,9 +1165,9 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
         {/* Unified Filters */}
         {renderFilters()}
         
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-12 gap-4 items-stretch">
           {/* Main Event Table */}
-          <div className="col-span-9">
+          <div className="col-span-9 flex flex-col">
             {/* Event Statistics */}
             <div className="grid grid-cols-7 gap-px mb-4" style={{ backgroundColor: 'hsl(var(--border))' }}>
               {[
@@ -1191,10 +1191,8 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             </div>
           </div>
           
-          {/* Sidebar - aligned with main column (metric strip ~62px + mb-4 16px + table 560px = 638px) */}
-          <div className="col-span-3 space-y-3 overflow-y-auto pr-1" style={{ maxHeight: '638px' }}>
-            {/* Spacer to align with metric strip on left */}
-            <div style={{ height: '62px' }} aria-hidden="true" />
+          {/* Sidebar - matches full main column height via items-stretch */}
+          <div className="col-span-3 h-full space-y-3 overflow-y-auto pr-1">
             {/* Recent Alerts */}
             <div className={`border p-3 ${'bg-card border-[hsl(var(--soc-alert)/0.3)]'}`}>
               <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Recent Alerts</div>
