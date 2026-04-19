@@ -66,6 +66,22 @@ export const SOC_TOOLS: ToolDef[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'analyze_ip',
+      description: 'Build a complete behavioral profile for a single IP address: timeline buckets, targeted ports, attack types, destinations, verdict breakdown, and top alert samples. ALWAYS call this when the analyst asks about a specific IP — do NOT guess from the snapshot.',
+      parameters: {
+        type: 'object',
+        properties: {
+          ip: { type: 'string', description: 'IPv4 to analyze (matched as src_ip OR dst_ip)' },
+          since_minutes: { type: 'number', description: 'Time window in minutes', default: 60 },
+          bucket_minutes: { type: 'number', description: 'Timeline bucket size (default 5)', default: 5 },
+        },
+        required: ['ip'],
+      },
+    },
+  },
 ];
 
 // ===== Executors =====
@@ -167,6 +183,88 @@ export async function executeTool(
             unique_sources: srcs.size,
             unique_destinations: dsts.size,
             top_attack_types: topAttacks,
+          },
+        };
+      }
+      case 'analyze_ip': {
+        const ip = String(args.ip || '');
+        if (!ip) return { ok: false, error: 'Missing ip parameter' };
+        const since = Number(args.since_minutes ?? 60);
+        const bucketMin = Math.max(1, Number(args.bucket_minutes ?? 5));
+        const list = filterByTime(ctx.events, since).filter((e) => e.src_ip === ip || e.dst_ip === ip);
+        if (list.length === 0) {
+          return { ok: true, data: { ip, window_minutes: since, total_events: 0, note: 'No events found for this IP in the time window.' } };
+        }
+        const asSrc = list.filter((e) => e.src_ip === ip).length;
+        const asDst = list.filter((e) => e.dst_ip === ip).length;
+        const byVerdict: Record<string, number> = {};
+        const byProto: Record<string, number> = {};
+        const portMap: Record<number, number> = {};
+        const dstMap: Record<string, number> = {};
+        const attackMap: Record<string, number> = {};
+        const engineMap: Record<string, number> = {};
+        let firstTs = Infinity;
+        let lastTs = 0;
+        for (const e of list) {
+          byVerdict[e.verdict] = (byVerdict[e.verdict] || 0) + 1;
+          if (e.protocol) byProto[e.protocol] = (byProto[e.protocol] || 0) + 1;
+          if (e.dst_port) portMap[e.dst_port] = (portMap[e.dst_port] || 0) + 1;
+          if (e.src_ip === ip && e.dst_ip) dstMap[e.dst_ip] = (dstMap[e.dst_ip] || 0) + 1;
+          if (e.attack_type) attackMap[e.attack_type] = (attackMap[e.attack_type] || 0) + 1;
+          if (e.source_engine) engineMap[e.source_engine] = (engineMap[e.source_engine] || 0) + 1;
+          const ts = e.timestamp.getTime();
+          if (ts < firstTs) firstTs = ts;
+          if (ts > lastTs) lastTs = ts;
+        }
+        // Timeline buckets
+        const bucketMs = bucketMin * 60_000;
+        const start = Math.floor(firstTs / bucketMs) * bucketMs;
+        const end = Math.ceil(lastTs / bucketMs) * bucketMs;
+        const buckets: Array<{ t: string; total: number; alert: number }> = [];
+        for (let b = start; b <= end; b += bucketMs) {
+          buckets.push({ t: new Date(b).toISOString(), total: 0, alert: 0 });
+        }
+        for (const e of list) {
+          const idx = Math.floor((e.timestamp.getTime() - start) / bucketMs);
+          if (buckets[idx]) {
+            buckets[idx].total++;
+            if (e.verdict === 'ALERT') buckets[idx].alert++;
+          }
+        }
+        const topPorts = Object.entries(portMap).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([p, c]) => ({ port: Number(p), count: c }));
+        const topDsts = Object.entries(dstMap).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([d, c]) => ({ dst: d, count: c }));
+        const topAttacks = Object.entries(attackMap).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([type, count]) => ({ type, count }));
+        const sampleAlerts = list
+          .filter((e) => e.verdict === 'ALERT')
+          .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
+          .slice(0, 10)
+          .map((e) => ({
+            time: e.timestamp.toISOString(),
+            src: e.src_ip,
+            dst: e.dst_ip,
+            port: e.dst_port,
+            proto: e.protocol,
+            sig: e.attack_type,
+            conf: Number(e.confidence?.toFixed?.(2) ?? e.confidence),
+            engine: e.source_engine,
+          }));
+        return {
+          ok: true,
+          data: {
+            ip,
+            window_minutes: since,
+            first_seen: new Date(firstTs).toISOString(),
+            last_seen: new Date(lastTs).toISOString(),
+            total_events: list.length,
+            role: { as_source: asSrc, as_destination: asDst },
+            by_verdict: byVerdict,
+            by_protocol: byProto,
+            by_engine: engineMap,
+            top_targeted_ports: topPorts,
+            top_destinations: topDsts,
+            top_attack_types: topAttacks,
+            timeline: buckets,
+            sample_alerts: sampleAlerts,
           },
         };
       }
