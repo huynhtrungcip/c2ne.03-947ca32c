@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { AreaChart, Area, ResponsiveContainer, YAxis } from 'recharts';
 import { SOCEvent } from '@/types/soc';
 
 export type MetricKind =
@@ -16,38 +15,46 @@ interface MetricStatCardProps {
   kind: MetricKind;
   events: SOCEvent[];
   delta?: string;
-  windowMinutes?: number;
+  /** Total to compute percentage against. */
+  total?: number;
 }
 
-const buildSeries = (events: SOCEvent[], kind: MetricKind, windowMinutes: number) => {
-  const now = Date.now();
-  const bucketMs = 60 * 1000;
-  const buckets: { v: number }[] = [];
-  for (let i = windowMinutes - 1; i >= 0; i--) buckets.push({ v: 0 });
-  const ipSets: Set<string>[] = kind === 'sources'
-    ? buckets.map(() => new Set<string>())
-    : [];
+type StatusLevel = 'NORMAL' | 'WARN' | 'CRIT';
 
-  for (const ev of events) {
-    const ts = ev.timestamp.getTime();
-    const idx = windowMinutes - 1 - Math.floor((now - ts) / bucketMs);
-    if (idx < 0 || idx >= windowMinutes) continue;
-
-    const v = (ev.verdict || '').toUpperCase();
-    let match = false;
-    switch (kind) {
-      case 'total': match = true; break;
-      case 'alert': match = v === 'ALERT'; break;
-      case 'suspicious': match = v === 'SUSPICIOUS'; break;
-      case 'false_positive': match = v === 'FALSE_POSITIVE'; break;
-      case 'sources':
-        ipSets[idx]?.add(ev.src_ip);
-        continue;
-    }
-    if (match) buckets[idx].v += 1;
+// Threshold logic per metric kind.
+// Returns the status based on the value (or % of total for verdicts).
+const computeStatus = (
+  kind: MetricKind,
+  value: number,
+  pct: number
+): StatusLevel => {
+  switch (kind) {
+    case 'alert':
+      // % of total events
+      if (pct >= 20) return 'CRIT';
+      if (pct >= 5) return 'WARN';
+      return 'NORMAL';
+    case 'suspicious':
+      if (pct >= 30) return 'CRIT';
+      if (pct >= 10) return 'WARN';
+      return 'NORMAL';
+    case 'false_positive':
+      if (pct >= 20) return 'WARN';
+      return 'NORMAL';
+    case 'sources':
+      if (value >= 500) return 'CRIT';
+      if (value >= 100) return 'WARN';
+      return 'NORMAL';
+    case 'total':
+    default:
+      return 'NORMAL';
   }
-  if (kind === 'sources') ipSets.forEach((s, i) => (buckets[i].v = s.size));
-  return buckets;
+};
+
+const STATUS_COLORS: Record<StatusLevel, string> = {
+  NORMAL: 'hsl(var(--soc-success))',
+  WARN: 'hsl(var(--soc-warning))',
+  CRIT: 'hsl(var(--soc-alert))',
 };
 
 export const MetricStatCard = ({
@@ -57,57 +64,65 @@ export const MetricStatCard = ({
   kind,
   events,
   delta,
-  windowMinutes = 30,
+  total,
 }: MetricStatCardProps) => {
-  const series = useMemo(
-    () => buildSeries(events, kind, windowMinutes),
-    [events, kind, windowMinutes]
-  );
+  const pct = useMemo(() => {
+    const denom = total ?? events.length;
+    if (!denom) return 0;
+    return (value / denom) * 100;
+  }, [value, events.length, total]);
 
-  const gradId = `stat-grad-${kind}`;
+  const status = computeStatus(kind, value, pct);
+  const statusColor = STATUS_COLORS[status];
+  // For TOTAL & SOURCES (no real threshold semantics), use accent for the number.
+  const valueColor = kind === 'total' ? accent : statusColor;
 
   return (
-    <div className="relative overflow-hidden bg-card h-[110px] flex flex-col">
-      {/* Foreground content - centered like Grafana Stat */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-3 pt-3">
-        <div className="text-[9px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+    <div
+      className="bg-card p-4 flex flex-col justify-between gap-2 relative overflow-hidden"
+      style={{
+        borderTop: `2px solid ${valueColor}`,
+        // Very subtle status tint on background (only if not NORMAL)
+        backgroundColor:
+          status === 'CRIT'
+            ? 'color-mix(in hsl, hsl(var(--card)) 92%, hsl(var(--soc-alert)))'
+            : status === 'WARN'
+            ? 'color-mix(in hsl, hsl(var(--card)) 94%, hsl(var(--soc-warning)))'
+            : undefined,
+      }}
+    >
+      {/* Top row: label + status tag */}
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           {label}
         </div>
-        <div
-          className="text-[28px] font-semibold font-mono tabular-nums leading-none mt-1"
-          style={{ color: accent }}
-        >
-          {value.toLocaleString()}
-        </div>
-        {delta && (
-          <div className="text-[9px] font-mono mt-1 text-muted-foreground">
-            {delta}
-          </div>
+        {kind !== 'total' && (
+          <span
+            className="text-[8px] font-mono font-semibold uppercase tracking-wider px-1.5 py-[1px] rounded-sm"
+            style={{
+              color: statusColor,
+              backgroundColor: `color-mix(in hsl, transparent, ${statusColor} 14%)`,
+              border: `1px solid color-mix(in hsl, transparent, ${statusColor} 35%)`,
+            }}
+          >
+            {status}
+          </span>
         )}
       </div>
 
-      {/* Sparkline area — fills bottom ~35% like Grafana Stat panel */}
-      <div className="absolute inset-x-0 bottom-0 h-[38%] pointer-events-none">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={series} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={accent} stopOpacity={0.55} />
-                <stop offset="100%" stopColor={accent} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <YAxis hide domain={[0, 'dataMax + 1']} />
-            <Area
-              type="monotone"
-              dataKey="v"
-              stroke={accent}
-              strokeWidth={1}
-              fill={`url(#${gradId})`}
-              isAnimationActive={false}
-              dot={false}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      {/* Value */}
+      <div
+        className="text-[28px] font-semibold font-mono tabular-nums leading-none"
+        style={{ color: valueColor }}
+      >
+        {value.toLocaleString()}
+      </div>
+
+      {/* Bottom: delta or % of total */}
+      <div className="text-[10px] font-mono text-muted-foreground tabular-nums">
+        {kind === 'total' || kind === 'sources'
+          ? delta || '\u00A0'
+          : `${pct.toFixed(1)}% of total${delta ? ` · ${delta}` : ''}`}
       </div>
     </div>
   );
