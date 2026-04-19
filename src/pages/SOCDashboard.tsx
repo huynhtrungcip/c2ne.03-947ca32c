@@ -406,10 +406,10 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
   };
 
   const quickPrompts = [
-    { label: '🔥 Top threats 1h', text: 'Dùng tool get_top_sources để lấy top 10 IP tấn công trong 1h qua, sau đó tóm tắt và đề xuất hành động.' },
-    { label: '📊 Summary 1h', text: 'Gọi summarize_range(60) và tóm tắt tình hình SOC.' },
-    { label: '🛡️ ICMP scan?', text: 'Query các ICMP events gần đây. Đây là scan/recon hay health check?' },
-    { label: '🚫 Block đề xuất', text: 'Phân tích top sources và đề xuất các IP nên block (gọi block_ip cho IP rõ ràng nhất, sẽ có xác nhận).' },
+    { label: '🔥 Top threats 1h', text: 'Lấy top 10 IP tấn công trong 1h qua, tóm tắt và đề xuất hành động cho từng IP.' },
+    { label: '📊 Summary 1h', text: 'Tóm tắt tình hình SOC trong 1h qua: alerts, suspicious, top attack types, unique IPs.' },
+    { label: '🔬 Profile top IP', text: 'Lấy top 1 IP attacker, sau đó dùng analyze_ip để dựng profile chi tiết: timeline, ports targeted, attack types, destinations. Đánh giá risk và đề xuất.' },
+    { label: '🚫 Block đề xuất', text: 'Phân tích và đề xuất các IP nên block ngay. Với IP rõ ràng nhất, gọi block_ip (sẽ có xác nhận).' },
   ];
 
   return (
