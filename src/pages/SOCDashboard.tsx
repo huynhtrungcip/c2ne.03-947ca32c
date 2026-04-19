@@ -859,6 +859,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             )}
           </div>
           <SystemResourcesPanel apiUrl={apiUrl} />
+          <EventsRatePanel events={sortedEvents} windowMinutes={30} />
         </div>
       </div>
 
