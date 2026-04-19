@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSOCData } from '@/hooks/useSOCData';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { SOCEvent } from '@/types/soc';
-import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
+import { Area, AreaChart, XAxis, YAxis, ResponsiveContainer, Line, LineChart, ComposedChart, PieChart, Pie, Cell, BarChart, Bar, Tooltip, CartesianGrid } from 'recharts';
 import { Settings, Wifi, WifiOff } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -1375,37 +1375,143 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
       { name: 'False Positive', value: sortedEvents.filter(e => e.verdict === 'FALSE_POSITIVE').length, color: '#16a34a' },
       { name: 'Benign', value: sortedEvents.filter(e => e.verdict === 'BENIGN').length, color: '#71717a' },
     ];
-    
+
+    // ===== Executive summary: compare current vs previous equal window =====
+    const nowMs = Date.now();
+    const rangeMin = (timeRanges.find(r => r.value === timeRange)?.minutes) || 60;
+    const windowMs = rangeMin === Infinity ? 24 * 60 * 60 * 1000 : rangeMin * 60000;
+    const prevStart = nowMs - 2 * windowMs;
+    const prevEnd = nowMs - windowMs;
+    const prevEvents = events.filter(e => {
+      const t = e.timestamp.getTime();
+      return t >= prevStart && t < prevEnd;
+    });
+    const prevAlerts = prevEvents.filter(e => e.verdict === 'ALERT').length;
+    const curAlerts = sortedEvents.filter(e => e.verdict === 'ALERT').length;
+    const pct = (cur: number, prev: number) => {
+      if (prev === 0) return cur > 0 ? 100 : 0;
+      return ((cur - prev) / prev) * 100;
+    };
+    const alertDelta = pct(curAlerts, prevAlerts);
+    const totalDelta = pct(sortedEvents.length, prevEvents.length);
+    const sourceDelta = pct(metrics.uniqueSources, new Set(prevEvents.map(e => e.src_ip)).size);
+
+    // Sparkline series for KPI cards
+    const sparkSlice = chartData.slice(-20);
+    const trafficSpark = sparkSlice.map((d, i) => ({ i, v: d.Traffic }));
+    const alertSpark = sparkSlice.map((d, i) => ({ i, v: d.Alerts }));
+
+    // ===== Threat heatmap: day-of-week (rows) x hour-of-day (cols) =====
+    const heatmap: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+    sortedEvents.filter(e => e.verdict === 'ALERT' || e.verdict === 'SUSPICIOUS').forEach(e => {
+      heatmap[e.timestamp.getDay()][e.timestamp.getHours()]++;
+    });
+    const heatMax = Math.max(1, ...heatmap.flat());
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // ===== Top attacked destinations + ports =====
+    const dstIpCounts: Record<string, number> = {};
+    const dstPortCounts: Record<string, number> = {};
+    sortedEvents.forEach(e => {
+      dstIpCounts[e.dst_ip] = (dstIpCounts[e.dst_ip] || 0) + 1;
+      if (e.dst_port) dstPortCounts[String(e.dst_port)] = (dstPortCounts[String(e.dst_port)] || 0) + 1;
+    });
+    const topDstIps = Object.entries(dstIpCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const topDstPorts = Object.entries(dstPortCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+    // ===== Export handlers =====
+    const exportCSV = () => {
+      const header = ['timestamp', 'verdict', 'src_ip', 'dst_ip', 'dst_port', 'protocol', 'attack_type', 'confidence', 'engine'];
+      const rows = sortedEvents.map(e => [
+        e.timestamp.toISOString(), e.verdict, e.src_ip, e.dst_ip, e.dst_port ?? '', e.protocol,
+        `"${(e.attack_type || '').replace(/"/g, '""')}"`, e.confidence.toFixed(2), (e as unknown as { engine?: string }).engine ?? ''
+      ].join(','));
+      const csv = [header.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `soc-report-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+    const exportPDF = () => window.print();
+
+    const DeltaBadge = ({ value }: { value: number }) => {
+      const positive = value >= 0;
+      const color = positive ? 'text-[hsl(var(--soc-alert))]' : 'text-[hsl(var(--soc-success))]';
+      const arrow = positive ? '▲' : '▼';
+      return <span className={`text-[10px] font-mono ${color}`}>{arrow} {Math.abs(value).toFixed(1)}%</span>;
+    };
+
+    const Sparkline = ({ data, color }: { data: { i: number; v: number }[]; color: string }) => (
+      <ResponsiveContainer width="100%" height={28}>
+        <LineChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+          <Line type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+
     return (
       <>
-        <div className="mb-4">
-          <h2 className={`text-sm font-semibold mb-1 ${'text-foreground'}`}>Security Reports</h2>
-          <p className={`text-[10px] ${'text-muted-foreground/60'}`}>Analytics dashboard for {timeRangeLabel} • Generated at {now}</p>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold mb-1 text-foreground">Security Reports</h2>
+            <p className="text-[10px] text-muted-foreground/60">Analytics dashboard for {timeRangeLabel} • Generated at {now}</p>
+          </div>
+          <div className="flex items-center gap-2 print:hidden">
+            <button onClick={exportCSV} className="text-[10px] uppercase tracking-wider px-3 py-1.5 border border-border rounded-md bg-card hover:bg-muted text-muted-foreground transition-colors">
+              Export CSV
+            </button>
+            <button onClick={exportPDF} className="text-[10px] uppercase tracking-wider px-3 py-1.5 border border-border rounded-md bg-card hover:bg-muted text-muted-foreground transition-colors">
+              Export PDF
+            </button>
+          </div>
         </div>
-        
-        {/* Summary Cards */}
+
+        {/* Executive Summary */}
+        <div className="mb-4 border rounded-md p-3 bg-card border-border">
+          <div className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground mb-2">Executive Summary</div>
+          <div className="grid grid-cols-3 gap-4 text-[11px] text-muted-foreground">
+            <div>
+              <span className="text-foreground font-mono">{sortedEvents.length}</span> events processed,{' '}
+              <DeltaBadge value={totalDelta} /> vs previous {timeRangeLabel.toLowerCase()}.
+            </div>
+            <div>
+              <span className="text-[hsl(var(--soc-alert))] font-mono">{curAlerts}</span> alerts triggered,{' '}
+              <DeltaBadge value={alertDelta} /> change.
+            </div>
+            <div>
+              <span className="text-foreground font-mono">{metrics.uniqueSources}</span> unique sources,{' '}
+              <DeltaBadge value={sourceDelta} /> shift.
+            </div>
+          </div>
+        </div>
+
+        {/* Summary Cards with sparklines */}
         <div className="grid grid-cols-5 gap-3 mb-4">
           {[
-            { label: 'Total Events', value: metrics.totalEvents, sub: 'In time range' },
-            { label: 'Detection Rate', value: `${metrics.alertRate.toFixed(1)}%`, sub: 'Alerts / Total' },
-            { label: 'Avg Confidence', value: avgConfidence.toFixed(2), sub: 'Mean score' },
-            { label: 'Unique Sources', value: metrics.uniqueSources, sub: 'Distinct IPs' },
-            { label: 'Peak Hour', value: peakHour ? `${peakHour[0]}:00` : '-', sub: peakHour ? `${peakHour[1].traffic} events` : '' },
+            { label: 'Total Events', value: metrics.totalEvents, sub: 'In time range', spark: trafficSpark, color: '#3b82f6' },
+            { label: 'Detection Rate', value: `${metrics.alertRate.toFixed(1)}%`, sub: 'Alerts / Total', spark: alertSpark, color: '#dc2626' },
+            { label: 'Avg Confidence', value: avgConfidence.toFixed(2), sub: 'Mean score', spark: trafficSpark, color: '#8b5cf6' },
+            { label: 'Unique Sources', value: metrics.uniqueSources, sub: 'Distinct IPs', spark: trafficSpark, color: '#10b981' },
+            { label: 'Peak Hour', value: peakHour ? `${peakHour[0]}:00` : '-', sub: peakHour ? `${peakHour[1].traffic} events` : '', spark: trafficSpark, color: '#f59e0b' },
           ].map((card, i) => (
-            <div key={i} className={`border rounded p-3 ${'bg-card border-border'}`}>
-              <div className={`text-xs uppercase tracking-wider font-semibold ${'text-muted-foreground'}`}>{card.label}</div>
-              <div className={`text-xl font-bold font-mono my-1 ${'text-foreground'}`}>{card.value}</div>
-              <div className={`text-[9px] ${'text-muted-foreground/60'}`}>{card.sub}</div>
+            <div key={i} className="border rounded-md p-3 bg-card border-border">
+              <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">{card.label}</div>
+              <div className="text-xl font-bold font-mono my-1 text-foreground">{card.value}</div>
+              <div className="text-[9px] text-muted-foreground/60 mb-1">{card.sub}</div>
+              <Sparkline data={card.spark} color={card.color} />
             </div>
           ))}
         </div>
 
         <div className="grid grid-cols-12 gap-4 mb-4">
           {/* Traffic Trend */}
-          <div className={`col-span-8 border rounded p-4 ${'bg-card border-border'}`}>
+          <div className="col-span-8 border rounded-md p-4 bg-card border-border">
             <div className="flex items-center justify-between mb-3">
-              <div className={`text-xs uppercase tracking-wider font-semibold ${'text-muted-foreground'}`}>Traffic Trend</div>
-              <div className={`flex items-center gap-4 text-[10px] ${'text-muted-foreground/70'}`}>
+              <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Traffic Trend</div>
+              <div className="flex items-center gap-4 text-[10px] text-muted-foreground/70">
                 <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-[#3b82f6]"></span> Traffic</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-[#dc2626]"></span> Alerts</span>
               </div>
@@ -1429,16 +1535,16 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           </div>
           
           {/* Verdict Breakdown */}
-          <div className={`col-span-4 border rounded p-4 ${'bg-card border-border'}`}>
-            <div className={`text-xs uppercase tracking-wider font-semibold mb-3 ${'text-muted-foreground'}`}>Verdict Distribution</div>
+          <div className="col-span-4 border rounded-md p-4 bg-card border-border">
+            <div className="text-xs uppercase tracking-wider font-semibold mb-3 text-muted-foreground">Verdict Distribution</div>
             <div className="space-y-3">
               {verdictBreakdown.map((v) => (
                 <div key={v.name}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[10px] ${'text-muted-foreground'}`}>{v.name}</span>
+                    <span className="text-[10px] text-muted-foreground">{v.name}</span>
                     <span className="text-[11px] font-mono" style={{ color: v.color }}>{v.value}</span>
                   </div>
-                  <div className={`w-full h-1.5 rounded ${'bg-muted'}`}>
+                  <div className="w-full h-1.5 rounded bg-muted">
                     <div className="h-full rounded" style={{ width: `${Math.min((v.value / Math.max(sortedEvents.length, 1)) * 100, 100)}%`, backgroundColor: v.color }} />
                   </div>
                 </div>
@@ -1446,11 +1552,59 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             </div>
           </div>
         </div>
-        
-        <div className="grid grid-cols-2 gap-4">
+
+        {/* Threat Heatmap */}
+        <div className="mb-4 border rounded-md p-4 bg-card border-border">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Threat Heatmap (Day × Hour)</div>
+            <div className="flex items-center gap-2 text-[9px] text-muted-foreground/70">
+              <span>Low</span>
+              <div className="flex gap-px">
+                {[0.15, 0.35, 0.55, 0.75, 0.9].map(o => (
+                  <div key={o} className="w-3 h-3" style={{ backgroundColor: `hsl(var(--soc-alert) / ${o})` }} />
+                ))}
+              </div>
+              <span>High</span>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <div className="inline-block min-w-full">
+              <div className="flex">
+                <div className="w-10" />
+                {Array.from({ length: 24 }).map((_, h) => (
+                  <div key={h} className="flex-1 min-w-[18px] text-center text-[8px] text-muted-foreground/60 font-mono">
+                    {h % 3 === 0 ? h : ''}
+                  </div>
+                ))}
+              </div>
+              {heatmap.map((row, d) => (
+                <div key={d} className="flex items-center mt-px">
+                  <div className="w-10 text-[9px] text-muted-foreground font-mono">{dayLabels[d]}</div>
+                  {row.map((cell, h) => {
+                    const intensity = cell / heatMax;
+                    return (
+                      <div
+                        key={h}
+                        title={`${dayLabels[d]} ${h}:00 — ${cell} threats`}
+                        className="flex-1 min-w-[18px] h-5 mx-px rounded-sm border border-border/30"
+                        style={{
+                          backgroundColor: cell === 0
+                            ? 'hsl(var(--muted) / 0.3)'
+                            : `hsl(var(--soc-alert) / ${0.15 + intensity * 0.75})`,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mb-4">
           {/* Top Attack Sources */}
-          <div className={`border rounded p-4 ${'bg-card border-border'}`}>
-            <div className={`text-xs uppercase tracking-wider font-semibold mb-3 ${'text-muted-foreground'}`}>Top Attack Sources</div>
+          <div className="border rounded-md p-4 bg-card border-border">
+            <div className="text-xs uppercase tracking-wider font-semibold mb-3 text-muted-foreground">Top Attack Sources</div>
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={barData.slice(0, 6)} layout="vertical" margin={{ top: 5, right: 30, left: 70, bottom: 5 }}>
                 <XAxis type="number" tick={{ fill: isDarkMode ? '#71717a' : '#9ca3af', fontSize: 9 }} axisLine={false} tickLine={false} />
@@ -1462,13 +1616,44 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           </div>
 
           {/* Protocol Distribution */}
-          <div className={`border rounded p-4 ${'bg-card border-border'}`}>
-            <div className={`text-xs uppercase tracking-wider font-semibold mb-3 ${'text-muted-foreground'}`}>Protocol Distribution</div>
+          <div className="border rounded-md p-4 bg-card border-border">
+            <div className="text-xs uppercase tracking-wider font-semibold mb-3 text-muted-foreground">Protocol Distribution</div>
             <div className="flex gap-3 flex-wrap">
               {topProtocols.map(([proto, count]) => (
-                <div key={proto} className={`border rounded px-4 py-3 text-center min-w-[80px] ${'bg-muted/30 border-border'}`}>
-                  <div className={`text-xl font-bold font-mono ${'text-foreground'}`}>{count}</div>
-                  <div className={`text-[10px] uppercase ${'text-muted-foreground'}`}>{proto}</div>
+                <div key={proto} className="border rounded-md px-4 py-3 text-center min-w-[80px] bg-muted/30 border-border">
+                  <div className="text-xl font-bold font-mono text-foreground">{count}</div>
+                  <div className="text-[10px] uppercase text-muted-foreground">{proto}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Top attacked destinations + ports */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="border rounded-md p-4 bg-card border-border">
+            <div className="text-xs uppercase tracking-wider font-semibold mb-3 text-muted-foreground">Top Attacked Destinations</div>
+            <div className="space-y-1.5">
+              {topDstIps.length === 0 && <div className="text-[10px] text-muted-foreground/50">No data</div>}
+              {topDstIps.map(([ip, c]) => (
+                <div key={ip} className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-foreground flex-1 truncate">{ip}</span>
+                  <div className="flex-1 h-1.5 bg-muted rounded">
+                    <div className="h-full rounded bg-[hsl(var(--soc-alert))]" style={{ width: `${(c / topDstIps[0][1]) * 100}%` }} />
+                  </div>
+                  <span className="text-[10px] font-mono text-muted-foreground w-10 text-right">{c}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="border rounded-md p-4 bg-card border-border">
+            <div className="text-xs uppercase tracking-wider font-semibold mb-3 text-muted-foreground">Top Targeted Ports</div>
+            <div className="grid grid-cols-4 gap-2">
+              {topDstPorts.length === 0 && <div className="col-span-4 text-[10px] text-muted-foreground/50">No data</div>}
+              {topDstPorts.map(([port, c]) => (
+                <div key={port} className="border rounded-md p-2 text-center bg-muted/30 border-border">
+                  <div className="text-base font-bold font-mono text-foreground">{port}</div>
+                  <div className="text-[9px] uppercase text-muted-foreground">{c} hits</div>
                 </div>
               ))}
             </div>
