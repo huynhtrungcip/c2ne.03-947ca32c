@@ -532,7 +532,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     { id: 'blocked', label: 'Blocked IPs', icon: Ban },
     { id: 'blacklist', label: t('settings.blacklist'), icon: Shield },
     { id: 'whitelist', label: t('settings.whitelist'), icon: List },
-    { id: 'help', label: t('settings.help'), icon: HelpCircle },
+    
   ];
 
   // Health Section Renderer
@@ -1902,7 +1902,6 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             {activeSection === 'nids_debug' && renderNidsDebugSection()}
             {activeSection === 'blocked' && renderBlockedIPsSection()}
             {(activeSection === 'blacklist' || activeSection === 'whitelist') && renderListSection()}
-            {activeSection === 'help' && renderHelpSection()}
           </div>
         </div>
       </div>
