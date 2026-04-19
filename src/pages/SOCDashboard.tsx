@@ -1203,31 +1203,36 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           </nav>
         </div>
         <div className="flex items-center gap-2">
+          {/* Assistant — flat ghost button */}
           <button
             onClick={() => setShowAIChat(!showAIChat)}
-            className="h-7 px-4 text-[10px] font-medium bg-gradient-to-b from-[#1e3a5f] to-[#162d4d] text-[#93c5fd] border border-[#2563eb]/40 rounded-md hover:from-[#2563eb] hover:to-[#1e40af] hover:text-[#bfdbfe] transition-all shadow-sm"
+            className="h-7 px-3 text-[10px] font-medium tracking-wide uppercase bg-transparent text-foreground/80 border border-border rounded-sm hover:bg-muted hover:text-foreground transition-colors font-mono"
           >
-            ASSISTANT
+            Assistant
           </button>
-          <div className={`h-7 px-3 flex items-center text-[10px] font-mono rounded-md ${isDarkMode ? 'text-[#71717a] bg-[#0a0a0a] border border-[#1f1f1f]' : 'text-[#6b7280] bg-white border border-[#e5e7eb]'}`}>
+
+          {/* Clock — mono, flat */}
+          <div className="h-7 px-3 flex items-center text-[10px] font-mono text-muted-foreground bg-transparent border border-border rounded-sm tabular-nums">
             {now}
           </div>
+
+          {/* Stream status — flat pill, dot pulse only */}
           <div
-            className="h-7 px-3 flex items-center gap-1.5 text-[9px] font-semibold tracking-wider uppercase rounded-md bg-gradient-to-b from-[#166534] to-[#14532d] text-[#86efac] border border-[#22c55e]/30 shadow-sm shadow-[#22c55e]/10"
+            className="h-7 px-2.5 flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider text-foreground/80 bg-transparent border border-border rounded-sm"
             title="Realtime stream — always on"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
-            STREAMING
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-[hsl(var(--status-online))] opacity-60 animate-ping" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[hsl(var(--status-online))]" />
+            </span>
+            <span className="text-foreground/70">Live</span>
           </div>
-          
-          {/* Settings Button */}
+
+          {/* Settings — icon only, flat */}
           <button
             onClick={() => setShowSettings(true)}
-            className={`h-7 w-7 flex items-center justify-center rounded-md transition-all ${
-              isDarkMode 
-                ? 'bg-[#18181b] text-[#71717a] border border-[#27272a] hover:bg-[#27272a] hover:text-[#a1a1aa]'
-                : 'bg-white text-[#6b7280] border border-[#e5e7eb] hover:bg-[#f3f4f6] hover:text-[#374151]'
-            }`}
+            aria-label="Settings"
+            className="h-7 w-7 flex items-center justify-center rounded-sm bg-transparent text-muted-foreground border border-border hover:bg-muted hover:text-foreground transition-colors"
           >
             <Settings className="w-3.5 h-3.5" />
           </button>
