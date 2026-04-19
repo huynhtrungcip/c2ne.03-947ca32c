@@ -659,20 +659,22 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             
             {/* Dropdown options */}
             {showAnalysisOptions && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-xl z-10 overflow-hidden">
+              <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-sm shadow-md z-10 overflow-hidden">
                 <button
                   onClick={() => handleAnalyzeFlow(false)}
-                  className="w-full px-4 py-3 text-left text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border-b border-border"
+                  className="w-full px-3 py-2 text-left border-l-2 border-transparent hover:border-foreground hover:bg-muted/50 transition-colors border-b border-border/50"
                 >
-                  <div className="font-semibold text-[hsl(var(--chart-1))]">Analyze This Flow</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Chỉ phân tích sự kiện đang chọn</div>
+                  <div className="text-[11px] font-mono font-medium text-foreground">analyze.flow</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Phân tích sự kiện đang chọn</div>
                 </button>
                 <button
                   onClick={() => handleAnalyzeFlow(true)}
-                  className="w-full px-4 py-3 text-left text-[11px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  className="w-full px-3 py-2 text-left border-l-2 border-transparent hover:border-foreground hover:bg-muted/50 transition-colors"
                 >
-                  <div className="font-semibold text-[hsl(var(--soc-warning))]">Analyze ALL from IP {selectedEvent.src_ip}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Phân tích toàn bộ flows từ IP nguồn này</div>
+                  <div className="text-[11px] font-mono font-medium text-foreground">
+                    analyze.source <span className="text-muted-foreground">[{selectedEvent.src_ip}]</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Phân tích toàn bộ flows từ IP này</div>
                 </button>
               </div>
             )}
