@@ -791,6 +791,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                 />
               </ComposedChart>
             </ResponsiveContainer>
+            </div>
           )}
         </div>
 
