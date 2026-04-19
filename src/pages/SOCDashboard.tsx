@@ -686,7 +686,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
 
   const renderOverviewTab = () => (
     <>
-      {/* Metrics Row - Grafana stat panel style with sparkline backgrounds */}
+      {/* Metrics Row - Grafana radial gauge stat panels */}
       <div className="grid grid-cols-5 gap-px mb-4" style={{ backgroundColor: isDarkMode ? 'hsl(var(--border))' : '#e5e7eb' }}>
         {([
           { label: 'EVENTS', value: metrics.totalEvents, accent: '#3b82f6', kind: 'total' as MetricKind },
@@ -703,7 +703,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             kind={m.kind}
             delta={m.delta}
             events={sortedEvents}
-            windowMinutes={30}
+            total={metrics.totalEvents}
           />
         ))}
       </div>
