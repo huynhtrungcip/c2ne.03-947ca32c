@@ -1147,8 +1147,8 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
     return (
       <>
         <div className="mb-4">
-          <h2 className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>Security Event Log</h2>
-          <p className={`text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Complete event stream with real-time filtering • {sortedEvents.length} events in selected range</p>
+          <h2 className={`text-sm font-semibold mb-1 ${'text-foreground'}`}>Security Event Log</h2>
+          <p className={`text-[10px] ${'text-muted-foreground/60'}`}>Complete event stream with real-time filtering • {sortedEvents.length} events in selected range</p>
         </div>
         
         {/* Unified Filters */}
@@ -1158,7 +1158,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           {/* Main Event Table */}
           <div className="col-span-9">
             {/* Event Statistics */}
-            <div className="grid grid-cols-6 gap-px mb-4" style={{ backgroundColor: isDarkMode ? '#1a1a1a' : '#e5e7eb' }}>
+            <div className="grid grid-cols-6 gap-px mb-4" style={{ backgroundColor: 'hsl(var(--border))' }}>
               {[
                 { label: 'Total', value: sortedEvents.length, color: '#3b82f6' },
                 { label: 'Alert', value: sortedEvents.filter(e => e.verdict === 'ALERT').length, color: '#ef4444' },
@@ -1167,9 +1167,9 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                 { label: 'Benign', value: sortedEvents.filter(e => e.verdict === 'BENIGN').length, color: '#71717a' },
                 { label: 'High Conf', value: sortedEvents.filter(e => e.confidence > 0.8).length, color: '#8b5cf6' },
               ].map((s, i) => (
-                <div key={i} className={`p-2 text-center ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
+                <div key={i} className={`p-2 text-center ${'bg-card'}`}>
                   <div className="text-lg font-semibold font-mono" style={{ color: s.color }}>{s.value}</div>
-                  <div className={`text-[9px] uppercase ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{s.label}</div>
+                  <div className={`text-[9px] uppercase ${'text-muted-foreground/60'}`}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -1180,36 +1180,36 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           {/* Sidebar */}
           <div className="col-span-3 space-y-3">
             {/* Detection Engines */}
-            <div className={`border p-3 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Detection Engines</div>
+            <div className={`border p-3 ${'bg-card border-border'}`}>
+              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Detection Engines</div>
               <div className="space-y-2">
                 {topEngines.map(([engine, count]) => (
                   <div key={engine} className="flex items-center justify-between">
-                    <span className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>{engine}</span>
-                    <span className={`text-[11px] font-mono ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>{count}</span>
+                    <span className={`text-[10px] ${'text-muted-foreground'}`}>{engine}</span>
+                    <span className={`text-[11px] font-mono ${'text-muted-foreground'}`}>{count}</span>
                   </div>
                 ))}
               </div>
             </div>
             
             {/* Recent Alerts */}
-            <div className={`border p-3 ${isDarkMode ? 'bg-[#0a0a0a] border-[#ef4444]/20' : 'bg-white border-[#ef4444]/20'}`}>
-              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Recent Alerts</div>
+            <div className={`border p-3 ${'bg-card border-[hsl(var(--soc-alert)/0.3)]'}`}>
+              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Recent Alerts</div>
               <div className="space-y-2">
                 {recentAlerts.length === 0 ? (
-                  <div className={`text-[10px] ${isDarkMode ? 'text-[#3f3f46]' : 'text-[#9ca3af]'}`}>No alerts</div>
+                  <div className={`text-[10px] ${'text-muted-foreground/50'}`}>No alerts</div>
                 ) : recentAlerts.map((alert) => (
-                  <div key={alert.id} className={`text-[10px] border-b pb-2 last:border-0 ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#f3f4f6]'}`}>
+                  <div key={alert.id} className={`text-[10px] border-b pb-2 last:border-0 ${'border-border'}`}>
                     <div className="text-[#ef4444] font-medium truncate">{alert.attack_type}</div>
-                    <div className={`font-mono ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{alert.src_ip}</div>
+                    <div className={`font-mono ${'text-muted-foreground/60'}`}>{alert.src_ip}</div>
                   </div>
                 ))}
               </div>
             </div>
             
             {/* Time Distribution */}
-            <div className={`border p-3 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Event Timeline</div>
+            <div className={`border p-3 ${'bg-card border-border'}`}>
+              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Event Timeline</div>
               <div className="h-16">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData.slice(-12)} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
@@ -1248,22 +1248,22 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
     return (
       <>
         <div className="mb-4">
-          <h2 className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>Threat Intelligence</h2>
-          <p className={`text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Active threats requiring attention • {criticalEvents.length} critical events from {uniqueSourceIPs.length} sources</p>
+          <h2 className={`text-sm font-semibold mb-1 ${'text-foreground'}`}>Threat Intelligence</h2>
+          <p className={`text-[10px] ${'text-muted-foreground/60'}`}>Active threats requiring attention • {criticalEvents.length} critical events from {uniqueSourceIPs.length} sources</p>
         </div>
         
         {/* Threat Overview Cards */}
-        <div className="grid grid-cols-4 gap-px mb-4" style={{ backgroundColor: isDarkMode ? '#1a1a1a' : '#e5e7eb' }}>
+        <div className="grid grid-cols-4 gap-px mb-4" style={{ backgroundColor: 'hsl(var(--border))' }}>
           {[
             { label: 'Critical Alerts', value: alertEvents.length, accent: '#ef4444', sub: 'Immediate action required' },
             { label: 'Suspicious', value: criticalEvents.length - alertEvents.length, accent: '#f59e0b', sub: 'Under investigation' },
             { label: 'Attack Types', value: uniqueAttackTypes.length, accent: '#8b5cf6', sub: 'Unique signatures' },
             { label: 'High Confidence', value: highConfidenceThreats.length, accent: '#3b82f6', sub: '>80% certainty' },
           ].map((card, i) => (
-            <div key={i} className={`p-3 ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`} style={{ borderTop: `2px solid ${card.accent}` }}>
-              <div className={`text-[10px] uppercase tracking-wider font-medium ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{card.label}</div>
-              <div className={`text-2xl font-semibold font-mono my-1 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>{card.value}</div>
-              <div className={`text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{card.sub}</div>
+            <div key={i} className={`p-3 ${'bg-card'}`} style={{ borderTop: `2px solid ${card.accent}` }}>
+              <div className={`text-[10px] uppercase tracking-wider font-medium ${'text-muted-foreground'}`}>{card.label}</div>
+              <div className={`text-2xl font-semibold font-mono my-1 ${'text-foreground'}`}>{card.value}</div>
+              <div className={`text-[9px] ${'text-muted-foreground/60'}`}>{card.sub}</div>
             </div>
           ))}
         </div>
@@ -1272,30 +1272,30 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           {/* Left Panel - Threat Analysis */}
           <div className="col-span-4 space-y-3">
             {/* Attack Type Breakdown */}
-            <div className={`border p-4 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Attack Signatures</div>
+            <div className={`border p-4 ${'bg-card border-border'}`}>
+              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Attack Signatures</div>
               <div className="space-y-2 max-h-56 overflow-y-auto">
                 {attackCounts.map((attack, i) => (
                   <div key={attack.type} className="flex items-center gap-2">
                     <span className={`w-2 h-2 flex-shrink-0 ${attack.severity === 'critical' ? 'bg-[#ef4444]' : 'bg-[#f59e0b]'}`} />
-                    <span className={`text-[10px] flex-1 truncate ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{attack.type}</span>
-                    <span className={`text-[10px] font-mono ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{attack.count}</span>
+                    <span className={`text-[10px] flex-1 truncate ${'text-muted-foreground'}`}>{attack.type}</span>
+                    <span className={`text-[10px] font-mono ${'text-muted-foreground/70'}`}>{attack.count}</span>
                   </div>
                 ))}
               </div>
             </div>
             
             {/* Top Threat Sources */}
-            <div className={`border p-4 ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Top Threat Sources</div>
+            <div className={`border p-4 ${'bg-card border-border'}`}>
+              <div className={`text-[10px] uppercase tracking-wider font-medium mb-3 ${'text-muted-foreground'}`}>Top Threat Sources</div>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {topThreatSources.slice(0, 6).map((source, i) => (
-                  <div key={source.ip} className={`border-b pb-2 last:border-0 ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#f3f4f6]'}`}>
+                  <div key={source.ip} className={`border-b pb-2 last:border-0 ${'border-border'}`}>
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-mono text-[#3b82f6]">{source.ip}</span>
                       <span className="text-[10px] font-mono text-[#ef4444]">{source.count}</span>
                     </div>
-                    <div className={`text-[9px] truncate ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{source.attacks.slice(0, 2).join(', ')}</div>
+                    <div className={`text-[9px] truncate ${'text-muted-foreground/60'}`}>{source.attacks.slice(0, 2).join(', ')}</div>
                   </div>
                 ))}
               </div>
@@ -1304,9 +1304,9 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           
           {/* Right Panel - Threat Events */}
           <div className="col-span-8">
-            <div className={`rounded ${isDarkMode ? 'bg-[#0f0f0f] border border-[#dc2626]/30' : 'bg-white border border-[#dc2626]/30'}`}>
-              <div className={`p-3 border-b flex items-center justify-between ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#fee2e2]'}`}>
-                <div className={`text-xs uppercase tracking-wider font-semibold ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Active Threats</div>
+            <div className={`rounded ${'bg-card border border-[hsl(var(--soc-alert)/0.3)]'}`}>
+              <div className={`p-3 border-b flex items-center justify-between ${'border-border'}`}>
+                <div className={`text-xs uppercase tracking-wider font-semibold ${'text-muted-foreground'}`}>Active Threats</div>
                 <span className="text-[9px] text-[#dc2626]">{criticalEvents.length} threats detected</span>
               </div>
               {renderEventTable(criticalEvents.slice(0, 50))}
@@ -1346,8 +1346,8 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
     return (
       <>
         <div className="mb-4">
-          <h2 className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-[#fafafa]' : 'text-[#111827]'}`}>Security Reports</h2>
-          <p className={`text-[10px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>Analytics dashboard for {timeRangeLabel} • Generated at {now}</p>
+          <h2 className={`text-sm font-semibold mb-1 ${'text-foreground'}`}>Security Reports</h2>
+          <p className={`text-[10px] ${'text-muted-foreground/60'}`}>Analytics dashboard for {timeRangeLabel} • Generated at {now}</p>
         </div>
         
         {/* Summary Cards */}
@@ -1359,20 +1359,20 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
             { label: 'Unique Sources', value: metrics.uniqueSources, sub: 'Distinct IPs' },
             { label: 'Peak Hour', value: peakHour ? `${peakHour[0]}:00` : '-', sub: peakHour ? `${peakHour[1].traffic} events` : '' },
           ].map((card, i) => (
-            <div key={i} className={`border rounded p-3 ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-              <div className={`text-xs uppercase tracking-wider font-semibold ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{card.label}</div>
-              <div className={`text-xl font-bold font-mono my-1 ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>{card.value}</div>
-              <div className={`text-[9px] ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>{card.sub}</div>
+            <div key={i} className={`border rounded p-3 ${'bg-card border-border'}`}>
+              <div className={`text-xs uppercase tracking-wider font-semibold ${'text-muted-foreground'}`}>{card.label}</div>
+              <div className={`text-xl font-bold font-mono my-1 ${'text-foreground'}`}>{card.value}</div>
+              <div className={`text-[9px] ${'text-muted-foreground/60'}`}>{card.sub}</div>
             </div>
           ))}
         </div>
 
         <div className="grid grid-cols-12 gap-4 mb-4">
           {/* Traffic Trend */}
-          <div className={`col-span-8 border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+          <div className={`col-span-8 border rounded p-4 ${'bg-card border-border'}`}>
             <div className="flex items-center justify-between mb-3">
-              <div className={`text-xs uppercase tracking-wider font-semibold ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Traffic Trend</div>
-              <div className={`flex items-center gap-4 text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>
+              <div className={`text-xs uppercase tracking-wider font-semibold ${'text-muted-foreground'}`}>Traffic Trend</div>
+              <div className={`flex items-center gap-4 text-[10px] ${'text-muted-foreground/70'}`}>
                 <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-[#3b82f6]"></span> Traffic</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-0.5 bg-[#dc2626]"></span> Alerts</span>
               </div>
@@ -1396,16 +1396,16 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           </div>
           
           {/* Verdict Breakdown */}
-          <div className={`col-span-4 border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-            <div className={`text-xs uppercase tracking-wider font-semibold mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Verdict Distribution</div>
+          <div className={`col-span-4 border rounded p-4 ${'bg-card border-border'}`}>
+            <div className={`text-xs uppercase tracking-wider font-semibold mb-3 ${'text-muted-foreground'}`}>Verdict Distribution</div>
             <div className="space-y-3">
               {verdictBreakdown.map((v) => (
                 <div key={v.name}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[10px] ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>{v.name}</span>
+                    <span className={`text-[10px] ${'text-muted-foreground'}`}>{v.name}</span>
                     <span className="text-[11px] font-mono" style={{ color: v.color }}>{v.value}</span>
                   </div>
-                  <div className={`w-full h-1.5 rounded ${isDarkMode ? 'bg-[#1f1f1f]' : 'bg-[#e5e7eb]'}`}>
+                  <div className={`w-full h-1.5 rounded ${'bg-muted'}`}>
                     <div className="h-full rounded" style={{ width: `${Math.min((v.value / Math.max(sortedEvents.length, 1)) * 100, 100)}%`, backgroundColor: v.color }} />
                   </div>
                 </div>
@@ -1416,8 +1416,8 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
         
         <div className="grid grid-cols-2 gap-4">
           {/* Top Attack Sources */}
-          <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-            <div className={`text-xs uppercase tracking-wider font-semibold mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Top Attack Sources</div>
+          <div className={`border rounded p-4 ${'bg-card border-border'}`}>
+            <div className={`text-xs uppercase tracking-wider font-semibold mb-3 ${'text-muted-foreground'}`}>Top Attack Sources</div>
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={barData.slice(0, 6)} layout="vertical" margin={{ top: 5, right: 30, left: 70, bottom: 5 }}>
                 <XAxis type="number" tick={{ fill: isDarkMode ? '#71717a' : '#9ca3af', fontSize: 9 }} axisLine={false} tickLine={false} />
@@ -1429,13 +1429,13 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           </div>
 
           {/* Protocol Distribution */}
-          <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-            <div className={`text-xs uppercase tracking-wider font-semibold mb-3 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#374151]'}`}>Protocol Distribution</div>
+          <div className={`border rounded p-4 ${'bg-card border-border'}`}>
+            <div className={`text-xs uppercase tracking-wider font-semibold mb-3 ${'text-muted-foreground'}`}>Protocol Distribution</div>
             <div className="flex gap-3 flex-wrap">
               {topProtocols.map(([proto, count]) => (
-                <div key={proto} className={`border rounded px-4 py-3 text-center min-w-[80px] ${isDarkMode ? 'bg-[#0a0a0a] border-[#27272a]' : 'bg-[#f9fafb] border-[#e5e7eb]'}`}>
-                  <div className={`text-xl font-bold font-mono ${isDarkMode ? 'text-[#e4e4e7]' : 'text-[#111827]'}`}>{count}</div>
-                  <div className={`text-[10px] uppercase ${isDarkMode ? 'text-[#71717a]' : 'text-[#6b7280]'}`}>{proto}</div>
+                <div key={proto} className={`border rounded px-4 py-3 text-center min-w-[80px] ${'bg-muted/30 border-border'}`}>
+                  <div className={`text-xl font-bold font-mono ${'text-foreground'}`}>{count}</div>
+                  <div className={`text-[10px] uppercase ${'text-muted-foreground'}`}>{proto}</div>
                 </div>
               ))}
             </div>
