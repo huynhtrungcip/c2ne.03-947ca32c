@@ -847,7 +847,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                         {pieData.reduce((s, d) => s + d.value, 0).toLocaleString()}
                       </div>
                       <div className="text-[8px] uppercase tracking-wider text-muted-foreground mt-1">
-                        {pieData.length} types
+                        {totalAttackTypes} types
                       </div>
                     </>
                   )}
@@ -864,7 +864,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                 )}
               </div>
               <div className="w-full grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
-                {pieData.slice(0, 6).map((d, i) => (
+                {pieData.map((d, i) => (
                   <div 
                     key={d.name} 
                     className="flex items-center gap-1.5 text-[9px] cursor-pointer transition-opacity"
@@ -872,8 +872,8 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                     onMouseEnter={() => setPieHoverIdx(i)}
                     onMouseLeave={() => setPieHoverIdx(null)}
                   >
-                    <span className="w-2 h-2" style={{ background: COLORS[i % COLORS.length] }} />
-                    <span className={`truncate flex-1 ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{d.name}</span>
+                    <span className="w-2 h-2 shrink-0" style={{ background: d.isOther ? OTHER_COLOR : COLORS[i % COLORS.length] }} />
+                    <span className={`truncate flex-1 ${d.isOther ? 'italic' : ''} ${isDarkMode ? 'text-[#a1a1aa]' : 'text-[#6b7280]'}`}>{d.name}</span>
                     <span className={`font-mono font-medium ${isDarkMode ? 'text-[#71717a]' : 'text-[#9ca3af]'}`}>{d.value}</span>
                   </div>
                 ))}
