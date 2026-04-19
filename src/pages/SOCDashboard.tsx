@@ -648,14 +648,36 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
           })()}
         </div>
         
-        {/* Block Result Feedback */}
+        {/* Block Result Feedback — SIEM log-line style */}
         {blockResult && (
-          <div className={`mx-5 mb-4 p-3 rounded-md border text-[11px] ${
-            blockResult.success 
-              ? 'bg-[hsl(var(--soc-success)/0.1)] border-[hsl(var(--soc-success)/0.3)] text-[hsl(var(--soc-success))]' 
-              : 'bg-[hsl(var(--soc-alert)/0.1)] border-[hsl(var(--soc-alert)/0.3)] text-[hsl(var(--soc-alert))]'
-          }`}>
-            {blockResult.success ? '✓' : '✗'} {blockResult.message}
+          <div className={`mx-5 mb-4 border-l-2 ${
+            blockResult.success
+              ? 'border-[hsl(var(--soc-success))] bg-[hsl(var(--soc-success)/0.06)]'
+              : 'border-[hsl(var(--soc-alert))] bg-[hsl(var(--soc-alert)/0.06)]'
+          } rounded-sm`}>
+            <div className="flex items-center justify-between px-3 py-2 gap-3">
+              <div className="flex items-baseline gap-3 min-w-0 flex-1">
+                <span className={`text-[10px] font-mono font-semibold uppercase tracking-[0.14em] shrink-0 ${
+                  blockResult.success ? 'text-[hsl(var(--soc-success))]' : 'text-[hsl(var(--soc-alert))]'
+                }`}>
+                  {blockResult.success ? 'OK' : 'ERR'}
+                </span>
+                <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                  firewall.block
+                </span>
+                <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">/</span>
+                <span className="text-[11px] font-mono text-foreground/90 truncate">
+                  {blockResult.message}
+                </span>
+              </div>
+              <button
+                onClick={() => setBlockResult(null)}
+                className="text-muted-foreground hover:text-foreground text-[14px] leading-none shrink-0"
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+            </div>
           </div>
         )}
         
