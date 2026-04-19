@@ -1817,7 +1817,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       />
       
       {/* Modal — soft rounded, big-tech SIEM (Datadog/Linear style) */}
-      <div className="relative w-[860px] max-h-[85vh] bg-card border border-border rounded-lg shadow-2xl overflow-hidden flex">
+      <div className="relative w-[860px] h-[85vh] bg-card border border-border rounded-lg shadow-2xl overflow-hidden flex">
         {/* Sidebar — compact ghost nav */}
         <div className="w-48 border-r border-border flex-shrink-0 bg-background/40">
           <div className="px-4 py-3 border-b border-border">
