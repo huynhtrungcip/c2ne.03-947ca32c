@@ -125,9 +125,9 @@ const VirtualizedEventTable = ({
   };
 
   return (
-    <div className={`border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
+    <div className={`border rounded-md flex flex-col h-full ${isDarkMode ? 'bg-card border-border' : 'bg-white border-[#e5e7eb]'}`}>
       {/* Header with Export */}
-      <div className={`flex items-center justify-between p-3 border-b ${isDarkMode ? 'border-[#1f1f1f]' : 'border-[#e5e7eb]'}`}>
+      <div className={`flex items-center justify-between p-3 border-b ${isDarkMode ? 'border-border' : 'border-[#e5e7eb]'}`}>
         <div className="flex items-center gap-4">
           <div className={`text-[10px] uppercase tracking-wider ${isDarkMode ? 'text-[#52525b]' : 'text-[#9ca3af]'}`}>
             Event Stream ({events.length.toLocaleString()} total)
