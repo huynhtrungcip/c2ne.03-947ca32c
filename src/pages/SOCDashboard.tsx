@@ -255,6 +255,7 @@ const SOCDashboard = () => {
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [blockingIP, setBlockingIP] = useState(false);
+  const [pieHoverIdx, setPieHoverIdx] = useState<number | null>(null);
   const [blockResult, setBlockResult] = useState<{ success: boolean; message: string } | null>(null);
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem('soc-theme') as Theme;
