@@ -1901,8 +1901,6 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </div>
         </div>
       </div>
-        </div>
-      </div>
 
       {/* Confirmation Dialog */}
       <ConfirmDialog
