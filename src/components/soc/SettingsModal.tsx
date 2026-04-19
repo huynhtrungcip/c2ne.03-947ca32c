@@ -1825,20 +1825,20 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               {t('settings.title')}
             </div>
           </div>
-          <div className="py-1">
+          <div className="p-2 flex flex-col gap-0.5">
             {sections.map((section) => {
               const active = activeSection === section.id;
               return (
                 <button
                   key={section.id}
                   onClick={() => setActiveSection(section.id as any)}
-                  className={`w-full flex items-center gap-2.5 pl-4 pr-3 py-2 text-[11px] transition-colors border-l-2 ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] rounded-md transition-colors ${
                     active
-                      ? 'bg-muted/60 border-l-foreground/70 text-foreground font-medium'
-                      : 'border-l-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                      ? 'bg-muted text-foreground font-medium'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                   }`}
                 >
-                  <section.icon className="w-3.5 h-3.5 opacity-70" strokeWidth={1.5} />
+                  <section.icon className="w-3.5 h-3.5 opacity-80" strokeWidth={1.5} />
                   <span>{section.label}</span>
                 </button>
               );
