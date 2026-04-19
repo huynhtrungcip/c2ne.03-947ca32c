@@ -1153,7 +1153,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
     }, {} as Record<string, number>);
     const topEngines = Object.entries(engineCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
     
-    const recentAlerts = sortedEvents.filter(e => e.verdict === 'ALERT').slice(0, 5);
+    const recentAlerts = sortedEvents.filter(e => e.verdict === 'ALERT').slice(0, 50);
     
     return (
       <>
