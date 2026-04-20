@@ -7,9 +7,11 @@
 # Script này KHÔNG clone repo, chỉ build & start docker compose.
 #
 #   chmod +x start-local.sh
-#   ./start-local.sh            # Build + start
+#   ./start-local.sh            # Build + start (auto-clean cài đặt cũ nếu có)
 #   ./start-local.sh rebuild    # Rebuild no-cache
 #   ./start-local.sh stop       # Dừng
+#   ./start-local.sh clean      # Xóa sạch containers/images/volumes cũ
+#   ./start-local.sh fresh      # Clean + build + start (deploy hoàn toàn mới)
 #   ./start-local.sh logs       # Xem logs
 #   ./start-local.sh status     # Xem status
 # ============================================================
