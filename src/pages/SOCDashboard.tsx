@@ -429,8 +429,8 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
   const quickPrompts = [
     { label: '🔥 Top threats 1h', text: 'Get top 10 attacking IPs in the last 1h, summarize and suggest actions for each.' },
     { label: '📊 Summary 1h', text: 'Summarize the SOC status over the last 1h: alerts, suspicious events, top attack types, unique IPs.' },
-    { label: '🔬 Profile top IP', text: 'Lấy top 1 IP attacker, sau đó dùng analyze_ip để dựng profile chi tiết: timeline, ports targeted, attack types, destinations. Đánh giá risk và đề xuất.' },
-    { label: '🚫 Block đề xuất', text: 'Phân tích và đề xuất các IP nên block ngay. Với IP rõ ràng nhất, gọi block_ip (sẽ có xác nhận).' },
+    { label: '🔬 Profile top IP', text: 'Get the top 1 attacker IP, then use analyze_ip to build a detailed profile: timeline, targeted ports, attack types, destinations. Assess risk and recommend actions.' },
+    { label: '🚫 Block đề xuất', text: 'Analyze and recommend IPs to block immediately. For the clearest case, call block_ip (confirmation required).' },
   ];
 
   return (
@@ -473,7 +473,7 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
         {!getActiveProvider() && (
           <div className="px-3 py-1.5 bg-warning/10 border-b border-warning/30 text-[10px] text-warning-foreground flex items-center gap-1.5">
             <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
-            <span>Đang dùng MegaLLM mặc định. Bấm <Sliders className="inline h-2.5 w-2.5" /> để cấu hình Grok / Gemini / Ollama riêng.</span>
+            <span>Using default MegaLLM. Click <Sliders className="inline h-2.5 w-2.5" /> to configure your own Grok / Gemini / Ollama.</span>
           </div>
         )}
 
