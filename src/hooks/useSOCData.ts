@@ -57,8 +57,8 @@ export const useSOCData = (
   });
 
   const [mockEventsState, setMockEventsState] = useState<SOCEvent[]>(() => {
-    if (!isMockDataEnabled()) return [];
-    
+    // Always load persisted mock events — toggling Mock OFF must NOT destroy data.
+    // Data is only cleared via the explicit "Clear" action.
     const stored = localStorage.getItem('soc-mock-events');
     if (stored) {
       try {
@@ -72,26 +72,7 @@ export const useSOCData = (
         return [];
       }
     }
-    
-    // Initialize with mock data if enabled (cap seed to avoid localStorage quota)
-    const initialMock = mockEvents.slice(0, 300).map(e => ({ ...e, source: 'mock' as const }));
-    try {
-      localStorage.setItem('soc-mock-events', JSON.stringify(initialMock.map(e => ({
-        ...e,
-        timestamp: e.timestamp.toISOString(),
-      }))));
-    } catch {
-      try {
-        const trimmed = initialMock.slice(0, 100);
-        localStorage.setItem('soc-mock-events', JSON.stringify(trimmed.map(e => ({
-          ...e,
-          timestamp: e.timestamp.toISOString(),
-        }))));
-      } catch {
-        localStorage.removeItem('soc-mock-events');
-      }
-    }
-    return initialMock;
+    return [];
   });
 
   // Combined events based on enabled sources
