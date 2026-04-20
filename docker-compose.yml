@@ -25,10 +25,20 @@ services:
       - WHITELIST_IPS=${WHITELIST_IPS}
       - NODEJS_BACKEND_URL=http://soc-backend:3001
       - TZ=Asia/Ho_Chi_Minh
+      # Tell psutil to read host metrics instead of container metrics
+      - HOST_PROC=/host/proc
+      - HOST_SYS=/host/sys
+      - HOST_ETC=/host/etc
     volumes:
       - ai-artifacts:/app/artifacts
       - ai-database:/app/database
       - ai-logs:/app/logs
+      # Mount host /proc, /sys and root filesystem (read-only) so psutil
+      # reports REAL host CPU / RAM / Disk usage, not container's view
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc:/host/etc:ro
+      - /:/host/root:ro
     restart: unless-stopped
     networks:
       - soc-network
