@@ -73,12 +73,24 @@ export const useSOCData = (
       }
     }
     
-    // Initialize with mock data if enabled
-    const initialMock = mockEvents.map(e => ({ ...e, source: 'mock' as const }));
-    localStorage.setItem('soc-mock-events', JSON.stringify(initialMock.map(e => ({
-      ...e,
-      timestamp: e.timestamp.toISOString(),
-    }))));
+    // Initialize with mock data if enabled (cap seed to avoid localStorage quota)
+    const initialMock = mockEvents.slice(0, 300).map(e => ({ ...e, source: 'mock' as const }));
+    try {
+      localStorage.setItem('soc-mock-events', JSON.stringify(initialMock.map(e => ({
+        ...e,
+        timestamp: e.timestamp.toISOString(),
+      }))));
+    } catch {
+      try {
+        const trimmed = initialMock.slice(0, 100);
+        localStorage.setItem('soc-mock-events', JSON.stringify(trimmed.map(e => ({
+          ...e,
+          timestamp: e.timestamp.toISOString(),
+        }))));
+      } catch {
+        localStorage.removeItem('soc-mock-events');
+      }
+    }
     return initialMock;
   });
 
