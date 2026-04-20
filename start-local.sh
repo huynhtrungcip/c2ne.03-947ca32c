@@ -7,9 +7,11 @@
 # Script này KHÔNG clone repo, chỉ build & start docker compose.
 #
 #   chmod +x start-local.sh
-#   ./start-local.sh            # Build + start
+#   ./start-local.sh            # Build + start (auto-clean cài đặt cũ nếu có)
 #   ./start-local.sh rebuild    # Rebuild no-cache
 #   ./start-local.sh stop       # Dừng
+#   ./start-local.sh clean      # Xóa sạch containers/images/volumes cũ
+#   ./start-local.sh fresh      # Clean + build + start (deploy hoàn toàn mới)
 #   ./start-local.sh logs       # Xem logs
 #   ./start-local.sh status     # Xem status
 # ============================================================
@@ -71,9 +73,56 @@ EOF
     fi
 }
 
+detect_old_install(){
+    local found=false
+    if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qE '^(soc-frontend|soc-backend|soc-ai-engine|ai-engine)$'; then
+        found=true
+    fi
+    if docker images --format '{{.Repository}}' 2>/dev/null | grep -qE '(soc-|c2ne)'; then
+        found=true
+    fi
+    if docker volume ls --format '{{.Name}}' 2>/dev/null | grep -qE '(soc-|c2ne|backend-data|ai-artifacts|ai-database|ai-logs)'; then
+        found=true
+    fi
+    $found && return 0 || return 1
+}
+
+clean_old(){
+    info "Dừng & xoá containers cũ..."
+    $DC down --remove-orphans -v 2>/dev/null || true
+    docker stop soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
+    docker rm   soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
+
+    info "Xoá images cũ (soc-*, c2ne*)..."
+    docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' 2>/dev/null \
+        | grep -E '(soc-|c2ne)' | awk '{print $2}' \
+        | xargs -r docker rmi -f 2>/dev/null || true
+
+    info "Xoá volumes cũ..."
+    docker volume ls --format '{{.Name}}' 2>/dev/null \
+        | grep -E '(soc-|c2ne|backend-data|ai-artifacts|ai-database|ai-logs)' \
+        | xargs -r docker volume rm 2>/dev/null || true
+
+    info "Xoá networks cũ..."
+    docker network ls --format '{{.Name}}' 2>/dev/null \
+        | grep -E '(soc-|c2ne)' \
+        | xargs -r docker network rm 2>/dev/null || true
+
+    ok "Đã dọn sạch cài đặt cũ"
+}
+
 case "${1:-up}" in
     up|start)
         ensure_env
+        if detect_old_install; then
+            warn "Phát hiện cài đặt cũ (containers/images/volumes)"
+            read -p "Xoá sạch trước khi deploy mới? (y/N): " ans
+            if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
+                clean_old
+            else
+                info "Giữ nguyên — chỉ rebuild & restart"
+            fi
+        fi
         info "Build & start containers..."
         $DC up -d --build
         sleep 6
@@ -83,6 +132,25 @@ case "${1:-up}" in
         ok "Dashboard: http://${ip}:8080"
         ok "Backend:   http://${ip}:3001/api/health"
         ok "AI Engine: http://${ip}:8000/health"
+        ;;
+    fresh)
+        ensure_env
+        warn "FRESH DEPLOY: sẽ xoá toàn bộ containers/images/volumes cũ!"
+        read -p "Xác nhận? (y/N): " ans
+        [[ "$ans" != "y" && "$ans" != "Y" ]] && { info "Đã huỷ"; exit 0; }
+        clean_old
+        info "Build & start fresh..."
+        $DC up -d --build
+        sleep 6
+        $DC ps
+        ip=$(detect_ip)
+        ok "Fresh deploy hoàn tất → http://${ip}:8080"
+        ;;
+    clean)
+        warn "Sẽ xoá toàn bộ containers/images/volumes của SOC Dashboard!"
+        read -p "Xác nhận? (y/N): " ans
+        [[ "$ans" != "y" && "$ans" != "Y" ]] && { info "Đã huỷ"; exit 0; }
+        clean_old
         ;;
     rebuild)
         ensure_env
@@ -110,7 +178,16 @@ case "${1:-up}" in
         $DC restart
         ;;
     *)
-        echo "Usage: $0 [up|rebuild|stop|logs|status|restart]"
+        echo "Usage: $0 [up|fresh|clean|rebuild|stop|logs|status|restart]"
+        echo ""
+        echo "  up       Build + start (hỏi xoá cài đặt cũ nếu có)"
+        echo "  fresh    Xoá sạch + deploy mới hoàn toàn"
+        echo "  clean    Chỉ xoá containers/images/volumes cũ"
+        echo "  rebuild  Rebuild không cache"
+        echo "  stop     Dừng containers"
+        echo "  logs     Xem logs realtime"
+        echo "  status   Kiểm tra health các services"
+        echo "  restart  Restart containers"
         exit 1
         ;;
 esac
