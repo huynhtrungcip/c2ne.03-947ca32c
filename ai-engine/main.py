@@ -121,12 +121,27 @@ async def health_check():
 
 @app.get("/system/resources")
 async def system_resources():
-    """Get host system resource usage (CPU, RAM, Disk) for dashboard gauges"""
+    """Get HOST system resource usage (CPU, RAM, Disk) for dashboard gauges.
+
+    When running inside Docker, /proc and /sys are mounted from the host at
+    /host/proc and /host/sys (see docker-compose.yml). psutil respects the
+    PROCFS_PATH env var so we point it at the host's /proc to read REAL
+    host-level metrics instead of the container's cgroup-limited view.
+    """
     try:
+        import os
         import psutil
+
+        host_proc = os.environ.get("HOST_PROC")
+        if host_proc and os.path.isdir(host_proc):
+            psutil.PROCFS_PATH = host_proc
+
         cpu = psutil.cpu_percent(interval=0.3)
         mem = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
+
+        disk_path = "/host/root" if os.path.isdir("/host/root") else "/"
+        disk = psutil.disk_usage(disk_path)
+
         return {
             "cpu": {"percent": round(cpu, 1), "cores": psutil.cpu_count()},
             "memory": {
@@ -139,6 +154,7 @@ async def system_resources():
                 "used_gb": round(disk.used / 1024**3, 2),
                 "total_gb": round(disk.total / 1024**3, 2),
             },
+            "source": "host" if (host_proc and os.path.isdir(host_proc)) else "container",
             "timestamp": datetime.now().isoformat(),
         }
     except Exception as e:
