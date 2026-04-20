@@ -169,26 +169,20 @@ export const useSOCData = (
         }
       }
 
-      // Reload Mock events (if enabled)
-      if (isMockDataEnabled()) {
-        const storedMock = localStorage.getItem('soc-mock-events');
-        if (storedMock) {
-          try {
-            const parsed = JSON.parse(storedMock);
-            const eventsWithDates = parsed.map((e: Record<string, unknown>) => ({
-              ...e,
-              timestamp: new Date(e.timestamp as string),
-              source: 'mock' as const,
-            }));
-            setMockEventsState(eventsWithDates);
-          } catch (err) {
-            console.error('Failed to parse stored mock events:', err);
-          }
-        } else {
-          setMockEventsState([]);
+      // Reload Mock events from storage (regardless of enabled flag — preserve data when toggled off)
+      const storedMock = localStorage.getItem('soc-mock-events');
+      if (storedMock) {
+        try {
+          const parsed = JSON.parse(storedMock);
+          const eventsWithDates = parsed.map((e: Record<string, unknown>) => ({
+            ...e,
+            timestamp: new Date(e.timestamp as string),
+            source: 'mock' as const,
+          }));
+          setMockEventsState(eventsWithDates);
+        } catch (err) {
+          console.error('Failed to parse stored mock events:', err);
         }
-      } else {
-        setMockEventsState([]);
       }
       setLastUpdate(new Date());
     };
