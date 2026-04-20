@@ -324,9 +324,11 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         localStorage.setItem('soc-mock-events', JSON.stringify(serialized.slice(0, 500)));
       }
 
-      // Ensure mock data source is enabled so it actually shows up
+      // Mutually exclusive: enabling Mock disables NIDS (data is preserved)
       localStorage.setItem('soc-mock-data-enabled', 'true');
+      localStorage.setItem('soc-nids-data-enabled', 'false');
       setMockDataEnabled(true);
+      setNidsDataEnabled(false);
 
       // Notify dashboard to reload
       window.dispatchEvent(new CustomEvent('soc-data-updated'));
@@ -862,6 +864,11 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   const handleToggleMockData = (enabled: boolean) => {
     setMockDataEnabled(enabled);
     localStorage.setItem('soc-mock-data-enabled', enabled ? 'true' : 'false');
+    // Mutually exclusive: turning Mock ON forces NIDS OFF (data preserved, not deleted)
+    if (enabled) {
+      setNidsDataEnabled(false);
+      localStorage.setItem('soc-nids-data-enabled', 'false');
+    }
     // Dispatch event to update dashboard
     window.dispatchEvent(new CustomEvent('soc-data-updated'));
   };
@@ -896,6 +903,11 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               const newValue = !nidsDataEnabled;
               setNidsDataEnabled(newValue);
               localStorage.setItem('soc-nids-data-enabled', String(newValue));
+              // Mutually exclusive: turning NIDS ON forces Mock OFF (data preserved)
+              if (newValue) {
+                setMockDataEnabled(false);
+                localStorage.setItem('soc-mock-data-enabled', 'false');
+              }
               window.dispatchEvent(new CustomEvent('soc-data-updated'));
             }}
             className={`w-12 h-6 rounded-full transition-colors relative ${
