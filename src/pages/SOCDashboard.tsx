@@ -2141,7 +2141,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
 
         {/* Footer */}
         <div className={`mt-6 text-center text-[9px] ${isDarkMode ? 'text-[#27272a]' : 'text-[#d1d5db]'}`}>
-          SOC Dashboard v2.0 — Nhóm C1NE.03 — An ninh mạng K28 — Đại học Duy Tân
+          SOC Dashboard — C1NE.03 Team — Cybersecurity K28 — Duy Tan University
         </div>
       </div>
       
