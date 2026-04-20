@@ -2037,7 +2037,12 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
   return (
     <div className="min-h-screen font-['Inter',system-ui,sans-serif] transition-colors bg-background text-foreground">
       {/* Top Bar */}
-      <header className="h-10 flex items-center justify-between px-4 border-b bg-card border-border">
+      <header
+        className={`h-10 flex items-center justify-between px-4 border-b bg-card/90 backdrop-blur-md border-border sticky top-0 z-40 transition-transform ease-out ${
+          headerVisible ? 'translate-y-0' : '-translate-y-full'
+        }`}
+        style={{ transitionDuration: '250ms' }}
+      >
         <div className="flex items-center gap-6">
           <button 
             onClick={() => setActiveTab('overview')}
