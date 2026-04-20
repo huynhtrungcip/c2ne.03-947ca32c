@@ -391,17 +391,17 @@ class TelegramSendMessageRequest(BaseModel):
 async def configure_telegram(req: TelegramConfigRequest):
     """Configure Telegram bot"""
     configure_bot(req.bot_token, req.chat_id, req.confidence_threshold)
-    return {"success": True, "enabled": telegram_bot.enabled}
+    return {"success": True, "enabled": telegram_bot_module.telegram_bot.enabled}
 
 
 @app.get("/telegram/status")
 async def get_telegram_status():
     """Get Telegram bot configuration status"""
     return {
-        "enabled": telegram_bot.enabled,
-        "chat_id_configured": bool(telegram_bot.chat_id),
-        "token_configured": bool(telegram_bot.token),
-        "confidence_threshold": telegram_bot.confidence_threshold,
+        "enabled": telegram_bot_module.telegram_bot.enabled,
+        "chat_id_configured": bool(telegram_bot_module.telegram_bot.chat_id),
+        "token_configured": bool(telegram_bot_module.telegram_bot.token),
+        "confidence_threshold": telegram_bot_module.telegram_bot.confidence_threshold,
     }
 
 
@@ -416,7 +416,7 @@ async def telegram_webhook(update: dict):
     if response:
         chat_id = update.get("message", {}).get("chat", {}).get("id")
         if chat_id:
-            await telegram_bot.send_message(response, chat_id=str(chat_id))
+            await telegram_bot_module.telegram_bot.send_message(response, chat_id=str(chat_id))
     return {"ok": True}
 
 
@@ -426,7 +426,7 @@ async def send_telegram_alert(req: TelegramSendAlertRequest):
     Send an alert via Telegram.
     Called from frontend to proxy Telegram API (avoids CORS issues).
     """
-    if not telegram_bot.enabled:
+    if not telegram_bot_module.telegram_bot.enabled:
         return {"success": False, "error": "Telegram not configured"}
     
     try:
@@ -458,9 +458,9 @@ async def send_telegram_alert(req: TelegramSendAlertRequest):
 
 ⏰ Time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 """
-            success = await telegram_bot.send_message(message)
+            success = await telegram_bot_module.telegram_bot.send_message(message)
         else:
-            success = await telegram_bot.send_alert(
+            success = await telegram_bot_module.telegram_bot.send_alert(
                 event=event,
                 verdict=req.verdict,
                 confidence=req.confidence * 100,  # Convert to percentage
@@ -479,11 +479,11 @@ async def send_telegram_message(req: TelegramSendMessageRequest):
     Send a custom message via Telegram.
     Used for notifications like block IP, whitelist changes, etc.
     """
-    if not telegram_bot.enabled:
+    if not telegram_bot_module.telegram_bot.enabled:
         return {"success": False, "error": "Telegram not configured"}
     
     try:
-        success = await telegram_bot.send_message(
+        success = await telegram_bot_module.telegram_bot.send_message(
             text=req.message,
             chat_id=req.chat_id,
         )
