@@ -637,6 +637,30 @@ const SOCDashboard = () => {
   const [selectedEvent, setSelectedEvent] = useState<SOCEvent | null>(null);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollYRef = useRef(0);
+
+  // Auto-hide header: scroll down to hide, scroll up or move mouse near top to show
+  useEffect(() => {
+    const SCROLL_DELTA = 6;
+    const TOP_ZONE = 60;
+    const handleScroll = () => {
+      const y = window.scrollY;
+      const diff = y - lastScrollYRef.current;
+      if (y < 10) setHeaderVisible(true);
+      else if (Math.abs(diff) > SCROLL_DELTA) setHeaderVisible(diff < 0);
+      lastScrollYRef.current = y;
+    };
+    const handleMouseMove = (e: MouseEvent) => {
+      if (e.clientY < TOP_ZONE) setHeaderVisible(true);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
   const [blockedIPsCount, setBlockedIPsCount] = useState<number>(() => {
     try { return (JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]') as string[]).length; } catch { return 0; }
   });
@@ -2013,7 +2037,12 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
   return (
     <div className="min-h-screen font-['Inter',system-ui,sans-serif] transition-colors bg-background text-foreground">
       {/* Top Bar */}
-      <header className="h-10 flex items-center justify-between px-4 border-b bg-card border-border">
+      <header
+        className={`h-10 flex items-center justify-between px-4 border-b bg-card/90 backdrop-blur-md border-border sticky top-0 z-40 transition-transform ease-out ${
+          headerVisible ? 'translate-y-0' : '-translate-y-full'
+        }`}
+        style={{ transitionDuration: '250ms' }}
+      >
         <div className="flex items-center gap-6">
           <button 
             onClick={() => setActiveTab('overview')}
