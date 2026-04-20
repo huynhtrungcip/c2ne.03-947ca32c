@@ -299,15 +299,36 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     try {
       const { generateMockEvents } = await import('@/data/mockEvents');
       // Generate 1000 events spread across 1 day for realistic demo
-      const mockEvents = generateMockEvents(1000);
-      
-      const currentEvents = JSON.parse(localStorage.getItem('soc-events') || '[]');
-      const newEvents = [...mockEvents.map(e => ({
+      const generated = generateMockEvents(1000).map(e => ({
+        ...e,
+        source: 'mock' as const,
+      }));
+
+      // Merge with existing mock events (correct key used by useSOCData)
+      const existingRaw = localStorage.getItem('soc-mock-events');
+      let existing: unknown[] = [];
+      if (existingRaw) {
+        try { existing = JSON.parse(existingRaw); } catch { existing = []; }
+      }
+
+      const serialized = generated.map(e => ({
         ...e,
         timestamp: e.timestamp.toISOString(),
-      })), ...currentEvents];
-      localStorage.setItem('soc-events', JSON.stringify(newEvents));
-      
+      }));
+      const merged = [...serialized, ...existing].slice(0, 2000);
+
+      try {
+        localStorage.setItem('soc-mock-events', JSON.stringify(merged));
+      } catch {
+        // Quota fallback
+        localStorage.setItem('soc-mock-events', JSON.stringify(serialized.slice(0, 500)));
+      }
+
+      // Ensure mock data source is enabled so it actually shows up
+      localStorage.setItem('soc-mock-data-enabled', 'true');
+      setMockDataEnabled(true);
+
+      // Notify dashboard to reload
       window.dispatchEvent(new CustomEvent('soc-data-updated'));
     } catch (error) {
       console.error('Failed to add mock data:', error);
