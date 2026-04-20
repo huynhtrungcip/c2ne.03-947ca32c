@@ -144,7 +144,7 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
     },
   ]);
 
-  // Reload provider khi settings đóng
+  // Reload provider when settings close
   const refreshProvider = useCallback(() => {
     setActiveProvider(getActiveProvider() || (loadProviders()[0] ?? FALLBACK_PROVIDER));
   }, []);

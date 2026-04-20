@@ -605,7 +605,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             onClick={handleSaveApiUrl}
             className="px-4 h-9 text-[11px] font-medium bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors"
           >
-            Lưu
+            Save
           </button>
         </div>
         <p className={`mt-1.5 text-[9px] text-muted-foreground/70`}>
@@ -1415,7 +1415,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         'unblock_ip',
         () => executeUnblockIP(ip),
         ip,
-        'IP này sẽ được gỡ block khỏi pfSense Firewall'
+        'This IP will be unblocked from pfSense Firewall'
       );
     };
 
@@ -1430,7 +1430,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         'remove_blacklist',
         () => executeRemoveFromList(ip),
         ip,
-        'Chỉ xóa khỏi danh sách hiển thị, không ảnh hưởng đến firewall'
+        'Only removes from the displayed list — does not affect the firewall'
       );
     };
 
@@ -1443,16 +1443,16 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         {/* Explanation box */}
         <div className={`p-3 rounded-md border ${isDarkMode ? 'bg-background/40 border-border' : 'bg-[#fef3c7] border-[#fcd34d]'}`}>
           <div className={`text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-[hsl(var(--soc-warning))]' : 'text-[#92400e]'}`}>
-            Blocked IPs vs Blacklist - Sự khác biệt:
+            Blocked IPs vs Blacklist — Differences:
           </div>
           <div className={`text-[10px] space-y-1 ${isDarkMode ? 'text-muted-foreground' : 'text-[#78350f]'}`}>
-            <p><strong className={isDarkMode ? 'text-[hsl(var(--soc-alert))]' : 'text-[hsl(var(--soc-alert))]'}>Blocked IPs:</strong> IP đã bị chặn THỰC SỰ trên Firewall (pfSense). Các IP này không thể truy cập hệ thống.</p>
-            <p><strong className={isDarkMode ? 'text-[hsl(var(--soc-warning))]' : 'text-[#d97706]'}>Blacklist:</strong> Danh sách IP/Domain đánh dấu là độc hại để THAM KHẢO. Chưa bị block, dùng để cảnh báo khi xuất hiện.</p>
+            <p><strong className={isDarkMode ? 'text-[hsl(var(--soc-alert))]' : 'text-[hsl(var(--soc-alert))]'}>Blocked IPs:</strong> IPs ACTUALLY blocked on the Firewall (pfSense). These IPs cannot reach the system.</p>
+            <p><strong className={isDarkMode ? 'text-[hsl(var(--soc-warning))]' : 'text-[#d97706]'}>Blacklist:</strong> List of IPs/Domains marked as malicious for REFERENCE. Not blocked yet — used to raise alert priority.</p>
           </div>
         </div>
 
         <p className={`text-[11px] text-muted-foreground`}>
-          Các IP bên dưới đã bị chặn trên Firewall thông qua AI-SOC hoặc pfSense. Chúng không thể kết nối đến hệ thống của bạn.
+          The IPs below are blocked on the Firewall via AI-SOC or pfSense. They cannot connect to your system.
         </p>
 
         {/* Local Blocked IPs */}
@@ -1479,8 +1479,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           {blockedIPsList.length === 0 ? (
             <div className={`p-8 text-center text-muted-foreground/70`}>
               <Ban className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <div className="text-[11px]">Chưa có IP nào bị block</div>
-              <div className="text-[10px] mt-1">Các IP bị block sẽ hiển thị ở đây</div>
+              <div className="text-[11px]">No blocked IPs yet</div>
+              <div className="text-[10px] mt-1">Blocked IPs will appear here</div>
             </div>
           ) : (
             <div className="divide-y divide-[#27272a]">
@@ -1533,7 +1533,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               pfSense Integration
             </div>
             <p className={`text-[10px] text-muted-foreground`}>
-              Khi block IP thông qua dashboard, IP sẽ được gửi đến AI-Engine để thêm vào alias <code className="bg-muted px-1 rounded">AI_Blocked_IP</code> trên pfSense firewall.
+              When you block an IP from the dashboard, it is sent to AI-Engine to be added to the alias <code className="bg-muted px-1 rounded">AI_Blocked_IP</code> on the pfSense firewall.
             </p>
             <div className={`mt-3 text-[10px] font-mono text-muted-foreground/70`}>
               API Endpoint: POST {apiUrl.replace(':3001', ':8000').replace(':3002', ':8000')}/block
@@ -1557,7 +1557,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             Blacklist vs Blocked IPs:
           </div>
           <div className={`text-[10px] ${isDarkMode ? 'text-muted-foreground' : 'text-[#713f12]'}`}>
-            Blacklist là danh sách <strong>THAM KHẢO</strong> các IP/Domain độc hại đã biết. Khi traffic từ các địa chỉ này xuất hiện, hệ thống sẽ cảnh báo ưu tiên cao hơn. Để CHẶN hoàn toàn IP trên firewall, hãy sử dụng tính năng "Block IP" trong Event Inspector.
+            Blacklist is a <strong>REFERENCE</strong> list of known malicious IPs/Domains. When traffic from these addresses appears, the system raises alert priority. To fully BLOCK an IP on the firewall, use the "Block IP" feature in Event Inspector.
           </div>
         </div>
       )}
@@ -1566,10 +1566,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       {activeSection === 'whitelist' && (
         <div className={`p-3 rounded-md border ${isDarkMode ? 'bg-[#052e16] border-[#166534]' : 'bg-[#dcfce7] border-[#22c55e]'}`}>
           <div className={`text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-[#4ade80]' : 'text-[#166534]'}`}>
-            Lưu ý về Whitelist:
+            Save ý về Whitelist:
           </div>
           <div className={`text-[10px] ${isDarkMode ? 'text-[#86efac]' : 'text-[#14532d]'}`}>
-            Whitelist là danh sách IP/Domain được tin cậy. Traffic từ các địa chỉ này sẽ có mức cảnh báo thấp hơn. Các IP nội bộ, Gateway, DNS server nên được thêm vào đây.
+            Whitelist is a list of trusted IPs/Domains. Traffic from these addresses gets lower alert priority. Internal IPs, gateways, and DNS servers should be added here.
           </div>
         </div>
       )}
@@ -1706,7 +1706,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <div className="col-span-8 flex gap-1">
           {[
             { value: 'en', label: 'English' },
-            { value: 'vi', label: 'Tiếng Việt' },
+            
           ].map(({ value, label }) => (
             <button
               key={value}
