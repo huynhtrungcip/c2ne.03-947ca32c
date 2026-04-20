@@ -74,7 +74,7 @@ You receive:
 === TOOL ROUTING (CRITICAL) ===
 The snapshot is intentionally minimal to save tokens. You MUST call tools to fetch real data:
 
-- Question about a SPECIFIC IP (e.g. "what did 1.2.3.4 do?", "phân tích IP X") →
+- Question about a SPECIFIC IP (e.g. "what did 1.2.3.4 do?", "analyze IP X") →
   → ALWAYS call \`analyze_ip(ip, since_minutes)\` FIRST. NEVER guess from the snapshot.
 
 - Question about top attackers / ranking →
@@ -136,11 +136,11 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
   const [turns, setTurns] = useState<ChatTurn[]>([
     {
       role: 'assistant',
-      content: `Xin chào, tôi là **SOC AI Assistant** của hệ thống AI-SOC Dashboard, được phát triển bởi nhóm **C1NE.03 – K28 An ninh mạng, Đại học Duy Tân**.
+      content: `Hello, I am the **SOC AI Assistant** of the AI-SOC Dashboard, developed by the **C1NE.03 team — Cybersecurity K28, Duy Tan University**.
 
-- Tôi tập trung vào **phân tích sự kiện an ninh**, logs, alerts và traffic trong SOC.
-- Có thể **gọi tool thật**: \`query_events\`, \`get_top_sources\`, \`summarize_range\`, \`block_ip\` (cần xác nhận).
-- Hỏi bằng **tiếng Việt (có/không dấu) hoặc tiếng Anh**.`,
+- I focus on **security event analysis** — logs, alerts and traffic in the SOC.
+- Can **call real tools**: \`query_events\`, \`get_top_sources\`, \`summarize_range\`, \`block_ip\` (requires confirmation).
+- Ask in **English** for best results.`,
     },
   ]);
 
@@ -197,7 +197,7 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
     });
   }, [selectedEvent]);
 
-  // Block IP executor (used by tool) — đồng bộ với pfSense alias AI_Blocked_IP
+  // Block IP executor (used by tool) — synced with pfSense alias AI_Blocked_IP
   const performBlockIP = useCallback(
     async (ip: string, reason: string): Promise<{ ok: boolean; error?: string }> => {
       try {
@@ -405,7 +405,7 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
             ...prev,
             {
               role: 'assistant',
-              content: `**[Error]** ${e instanceof Error ? e.message : String(e)}\n\nKiểm tra:\n1. Provider đang active (${provider.label} · ${provider.model})\n2. API key hợp lệ\n3. CORS / network\n4. Bấm ⚙️ để đổi provider.`,
+              content: `**[Error]** ${e instanceof Error ? e.message : String(e)}\n\nCheck:\n1. Provider is active (${provider.label} · ${provider.model})\n2. API key is valid\n3. CORS / network\n4. Click ⚙️ to change provider.`,
             },
           ]);
         }
@@ -427,8 +427,8 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
   };
 
   const quickPrompts = [
-    { label: '🔥 Top threats 1h', text: 'Lấy top 10 IP tấn công trong 1h qua, tóm tắt và đề xuất hành động cho từng IP.' },
-    { label: '📊 Summary 1h', text: 'Tóm tắt tình hình SOC trong 1h qua: alerts, suspicious, top attack types, unique IPs.' },
+    { label: '🔥 Top threats 1h', text: 'Get top 10 attacking IPs in the last 1h, summarize and suggest actions for each.' },
+    { label: '📊 Summary 1h', text: 'Summarize the SOC status over the last 1h: alerts, suspicious events, top attack types, unique IPs.' },
     { label: '🔬 Profile top IP', text: 'Lấy top 1 IP attacker, sau đó dùng analyze_ip để dựng profile chi tiết: timeline, ports targeted, attack types, destinations. Đánh giá risk và đề xuất.' },
     { label: '🚫 Block đề xuất', text: 'Phân tích và đề xuất các IP nên block ngay. Với IP rõ ràng nhất, gọi block_ip (sẽ có xác nhận).' },
   ];

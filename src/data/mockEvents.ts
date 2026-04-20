@@ -1,6 +1,6 @@
 import { SOCEvent } from '@/types/soc';
 
-// Suricata signature patterns - CHỈ Suricata mới có ALERT
+// Suricata signature patterns - Only Suricata can produce ALERT
 const suricataSignatures = [
   // Critical - DDoS/DoS
   'ET ATTACK DDoS HTTP Flood Detected',
@@ -42,7 +42,7 @@ const benignSignatures = [
   'ICMP Ping Request',
 ];
 
-// Zeek connection states - Zeek KHÔNG có ALERT, chỉ log connections
+// Zeek connection states - Zeek has NO ALERT, only logs connections
 const zeekConnStates = ['SF', 'S0', 'S1', 'REJ', 'RSTO', 'RSTOS0', 'SH', 'SHR', 'OTH'];
 const zeekServices = ['http', 'https', 'ssh', 'dns', 'ftp', 'smtp', 'ssl', 'irc', '-'];
 
@@ -60,7 +60,7 @@ const generateIP = () => {
 };
 
 /**
- * Generate Community ID v1 từ 5-tuple
+ * Generate Community ID v1 from 5-tuple
  * Format: 1:<base64_hash>
  * Real community ID uses sha1 hash, here we simulate similar pattern
  */
@@ -86,16 +86,16 @@ const generateCommunityId = (srcIp: string, dstIp: string, srcPort: number, dstP
 
 /**
  * Determine verdict and source engine based on signature
- * - Suricata: Có thể có ALERT, SUSPICIOUS, FALSE_POSITIVE
- * - Zeek: KHÔNG có ALERT, chỉ có SUSPICIOUS hoặc BENIGN (vì Zeek chỉ log metadata)
+ * - Suricata: may produce ALERT, SUSPICIOUS, FALSE_POSITIVE
+ * - Zeek: NO ALERT, only SUSPICIOUS or BENIGN (Zeek only logs metadata)
  */
 const getEventProperties = (isZeek: boolean, signature: string) => {
   if (isZeek) {
-    // Zeek KHÔNG BAO GIỜ có verdict ALERT - chỉ log connections
+    // Zeek NEVER has ALERT verdict - only logs connections
     const connState = zeekConnStates[Math.floor(Math.random() * zeekConnStates.length)];
     const service = zeekServices[Math.floor(Math.random() * zeekServices.length)];
     
-    // Zeek chỉ có SUSPICIOUS hoặc BENIGN dựa trên connection state
+    // Zeek only has SUSPICIOUS or BENIGN based on connection state
     let verdict: SOCEvent['verdict'] = 'BENIGN';
     let confidence = 0.3 + Math.random() * 0.2;
     
@@ -112,7 +112,7 @@ const getEventProperties = (isZeek: boolean, signature: string) => {
     };
   }
   
-  // Suricata - có thể có ALERT
+  // Suricata - may have ALERT
   const sigLower = signature.toLowerCase();
   
   // Check if benign/FP signature
@@ -181,13 +181,13 @@ export const generateMockEvents = (count: number): SOCEvent[] => {
     const minutesAgo = Math.max(0, baseMinutesAgo + jitter);
     const timestamp = new Date(now.getTime() - minutesAgo * 60000);
     
-    // 70% Suricata, 30% Zeek (Suricata là nguồn chính cho ALERT)
+    // 70% Suricata, 30% Zeek (Suricata is the main ALERT source)
     const isZeek = Math.random() < 0.3;
     
     // Select signature
     let signature: string;
     if (isZeek) {
-      signature = ''; // Zeek không dùng signature
+      signature = ''; // Zeek does not use signatures
     } else {
       // Mix of attack types
       const sigRandom = Math.random();

@@ -1,6 +1,6 @@
 /**
- * Multi-provider OpenAI-compatible AI client với streaming + tool calling.
- * Hỗ trợ: MegaLLM, Grok (xAI), Gemini (OpenAI-compat), Ollama (local/VPS), Custom.
+ * Multi-provider OpenAI-compatible AI client with streaming + tool calling.
+ * Supports: MegaLLM, Grok (xAI), Gemini (OpenAI-compat), Ollama (local/VPS), Custom.
  */
 
 export type ProviderKind = 'megallm' | 'grok' | 'gemini' | 'ollama' | 'custom';

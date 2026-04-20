@@ -94,7 +94,7 @@ export const AISettingsModal = ({ open, onClose, onChange }: Props) => {
   const handleSave = () => {
     if (!editing) return;
     if (!editing.baseUrl || !editing.model) {
-      toast.error('Base URL và Model là bắt buộc');
+      toast.error('Base URL and Model are required');
       return;
     }
     const exists = providers.find((p) => p.id === editing.id);
@@ -102,7 +102,7 @@ export const AISettingsModal = ({ open, onClose, onChange }: Props) => {
     const nextActive = activeId || editing.id;
     persist(next, nextActive);
     setEditing(null);
-    toast.success(`Đã lưu provider "${editing.label}"`);
+    toast.success(`Saved provider "${editing.label}"`);
   };
 
   const handleDelete = (id: string) => {
@@ -136,7 +136,7 @@ export const AISettingsModal = ({ open, onClose, onChange }: Props) => {
             AI Provider Settings
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Cấu hình AI providers (MegaLLM, Grok, Gemini, Ollama local/VPS, Custom). API key lưu trong trình duyệt — chỉ dùng cho môi trường SOC nội bộ.
+            Configure AI providers (MegaLLM, Grok, Gemini, Ollama local/VPS, Custom). API keys are stored in the browser — for internal SOC use only.
           </DialogDescription>
         </DialogHeader>
 
@@ -151,7 +151,7 @@ export const AISettingsModal = ({ open, onClose, onChange }: Props) => {
             </div>
             {providers.length === 0 && (
               <div className="text-[11px] text-muted-foreground italic border border-dashed border-border rounded-md p-3 text-center">
-                Chưa có provider. Bấm <strong>Add</strong> để thêm.
+                No providers yet. Click <strong>Add</strong> to create one.
               </div>
             )}
             <div className="space-y-1.5">
@@ -203,7 +203,7 @@ export const AISettingsModal = ({ open, onClose, onChange }: Props) => {
             </h3>
             {!editing ? (
               <div className="text-[11px] text-muted-foreground italic border border-dashed border-border rounded-md p-4 text-center">
-                Chọn provider để sửa, hoặc <strong>Add</strong> để tạo mới.
+                Select a provider to edit, or click <strong>Add</strong> to create one.
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -240,7 +240,7 @@ export const AISettingsModal = ({ open, onClose, onChange }: Props) => {
                   />
                   {editing.kind === 'ollama' && (
                     <p className="text-[9px] text-muted-foreground mt-1">
-                      ⚠️ Ollama cần set <code className="bg-muted px-1 rounded">OLLAMA_ORIGINS=*</code> trên server để cho phép browser CORS.
+                      ⚠️ Ollama requires <code className="bg-muted px-1 rounded">OLLAMA_ORIGINS=*</code> on the server to allow browser CORS.
                     </p>
                   )}
                 </div>
@@ -295,7 +295,7 @@ export const AISettingsModal = ({ open, onClose, onChange }: Props) => {
                     onChange={(e) => setEditing({ ...editing, supportsTools: e.target.checked })}
                     className="accent-primary"
                   />
-                  Hỗ trợ tool calling (function calling)
+                  Supports tool calling (function calling)
                 </label>
 
                 {testResult && (
