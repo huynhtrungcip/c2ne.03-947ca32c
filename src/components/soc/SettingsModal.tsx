@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw, Database, RotateCcw, AlertTriangle, Send, Bell, MessageCircle, CheckCircle, Terminal, FileText, Activity } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
 import SystemHealthMonitor from '@/components/soc/SystemHealthMonitor';
 import { ConfirmDialog, useConfirmDialog, ConfirmActionType } from './ConfirmDialog';
 
@@ -44,7 +43,6 @@ const TIMEZONES = [
 ];
 
 const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: SettingsModalProps) => {
-  const { language, setLanguage, t } = useLanguage();
   const [activeSection, setActiveSection] = useState<'general' | 'telegram' | 'data' | 'sources' | 'nids_debug' | 'health' | 'blacklist' | 'whitelist' | 'blocked' | 'help'>('general');
   const [timezone, setTimezone] = useState(() => localStorage.getItem('soc-timezone') || 'Asia/Ho_Chi_Minh');
   const [connectedSources, setConnectedSources] = useState<ConnectedSource[]>([]);
@@ -523,15 +521,15 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   };
   
   const sections = [
-    { id: 'general', label: t('settings.general'), icon: Settings },
+    { id: 'general', label: 'General', icon: Settings },
     { id: 'health', label: 'System Health', icon: Activity },
     { id: 'telegram', label: 'Telegram Alerts', icon: Send },
     { id: 'data', label: 'Data Management', icon: Database },
     { id: 'sources', label: 'NIDS Sources', icon: Server },
     { id: 'nids_debug', label: 'NIDS Debug Logs', icon: Terminal },
     { id: 'blocked', label: 'Blocked IPs', icon: Ban },
-    { id: 'blacklist', label: t('settings.blacklist'), icon: Shield },
-    { id: 'whitelist', label: t('settings.whitelist'), icon: List },
+    { id: 'blacklist', label: 'Blacklist', icon: Shield },
+    { id: 'whitelist', label: 'Whitelist', icon: List },
     
   ];
 
@@ -1547,7 +1545,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   const renderListSection = () => (
     <div className="space-y-4">
       <div className={`text-sm font-semibold text-foreground`}>
-        {activeSection === 'blacklist' ? t('list.blacklistTitle') : t('list.whitelistTitle')}
+        {activeSection === 'blacklist' ? 'Blacklist' : 'Whitelist'}
       </div>
       
       {/* Blacklist specific explanation */}
@@ -1566,7 +1564,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       {activeSection === 'whitelist' && (
         <div className={`p-3 rounded-md border ${isDarkMode ? 'bg-[#052e16] border-[#166534]' : 'bg-[#dcfce7] border-[#22c55e]'}`}>
           <div className={`text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-[#4ade80]' : 'text-[#166534]'}`}>
-            Save ý về Whitelist:
+            About Whitelist:
           </div>
           <div className={`text-[10px] ${isDarkMode ? 'text-[#86efac]' : 'text-[#14532d]'}`}>
             Whitelist is a list of trusted IPs/Domains. Traffic from these addresses gets lower alert priority. Internal IPs, gateways, and DNS servers should be added here.
@@ -1575,7 +1573,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       )}
       
       <p className={`text-[11px] text-muted-foreground`}>
-        {activeSection === 'blacklist' ? t('list.blacklistDesc') : t('list.whitelistDesc')}
+        {activeSection === 'blacklist' ? 'IPs/Domains in this list will be blocked automatically' : 'IPs/Domains in this list will be trusted and alerts ignored'}
       </p>
       
       {/* Add new item form */}
@@ -1583,7 +1581,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <div className="grid grid-cols-12 gap-2">
           <input
             type="text"
-            placeholder={t('list.ipOrDomain')}
+            placeholder={'IP or Domain...'}
             value={newItem.value}
             onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
             className={`col-span-4 h-8 px-3 text-[11px] border rounded bg-background border-border text-foreground placeholder:text-muted-foreground/60`}
@@ -1602,7 +1600,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </select>
           <input
             type="text"
-            placeholder={t('list.note')}
+            placeholder={'Note...'}
             value={newItem.note}
             onChange={(e) => setNewItem({ ...newItem, note: e.target.value })}
             className={`col-span-4 h-8 px-3 text-[11px] border rounded bg-background border-border text-foreground placeholder:text-muted-foreground/60`}
@@ -1616,7 +1614,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             }`}
           >
             <Plus className="w-3.5 h-3.5" />
-            {t('list.add')}
+            {'Add'}
           </button>
         </div>
       </div>
@@ -1626,17 +1624,17 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <table className="w-full text-[11px]">
           <thead>
             <tr className={isDarkMode ? 'bg-background/60' : 'bg-muted'}>
-              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{t('list.value')}</th>
-              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{t('list.type')}</th>
-              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{t('list.note')}</th>
-              <th className={`text-right py-2 px-3 font-medium text-muted-foreground`}>{t('list.actions')}</th>
+              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{'Value'}</th>
+              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{'Type'}</th>
+              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{'Note...'}</th>
+              <th className={`text-right py-2 px-3 font-medium text-muted-foreground`}>{'Actions'}</th>
             </tr>
           </thead>
           <tbody>
             {currentList.length === 0 ? (
               <tr>
                 <td colSpan={4} className={`text-center py-6 text-muted-foreground/70`}>
-                  {t('list.empty')}
+                  {'List is empty'}
                 </td>
               </tr>
             ) : currentList.map((item) => (
@@ -1688,22 +1686,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       </div>
       
       <div className={`text-[10px] text-muted-foreground/70`}>
-        {t('list.total')}: {currentList.length} {t('list.items')}
+        {'Total'}: {currentList.length} {'items'}
       </div>
     </div>
   );
   
   const renderGeneralSection = () => (
     <div className="divide-y divide-border">
-      {/* Language */}
-      <div className="grid grid-cols-12 gap-4 py-4">
-        <div className="col-span-4">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-foreground/90">
-            {t('settings.language')}
-          </div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">Interface language</div>
-        </div>
-        <div className="col-span-8 flex gap-1">
+      <div className="col-span-8 flex gap-1">
           {[
             { value: 'en', label: 'English' },
             
@@ -1727,7 +1717,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       <div className="grid grid-cols-12 gap-4 py-4">
         <div className="col-span-4">
           <div className="text-[11px] font-medium uppercase tracking-wider text-foreground/90">
-            {t('settings.theme')}
+            {'Theme'}
           </div>
           <div className="text-[10px] text-muted-foreground mt-0.5">Color scheme</div>
         </div>
@@ -1755,9 +1745,9 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       <div className="grid grid-cols-12 gap-4 py-4">
         <div className="col-span-4">
           <div className="text-[11px] font-medium uppercase tracking-wider text-foreground/90">
-            {t('settings.timezone')}
+            {'Timezone'}
           </div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">{t('settings.timezoneHint')}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">{'Dashboard time will follow this timezone'}</div>
         </div>
         <div className="col-span-8">
           <select
@@ -1775,14 +1765,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       {/* System Info */}
       <div className="pt-5">
         <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2 font-mono">
-          {t('settings.sysInfo')}
+          {'System Information'}
         </div>
         <div className="border border-border rounded-md divide-y divide-border bg-background/40 overflow-hidden">
           {[
-            { label: t('settings.version'), value: '2.0.0' },
-            { label: t('settings.engine'), value: 'Hybrid NIDS' },
+            { label: 'Version', value: '2.0.0' },
+            { label: 'Engine', value: 'Hybrid NIDS' },
             { label: 'Mode', value: 'False Positive Reduction' },
-            { label: t('settings.timezone'), value: timezone },
+            { label: 'Timezone', value: timezone },
           ].map((row, i) => (
             <div key={i} className="flex items-center justify-between px-3.5 py-2.5 text-[11px]">
               <span className="text-muted-foreground">{row.label}</span>
@@ -1795,7 +1785,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       {/* Credits */}
       <div className="pt-8">
         <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-4 font-mono">
-          {t('help.devTeam')}
+          {'Development Team'}
         </div>
         <div className="border border-border rounded-md bg-background/40 px-5 py-5 text-[11px] space-y-2">
           <div className="text-foreground font-medium text-[13px]">C1NE.03 Team</div>
