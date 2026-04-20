@@ -31,7 +31,8 @@ from megallm_client import (
     MEGALLM_API_KEY,
 )
 from ingest import router as ingest_router
-from telegram_bot import telegram_bot, handle_telegram_update, configure_bot
+import telegram_bot as telegram_bot_module
+from telegram_bot import handle_telegram_update, configure_bot
 
 # Logging setup
 logging.basicConfig(
