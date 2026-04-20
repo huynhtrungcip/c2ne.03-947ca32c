@@ -5,7 +5,7 @@ import { ConfirmDialog, useConfirmDialog } from './ConfirmDialog';
 
 interface Props {
   apiUrl: string;
-  /** Tăng prop này từ ngoài (vd: sau khi block từ Inspector) để force refetch */
+  /** Increment this prop externally (e.g. after block from Inspector) to force refetch */
   refreshKey?: number;
 }
 
@@ -15,8 +15,8 @@ interface BlockedEntry {
 }
 
 /**
- * Top Blocked IPs panel — đồng bộ với pfSense alias `AI_Blocked_IP`.
- * Hiển thị danh sách IP đang bị block + nút Unblock gọi đúng API như SettingsModal cũ.
+ * Top Blocked IPs panel — synced with pfSense alias `AI_Blocked_IP`.
+ * Shows currently blocked IPs with an Unblock button using the same API as SettingsModal.
  */
 export const TopBlockedIPsPanel = ({ apiUrl, refreshKey = 0 }: Props) => {
   const [pfsenseIPs, setPfsenseIPs] = useState<string[]>([]);
@@ -100,9 +100,9 @@ export const TopBlockedIPsPanel = ({ apiUrl, refreshKey = 0 }: Props) => {
       setLocalIPs(updated);
       // Refresh from pfSense
       await fetchBlocked();
-      toast.success(`Đã unblock ${ip}`);
+      toast.success(`Unblocked ${ip}`);
     } catch (e) {
-      toast.error(`Unblock thất bại: ${e instanceof Error ? e.message : 'Unknown'}`);
+      toast.error(`Unblock failed: ${e instanceof Error ? e.message : 'Unknown'}`);
     } finally {
       setUnblockingIP(null);
     }
@@ -113,7 +113,7 @@ export const TopBlockedIPsPanel = ({ apiUrl, refreshKey = 0 }: Props) => {
       'unblock_ip',
       () => executeUnblock(ip),
       ip,
-      `IP ${ip} sẽ được gỡ khỏi alias AI_Blocked_IP trên pfSense`
+      `IP ${ip} will be removed from AI_Blocked_IP alias on pfSense`
     );
   };
 
@@ -150,7 +150,7 @@ export const TopBlockedIPsPanel = ({ apiUrl, refreshKey = 0 }: Props) => {
 
         {!apiUrl && (
           <div className="text-[10px] text-muted-foreground/50 italic flex items-center gap-1">
-            <AlertCircle className="h-3 w-3" /> Cấu hình API URL trong Settings
+            <AlertCircle className="h-3 w-3" /> Configure API URL in Settings
           </div>
         )}
 
@@ -163,7 +163,7 @@ export const TopBlockedIPsPanel = ({ apiUrl, refreshKey = 0 }: Props) => {
         <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
           {merged.length === 0 ? (
             <div className="text-[10px] text-muted-foreground/50 italic py-3 text-center">
-              {loading ? 'Đang tải...' : 'Chưa có IP nào bị block'}
+              {loading ? 'Loading...' : 'No blocked IPs yet'}
             </div>
           ) : (
             merged.slice(0, 8).map(({ ip, source }) => (

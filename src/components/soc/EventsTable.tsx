@@ -53,7 +53,7 @@ export const EventsTable = ({ events, onEventSelect, selectedEventId, isLive }: 
       <div className="soc-section-title">Security Event Stream</div>
       {isLive && (
         <p className="text-xs text-zinc-500 mb-2">
-          LIVE đang bật - bảng sẽ auto refresh. Để inspect & block IP, hãy tắt LIVE.
+          LIVE is on — table will auto refresh. To inspect & block IPs, turn off LIVE.
         </p>
       )}
       

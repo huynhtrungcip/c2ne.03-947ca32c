@@ -42,70 +42,70 @@ const ACTION_CONFIG: Record<ConfirmActionType, {
   block_ip: {
     action: 'firewall.block',
     title: 'Block source IP on pfSense',
-    description: 'Tất cả traffic từ/đến địa chỉ này sẽ bị chặn ngay lập tức.',
+    description: 'All traffic to/from this address will be blocked immediately.',
     confirmText: 'Confirm block',
     severity: 'critical',
   },
   unblock_ip: {
     action: 'firewall.unblock',
     title: 'Unblock source IP',
-    description: 'Traffic từ/đến địa chỉ này sẽ được khôi phục.',
+    description: 'Traffic to/from this address will be restored.',
     confirmText: 'Confirm unblock',
     severity: 'warning',
   },
   add_blacklist: {
     action: 'list.blacklist.add',
     title: 'Add to blacklist',
-    description: 'Đánh dấu địa chỉ này là độc hại trong hệ thống.',
+    description: 'Mark this address as malicious in the system.',
     confirmText: 'Add entry',
     severity: 'warning',
   },
   add_whitelist: {
     action: 'list.whitelist.add',
     title: 'Add to whitelist',
-    description: 'Bỏ qua mọi cảnh báo liên quan đến địa chỉ này.',
+    description: 'Ignore all alerts related to this address.',
     confirmText: 'Add entry',
     severity: 'info',
   },
   remove_blacklist: {
     action: 'list.blacklist.remove',
     title: 'Remove from blacklist',
-    description: 'Gỡ địa chỉ này khỏi danh sách đen.',
+    description: 'Remove this address from the blacklist.',
     confirmText: 'Remove entry',
     severity: 'warning',
   },
   remove_whitelist: {
     action: 'list.whitelist.remove',
     title: 'Remove from whitelist',
-    description: 'Địa chỉ này sẽ không còn được bỏ qua trong cảnh báo.',
+    description: 'This address will no longer be ignored in alerts.',
     confirmText: 'Remove entry',
     severity: 'warning',
   },
   enable_auto_block: {
     action: 'policy.auto_block.enable',
     title: 'Enable auto-block policy',
-    description: 'Hệ thống sẽ tự động block IP có confidence ≥ 0.8.',
+    description: 'The system will automatically block IPs with confidence ≥ 0.8.',
     confirmText: 'Enable policy',
     severity: 'warning',
   },
   disable_auto_block: {
     action: 'policy.auto_block.disable',
     title: 'Disable auto-block policy',
-    description: 'Auto-block sẽ ngừng. IP nguy hiểm phải block thủ công.',
+    description: 'Auto-block will stop. Dangerous IPs must be blocked manually.',
     confirmText: 'Disable policy',
     severity: 'info',
   },
   analyze_ip: {
     action: 'analyze.source',
     title: 'Run AI analysis on source',
-    description: 'Gửi toàn bộ flow của IP này tới AI Engine.',
+    description: 'Send all flows of this IP to the AI Engine.',
     confirmText: 'Run analysis',
     severity: 'info',
   },
   delete_data: {
     action: 'data.purge',
     title: 'Delete event data',
-    description: 'Có thể khôi phục trong vòng 2 phút sau khi xoá.',
+    description: 'Can be restored within 2 minutes after deletion.',
     confirmText: 'Delete data',
     severity: 'critical',
   },
@@ -223,7 +223,7 @@ export const ConfirmDialog = ({
                 impact
               </div>
               <div className="text-[12px] text-foreground/90 leading-relaxed">
-                Hành động không thể hoàn tác tự động. Vui lòng xác nhận trước khi tiếp tục.
+                This action cannot be undone automatically. Please confirm before proceeding.
               </div>
             </div>
           )}

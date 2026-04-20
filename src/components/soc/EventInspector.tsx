@@ -247,10 +247,10 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
             <div className="w-full p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-center">
               <div className="flex items-center justify-center gap-2 text-destructive">
                 <Ban className="w-4 h-4" />
-                <span className="text-xs font-semibold">IP {event.src_ip} đã bị BLOCK</span>
+                <span className="text-xs font-semibold">IP {event.src_ip} has been BLOCKED</span>
               </div>
               <p className="text-[10px] text-muted-foreground mt-1">
-                IP này đã được chặn trên pfSense Firewall
+                This IP is blocked on pfSense Firewall
               </p>
             </div>
           ) : (

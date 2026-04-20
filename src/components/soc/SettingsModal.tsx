@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw, Database, RotateCcw, AlertTriangle, Send, Bell, MessageCircle, CheckCircle, Terminal, FileText, Activity } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
 import SystemHealthMonitor from '@/components/soc/SystemHealthMonitor';
 import { ConfirmDialog, useConfirmDialog, ConfirmActionType } from './ConfirmDialog';
 
@@ -44,7 +43,6 @@ const TIMEZONES = [
 ];
 
 const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: SettingsModalProps) => {
-  const { language, setLanguage, t } = useLanguage();
   const [activeSection, setActiveSection] = useState<'general' | 'telegram' | 'data' | 'sources' | 'nids_debug' | 'health' | 'blacklist' | 'whitelist' | 'blocked' | 'help'>('general');
   const [timezone, setTimezone] = useState(() => localStorage.getItem('soc-timezone') || 'Asia/Ho_Chi_Minh');
   const [connectedSources, setConnectedSources] = useState<ConnectedSource[]>([]);
@@ -140,12 +138,12 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
 
   // Time ranges for data management
   const TIME_RANGES = [
-    { value: '5m', label: '5 phút', ms: 5 * 60 * 1000 },
-    { value: '15m', label: '15 phút', ms: 15 * 60 * 1000 },
-    { value: '30m', label: '30 phút', ms: 30 * 60 * 1000 },
-    { value: '1h', label: '1 giờ', ms: 60 * 60 * 1000 },
-    { value: '1d', label: '1 ngày', ms: 24 * 60 * 60 * 1000 },
-    { value: 'all', label: 'Tất cả', ms: Infinity },
+    { value: '5m', label: '5 minutes', ms: 5 * 60 * 1000 },
+    { value: '15m', label: '15 minutes', ms: 15 * 60 * 1000 },
+    { value: '30m', label: '30 minutes', ms: 30 * 60 * 1000 },
+    { value: '1h', label: '1 hour', ms: 60 * 60 * 1000 },
+    { value: '1d', label: '1 day', ms: 24 * 60 * 60 * 1000 },
+    { value: 'all', label: 'All', ms: Infinity },
   ];
   
   // Define all useCallback hooks BEFORE any conditional returns
@@ -361,7 +359,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   const handleTestTelegram = useCallback(async () => {
     if (!telegramConfig.botToken?.trim() || !telegramConfig.chatId?.trim()) {
       setTelegramTestStatus('error');
-      setTelegramTestMessage('Vui lòng nhập Bot Token và Chat ID');
+      setTelegramTestMessage('Please enter Bot Token and Chat ID');
       return;
     }
 
@@ -369,13 +367,13 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     const chatIdClean = telegramConfig.chatId.trim();
     if (!/^-?\d+$/.test(chatIdClean)) {
       setTelegramTestStatus('error');
-      setTelegramTestMessage('Chat ID phải là số nguyên (ví dụ: 123456 hoặc -1001234567890)');
+      setTelegramTestMessage('Chat ID must be an integer (e.g., 123456 or -1001234567890)');
       return;
     }
 
     if (!apiUrl) {
       setTelegramTestStatus('error');
-      setTelegramTestMessage('Vui lòng cấu hình AI Engine URL trong phần Telegram trước');
+      setTelegramTestMessage('Please configure the AI Engine URL in the Telegram section first');
       return;
     }
 
@@ -427,7 +425,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           src_ip: '192.168.1.100',
           dst_ip: '10.0.0.1',
           attack_type: 'Test Connection',
-          description: `✅ Kết nối Telegram thành công!\n📊 Confidence threshold: ${telegramConfig.confidenceThreshold}%\n⏰ ${new Date().toLocaleString('vi-VN')}`,
+          description: `✅ Telegram connected successfully!\n📊 Confidence threshold: ${telegramConfig.confidenceThreshold}%\n⏰ ${new Date().toLocaleString()}`,
         }),
       });
 
@@ -435,7 +433,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       
       if (response.ok && data.success) {
         setTelegramTestStatus('success');
-        setTelegramTestMessage('Gửi tin nhắn test thành công!');
+        setTelegramTestMessage('Test message sent successfully!');
       } else {
         setTelegramTestStatus('error');
         const errorMsg = extractErrorMessage(data) || `Send failed (${response.status})`;
@@ -445,7 +443,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       console.error('Telegram test error:', error);
       setTelegramTestStatus('error');
       const errMsg = error?.message || '';
-      setTelegramTestMessage(typeof errMsg === 'string' ? errMsg : 'Không thể kết nối đến AI Engine. Kiểm tra URL.');
+      setTelegramTestMessage(typeof errMsg === 'string' ? errMsg : 'Cannot connect to AI Engine. Check the URL.');
     }
 
     // Reset status after 5s
@@ -523,15 +521,15 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   };
   
   const sections = [
-    { id: 'general', label: t('settings.general'), icon: Settings },
+    { id: 'general', label: 'General', icon: Settings },
     { id: 'health', label: 'System Health', icon: Activity },
     { id: 'telegram', label: 'Telegram Alerts', icon: Send },
     { id: 'data', label: 'Data Management', icon: Database },
     { id: 'sources', label: 'NIDS Sources', icon: Server },
     { id: 'nids_debug', label: 'NIDS Debug Logs', icon: Terminal },
     { id: 'blocked', label: 'Blocked IPs', icon: Ban },
-    { id: 'blacklist', label: t('settings.blacklist'), icon: Shield },
-    { id: 'whitelist', label: t('settings.whitelist'), icon: List },
+    { id: 'blacklist', label: 'Blacklist', icon: Shield },
+    { id: 'whitelist', label: 'Whitelist', icon: List },
     
   ];
 
@@ -542,7 +540,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         System Health
       </div>
       <p className={`text-[11px] text-muted-foreground`}>
-        Kiểm tra định kỳ tình trạng NIDS shipper và pfSense/Telegram để tránh nhấp nháy trạng thái trên giao diện.
+        Periodically checks NIDS shipper and pfSense/Telegram health to avoid status flickering in the UI.
       </p>
       <SystemHealthMonitor isDarkMode={isDarkMode} apiUrl={apiUrl} />
     </div>
@@ -555,7 +553,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         Telegram Alert Configuration
       </div>
       <p className={`text-[11px] text-muted-foreground`}>
-        Cấu hình gửi cảnh báo qua Telegram Bot. Chỉ gửi các sự kiện có mức độ tin cậy cao để tránh spam.
+        Configure Telegram Bot alerts. Only high-confidence events are sent to avoid spam.
       </p>
 
       {/* Enable Toggle */}
@@ -570,7 +568,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                 Telegram Alerts
               </div>
               <div className={`text-[10px] text-muted-foreground`}>
-                {telegramConfig.enabled ? 'Đang bật - Gửi cảnh báo tự động' : 'Đang tắt'}
+                {telegramConfig.enabled ? 'Enabled - Sending alerts automatically' : 'Disabled'}
               </div>
             </div>
           </div>
@@ -605,17 +603,17 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             onClick={handleSaveApiUrl}
             className="px-4 h-9 text-[11px] font-medium bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors"
           >
-            Lưu
+            Save
           </button>
         </div>
         <p className={`mt-1.5 text-[9px] text-muted-foreground/70`}>
-          URL của AI Engine (port 8000). Ví dụ: http://10.10.10.20:8000. Bắt buộc để gửi Telegram và block IP.
+          AI Engine URL (port 8000). Example: http://10.10.10.20:8000. Required to send Telegram alerts and block IPs.
         </p>
         {apiUrl && (
           <div className="mt-2 flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-[hsl(var(--soc-success))] animate-pulse" />
             <span className={`text-[9px] text-[hsl(var(--soc-success))]`}>
-              Đã kết nối: {apiUrl}
+              Connected: {apiUrl}
             </span>
           </div>
         )}
@@ -642,7 +640,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               className={`w-full h-9 px-3 text-[11px] font-mono border rounded-md bg-background border-border text-foreground placeholder:text-muted-foreground/60`}
             />
             <p className={`mt-1 text-[9px] text-muted-foreground/70`}>
-              Tạo bot tại @BotFather, copy token có dạng: 123456789:ABCxyz...
+              Create a bot at @BotFather, copy the token in the form: 123456789:ABCxyz...
             </p>
           </div>
 
@@ -653,13 +651,13 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             </label>
             <input
               type="text"
-              placeholder="-1001234567890 hoặc 123456789"
+              placeholder="-1001234567890 or 123456789"
               value={telegramConfig.chatId}
               onChange={(e) => setTelegramConfig({ ...telegramConfig, chatId: e.target.value })}
               className={`w-full h-9 px-3 text-[11px] font-mono border rounded-md bg-background border-border text-foreground placeholder:text-muted-foreground/60`}
             />
             <p className={`mt-1 text-[9px] text-muted-foreground/70`}>
-              Chat ID của nhóm hoặc cá nhân. Dùng @userinfobot để lấy ID
+              Group or personal Chat ID. Use @userinfobot to get the ID
             </p>
           </div>
 
@@ -678,7 +676,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             {telegramTestStatus === 'testing' ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                Đang gửi test...
+                Sending test...
               </>
             ) : telegramTestStatus === 'success' ? (
               <>
@@ -693,7 +691,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             ) : (
               <>
                 <Send className="w-4 h-4" />
-                Test Kết Nối
+                Test Connection
               </>
             )}
           </button>
@@ -732,14 +730,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             }}
           />
           <p className={`mt-2 text-[9px] text-muted-foreground/70`}>
-            Chỉ gửi cảnh báo khi AI confidence ≥ {telegramConfig.confidenceThreshold}%. Khuyến nghị: 80-90% để tránh spam.
+            Only send alerts when AI confidence ≥ {telegramConfig.confidenceThreshold}%. Recommended: 80-90% to avoid spam.
           </p>
         </div>
 
         {/* Alert Types */}
         <div className="mb-4">
           <label className={`block text-[11px] font-medium mb-2 text-muted-foreground`}>
-            Loại cảnh báo gửi
+            Alert types to send
           </label>
           <div className="grid grid-cols-2 gap-2">
             {['ALERT', 'SUSPICIOUS'].map((type) => (
@@ -768,13 +766,13 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         {/* Action Notifications */}
         <div>
           <label className={`block text-[11px] font-medium mb-2 text-muted-foreground`}>
-            Thông báo hành động quan trọng
+            Critical action notifications
           </label>
           <div className="space-y-2">
             {[
-              { key: 'notifyBlockIP', label: 'Block IP', desc: 'Khi có IP bị block trên firewall' },
-              { key: 'notifyWhitelist', label: 'Whitelist', desc: 'Thêm/xóa IP khỏi whitelist' },
-              { key: 'notifyBlacklist', label: 'Blacklist', desc: 'Thêm/xóa IP khỏi blacklist' },
+              { key: 'notifyBlockIP', label: 'Block IP', desc: 'When an IP is blocked on the firewall' },
+              { key: 'notifyWhitelist', label: 'Whitelist', desc: 'Add/remove IP from whitelist' },
+              { key: 'notifyBlacklist', label: 'Blacklist', desc: 'Add/remove IP from blacklist' },
             ].map(({ key, label, desc }) => (
               <div 
                 key={key}
@@ -808,23 +806,23 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <div className={`space-y-2 text-[10px] font-mono text-muted-foreground`}>
           <div className="flex items-start gap-2">
             <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">/status</code>
-            <span>- Xem trạng thái hệ thống (CPU, RAM, Disk, Network)</span>
+            <span>- View system status (CPU, RAM, Disk, Network)</span>
           </div>
           <div className="flex items-start gap-2">
             <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">/logs [5m|30m|1h|12h|1d]</code>
-            <span>- Xem log theo thời gian</span>
+            <span>- View logs by time range</span>
           </div>
           <div className="flex items-start gap-2">
             <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">/blocked</code>
-            <span>- Danh sách IP đang bị block</span>
+            <span>- List of currently blocked IPs</span>
           </div>
           <div className="flex items-start gap-2">
             <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">/stats</code>
-            <span>- Thống kê sự kiện hôm nay</span>
+            <span>- Today's event statistics</span>
           </div>
         </div>
         <p className={`mt-3 text-[9px] text-muted-foreground/70`}>
-          Bot cần được chạy trên server backend (AI-Engine) để xử lý commands.
+          The bot must run on the backend server (AI-Engine) to handle commands.
         </p>
       </div>
     </div>
@@ -836,7 +834,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       'delete_data',
       () => executeDeleteData(timeRange),
       range?.label || timeRange,
-      'Dữ liệu có thể khôi phục trong vòng 2 phút'
+      'Data can be restored within 2 minutes'
     );
   };
 
@@ -853,7 +851,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         Data Management
       </div>
       <p className={`text-[11px] text-muted-foreground`}>
-        Quản lý dữ liệu sự kiện trong dashboard. Bật/tắt mock data, xóa dữ liệu cũ hoặc thêm dữ liệu demo.
+        Manage dashboard event data. Toggle mock data, delete old data, or add demo data.
       </p>
 
       {/* NIDS Data Toggle */}
@@ -868,7 +866,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                 NIDS Data (Real)
               </div>
               <div className={`text-[10px] text-muted-foreground`}>
-                {nidsDataEnabled ? 'Đang bật - Nhận dữ liệu từ Suricata/Zeek' : 'Đang tắt - Không hiển thị dữ liệu NIDS'}
+                {nidsDataEnabled ? 'Enabled - Receiving data from Suricata/Zeek' : 'Disabled - Not showing NIDS data'}
               </div>
             </div>
           </div>
@@ -889,7 +887,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </button>
         </div>
         <p className={`mt-3 text-[9px] text-muted-foreground/70`}>
-          Dữ liệu thật từ NIDS (Suricata/Zeek) qua WebSocket. Mặc định: BẬT.
+          Real data from NIDS (Suricata/Zeek) via WebSocket. Default: ON.
         </p>
       </div>
 
@@ -905,7 +903,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                 Mock Data (Demo)
               </div>
               <div className={`text-[10px] text-muted-foreground`}>
-                {mockDataEnabled ? 'Đang bật - Tự động tạo dữ liệu giả lập' : 'Đang tắt - Chỉ hiển thị dữ liệu thật'}
+                {mockDataEnabled ? 'Enabled - Auto-generating mock data' : 'Disabled - Showing real data only'}
               </div>
             </div>
           </div>
@@ -921,7 +919,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </button>
         </div>
         <p className={`mt-3 text-[9px] text-muted-foreground/70`}>
-          Khi tắt, dashboard sẽ chỉ hiển thị dữ liệu thật từ NIDS. Mặc định: TẮT.
+          When off, the dashboard only shows real NIDS data. Default: OFF.
         </p>
       </div>
 
@@ -933,10 +931,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               <AlertTriangle className="w-5 h-5 text-[hsl(var(--soc-warning))]" />
               <div>
                 <div className={`text-[12px] font-semibold ${isDarkMode ? 'text-[hsl(var(--soc-warning))]' : 'text-[#92400e]'}`}>
-                  Dữ liệu đã xóa - Có thể khôi phục
+                  Data deleted — can be restored
                 </div>
                 <div className={`text-[10px] ${isDarkMode ? 'text-[#fcd34d]' : 'text-[#a16207]'}`}>
-                  {pendingDelete.deletedData?.length || 0} sự kiện đã bị xóa. Còn {pendingDelete.countdown}s để khôi phục.
+                  {pendingDelete.deletedData?.length || 0} events deleted. {pendingDelete.countdown}s left to restore.
                 </div>
               </div>
             </div>
@@ -945,7 +943,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               className="flex items-center gap-2 px-4 py-2 rounded-md bg-[hsl(var(--soc-success))] text-background text-[11px] font-semibold hover:bg-[hsl(var(--soc-success))]/85 transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
-              Khôi phục ({pendingDelete.countdown}s)
+              Restore ({pendingDelete.countdown}s)
             </button>
           </div>
           <div className="mt-3 h-1 bg-[#fcd34d]/30 rounded-full overflow-hidden">
@@ -961,10 +959,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       <div className={`p-4 rounded-md border bg-background/40 border-border`}>
         <div className={`text-[11px] font-semibold mb-3 flex items-center gap-2 text-foreground`}>
           <Trash2 className="w-4 h-4 text-[hsl(var(--soc-alert))]" />
-          Xóa Dữ Liệu Sự Kiện
+          Delete Event Data
         </div>
         <p className={`text-[10px] mb-4 text-muted-foreground`}>
-          Xóa các sự kiện trong khoảng thời gian. Dữ liệu có thể khôi phục trong vòng 2 phút sau khi xóa.
+          Delete events within a time range. Data can be restored within 2 minutes after deletion.
         </p>
         
         <div className="grid grid-cols-3 gap-2">
@@ -983,7 +981,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
                 {range.label}
               </div>
               <div className={`text-[9px] mt-0.5 text-muted-foreground/70`}>
-                {range.value === 'all' ? 'Xóa toàn bộ' : `Trong ${range.label} qua`}
+                {range.value === 'all' ? 'Delete all' : `Last ${range.label}`}
               </div>
             </button>
           ))}
@@ -994,10 +992,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       <div className={`p-4 rounded-md border bg-background/40 border-border`}>
         <div className={`text-[11px] font-semibold mb-3 flex items-center gap-2 text-foreground`}>
           <Plus className="w-4 h-4 text-foreground" />
-          Thêm Dữ Liệu Demo
+          Add Demo Data
         </div>
         <p className={`text-[10px] mb-4 text-muted-foreground`}>
-          Thêm 1000 sự kiện giả lập (70% Suricata, 30% Zeek) phân bổ trong 24h để demo dashboard. Lưu ý: Zeek không có ALERT, chỉ Suricata mới có.
+          Add 1000 mock events (70% Suricata, 30% Zeek) spread over 24h to demo the dashboard. Note: Zeek does not have ALERT, only Suricata does.
         </p>
         
         <button
@@ -1012,12 +1010,12 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           {addingMockData ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              Đang thêm...
+              Adding...
             </>
           ) : (
             <>
               <Plus className="w-4 h-4" />
-              Thêm 1000 Sự Kiện Demo
+              Add 1000 Demo Events
             </>
           )}
         </button>
@@ -1026,8 +1024,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       {/* Warning */}
       <div className={`p-3 rounded-md border ${isDarkMode ? 'bg-[#450a0a] border-[hsl(var(--soc-alert))]/40/30' : 'bg-[#fef2f2] border-[#fecaca]'}`}>
         <div className={`text-[10px] ${isDarkMode ? 'text-[#fca5a5]' : 'text-[#b91c1c]'}`}>
-          <strong>Lưu ý:</strong> Sau 2 phút, dữ liệu sẽ bị xóa vĩnh viễn và không thể khôi phục. 
-          Hãy đảm bảo bạn đã sao lưu dữ liệu quan trọng trước khi xóa.
+          <strong>Note:</strong> After 2 minutes, the data will be permanently deleted and cannot be restored. 
+          Make sure to back up important data before deleting.
         </div>
       </div>
     </div>
@@ -1196,7 +1194,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           NIDS Ingest Debug Logs
         </div>
         <p className={`text-[11px] text-muted-foreground`}>
-          Xem logs từ ai_log_shipper để debug khi không nhận được events. Logs được lưu trong bộ nhớ AI Engine (tối đa 500 entries).
+          View ai_log_shipper logs to debug when events are not received. Logs are stored in AI Engine memory (up to 500 entries).
         </p>
 
         {/* Controls */}
@@ -1287,7 +1285,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           {!apiUrl ? (
             <div className={`p-8 text-center text-muted-foreground/70`}>
               <Terminal className="w-10 h-10 mx-auto mb-3 opacity-50" />
-              <div className="text-[12px]">Cấu hình Backend API URL trong mục General để xem logs</div>
+              <div className="text-[12px]">Configure the Backend API URL in General to view logs</div>
             </div>
           ) : nidsLogsLoading && nidsLogs.length === 0 ? (
             <div className={`p-8 text-center text-muted-foreground/70`}>
@@ -1297,8 +1295,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           ) : nidsLogs.length === 0 ? (
             <div className={`p-8 text-center text-muted-foreground/70`}>
               <FileText className="w-10 h-10 mx-auto mb-3 opacity-50" />
-              <div className="text-[12px] mb-1">Chưa có logs</div>
-              <div className="text-[10px]">Logs sẽ xuất hiện khi ai_log_shipper gửi dữ liệu đến /ingest endpoint</div>
+              <div className="text-[12px] mb-1">No logs yet</div>
+              <div className="text-[10px]">Logs will appear once ai_log_shipper sends data to the /ingest endpoint</div>
             </div>
           ) : (
             <div className="max-h-[400px] overflow-y-auto">
@@ -1357,10 +1355,10 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             Troubleshooting
           </div>
           <ul className={`text-[10px] space-y-1 text-muted-foreground`}>
-            <li>• Nếu không thấy logs: Kiểm tra ai_log_shipper.py đang chạy trên NIDS (172.16.16.20)</li>
-            <li>• Kiểm tra AI_SERVER_URL trong shipper trỏ đúng: http://10.10.10.20:8000/ingest</li>
-            <li>• Xác nhận firewall mở port 8000 trên máy AI</li>
-            <li>• Chạy: <code className={`px-1 py-0.5 rounded bg-muted`}>curl http://10.10.10.20:8000/ingest/status</code></li>
+            <li>• If no logs: Verify ai_log_shipper.py is running on the NIDS (172.16.16.20)</li>
+            <li>• Check AI_SERVER_URL in the shipper points to: http://10.10.10.20:8000/ingest</li>
+            <li>• Confirm firewall allows port 8000 on the AI host</li>
+            <li>• Run: <code className={`px-1 py-0.5 rounded bg-muted`}>curl http://10.10.10.20:8000/ingest/status</code></li>
           </ul>
         </div>
       </div>
@@ -1415,7 +1413,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         'unblock_ip',
         () => executeUnblockIP(ip),
         ip,
-        'IP này sẽ được gỡ block khỏi pfSense Firewall'
+        'This IP will be unblocked from pfSense Firewall'
       );
     };
 
@@ -1430,7 +1428,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         'remove_blacklist',
         () => executeRemoveFromList(ip),
         ip,
-        'Chỉ xóa khỏi danh sách hiển thị, không ảnh hưởng đến firewall'
+        'Only removes from the displayed list — does not affect the firewall'
       );
     };
 
@@ -1443,16 +1441,16 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         {/* Explanation box */}
         <div className={`p-3 rounded-md border ${isDarkMode ? 'bg-background/40 border-border' : 'bg-[#fef3c7] border-[#fcd34d]'}`}>
           <div className={`text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-[hsl(var(--soc-warning))]' : 'text-[#92400e]'}`}>
-            Blocked IPs vs Blacklist - Sự khác biệt:
+            Blocked IPs vs Blacklist — Differences:
           </div>
           <div className={`text-[10px] space-y-1 ${isDarkMode ? 'text-muted-foreground' : 'text-[#78350f]'}`}>
-            <p><strong className={isDarkMode ? 'text-[hsl(var(--soc-alert))]' : 'text-[hsl(var(--soc-alert))]'}>Blocked IPs:</strong> IP đã bị chặn THỰC SỰ trên Firewall (pfSense). Các IP này không thể truy cập hệ thống.</p>
-            <p><strong className={isDarkMode ? 'text-[hsl(var(--soc-warning))]' : 'text-[#d97706]'}>Blacklist:</strong> Danh sách IP/Domain đánh dấu là độc hại để THAM KHẢO. Chưa bị block, dùng để cảnh báo khi xuất hiện.</p>
+            <p><strong className={isDarkMode ? 'text-[hsl(var(--soc-alert))]' : 'text-[hsl(var(--soc-alert))]'}>Blocked IPs:</strong> IPs ACTUALLY blocked on the Firewall (pfSense). These IPs cannot reach the system.</p>
+            <p><strong className={isDarkMode ? 'text-[hsl(var(--soc-warning))]' : 'text-[#d97706]'}>Blacklist:</strong> List of IPs/Domains marked as malicious for REFERENCE. Not blocked yet — used to raise alert priority.</p>
           </div>
         </div>
 
         <p className={`text-[11px] text-muted-foreground`}>
-          Các IP bên dưới đã bị chặn trên Firewall thông qua AI-SOC hoặc pfSense. Chúng không thể kết nối đến hệ thống của bạn.
+          The IPs below are blocked on the Firewall via AI-SOC or pfSense. They cannot connect to your system.
         </p>
 
         {/* Local Blocked IPs */}
@@ -1479,8 +1477,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           {blockedIPsList.length === 0 ? (
             <div className={`p-8 text-center text-muted-foreground/70`}>
               <Ban className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <div className="text-[11px]">Chưa có IP nào bị block</div>
-              <div className="text-[10px] mt-1">Các IP bị block sẽ hiển thị ở đây</div>
+              <div className="text-[11px]">No blocked IPs yet</div>
+              <div className="text-[10px] mt-1">Blocked IPs will appear here</div>
             </div>
           ) : (
             <div className="divide-y divide-[#27272a]">
@@ -1533,7 +1531,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
               pfSense Integration
             </div>
             <p className={`text-[10px] text-muted-foreground`}>
-              Khi block IP thông qua dashboard, IP sẽ được gửi đến AI-Engine để thêm vào alias <code className="bg-muted px-1 rounded">AI_Blocked_IP</code> trên pfSense firewall.
+              When you block an IP from the dashboard, it is sent to AI-Engine to be added to the alias <code className="bg-muted px-1 rounded">AI_Blocked_IP</code> on the pfSense firewall.
             </p>
             <div className={`mt-3 text-[10px] font-mono text-muted-foreground/70`}>
               API Endpoint: POST {apiUrl.replace(':3001', ':8000').replace(':3002', ':8000')}/block
@@ -1547,7 +1545,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   const renderListSection = () => (
     <div className="space-y-4">
       <div className={`text-sm font-semibold text-foreground`}>
-        {activeSection === 'blacklist' ? t('list.blacklistTitle') : t('list.whitelistTitle')}
+        {activeSection === 'blacklist' ? 'Blacklist' : 'Whitelist'}
       </div>
       
       {/* Blacklist specific explanation */}
@@ -1557,7 +1555,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             Blacklist vs Blocked IPs:
           </div>
           <div className={`text-[10px] ${isDarkMode ? 'text-muted-foreground' : 'text-[#713f12]'}`}>
-            Blacklist là danh sách <strong>THAM KHẢO</strong> các IP/Domain độc hại đã biết. Khi traffic từ các địa chỉ này xuất hiện, hệ thống sẽ cảnh báo ưu tiên cao hơn. Để CHẶN hoàn toàn IP trên firewall, hãy sử dụng tính năng "Block IP" trong Event Inspector.
+            Blacklist is a <strong>REFERENCE</strong> list of known malicious IPs/Domains. When traffic from these addresses appears, the system raises alert priority. To fully BLOCK an IP on the firewall, use the "Block IP" feature in Event Inspector.
           </div>
         </div>
       )}
@@ -1566,16 +1564,16 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       {activeSection === 'whitelist' && (
         <div className={`p-3 rounded-md border ${isDarkMode ? 'bg-[#052e16] border-[#166534]' : 'bg-[#dcfce7] border-[#22c55e]'}`}>
           <div className={`text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-[#4ade80]' : 'text-[#166534]'}`}>
-            Lưu ý về Whitelist:
+            About Whitelist:
           </div>
           <div className={`text-[10px] ${isDarkMode ? 'text-[#86efac]' : 'text-[#14532d]'}`}>
-            Whitelist là danh sách IP/Domain được tin cậy. Traffic từ các địa chỉ này sẽ có mức cảnh báo thấp hơn. Các IP nội bộ, Gateway, DNS server nên được thêm vào đây.
+            Whitelist is a list of trusted IPs/Domains. Traffic from these addresses gets lower alert priority. Internal IPs, gateways, and DNS servers should be added here.
           </div>
         </div>
       )}
       
       <p className={`text-[11px] text-muted-foreground`}>
-        {activeSection === 'blacklist' ? t('list.blacklistDesc') : t('list.whitelistDesc')}
+        {activeSection === 'blacklist' ? 'IPs/Domains in this list will be blocked automatically' : 'IPs/Domains in this list will be trusted and alerts ignored'}
       </p>
       
       {/* Add new item form */}
@@ -1583,7 +1581,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <div className="grid grid-cols-12 gap-2">
           <input
             type="text"
-            placeholder={t('list.ipOrDomain')}
+            placeholder={'IP or Domain...'}
             value={newItem.value}
             onChange={(e) => setNewItem({ ...newItem, value: e.target.value })}
             className={`col-span-4 h-8 px-3 text-[11px] border rounded bg-background border-border text-foreground placeholder:text-muted-foreground/60`}
@@ -1602,7 +1600,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
           </select>
           <input
             type="text"
-            placeholder={t('list.note')}
+            placeholder={'Note...'}
             value={newItem.note}
             onChange={(e) => setNewItem({ ...newItem, note: e.target.value })}
             className={`col-span-4 h-8 px-3 text-[11px] border rounded bg-background border-border text-foreground placeholder:text-muted-foreground/60`}
@@ -1616,7 +1614,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
             }`}
           >
             <Plus className="w-3.5 h-3.5" />
-            {t('list.add')}
+            {'Add'}
           </button>
         </div>
       </div>
@@ -1626,17 +1624,17 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
         <table className="w-full text-[11px]">
           <thead>
             <tr className={isDarkMode ? 'bg-background/60' : 'bg-muted'}>
-              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{t('list.value')}</th>
-              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{t('list.type')}</th>
-              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{t('list.note')}</th>
-              <th className={`text-right py-2 px-3 font-medium text-muted-foreground`}>{t('list.actions')}</th>
+              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{'Value'}</th>
+              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{'Type'}</th>
+              <th className={`text-left py-2 px-3 font-medium text-muted-foreground`}>{'Note...'}</th>
+              <th className={`text-right py-2 px-3 font-medium text-muted-foreground`}>{'Actions'}</th>
             </tr>
           </thead>
           <tbody>
             {currentList.length === 0 ? (
               <tr>
                 <td colSpan={4} className={`text-center py-6 text-muted-foreground/70`}>
-                  {t('list.empty')}
+                  {'List is empty'}
                 </td>
               </tr>
             ) : currentList.map((item) => (
@@ -1688,46 +1686,19 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       </div>
       
       <div className={`text-[10px] text-muted-foreground/70`}>
-        {t('list.total')}: {currentList.length} {t('list.items')}
+        {'Total'}: {currentList.length} {'items'}
       </div>
     </div>
   );
   
   const renderGeneralSection = () => (
     <div className="divide-y divide-border">
-      {/* Language */}
-      <div className="grid grid-cols-12 gap-4 py-4">
-        <div className="col-span-4">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-foreground/90">
-            {t('settings.language')}
-          </div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">Interface language</div>
-        </div>
-        <div className="col-span-8 flex gap-1">
-          {[
-            { value: 'en', label: 'English' },
-            { value: 'vi', label: 'Tiếng Việt' },
-          ].map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => setLanguage(value as 'en' | 'vi')}
-              className={`h-8 px-3.5 text-[11px] font-medium tracking-normal rounded-md border transition-all ${
-                language === value
-                  ? 'bg-muted border-border text-foreground shadow-sm'
-                  : 'bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Theme */}
       <div className="grid grid-cols-12 gap-4 py-4">
         <div className="col-span-4">
           <div className="text-[11px] font-medium uppercase tracking-wider text-foreground/90">
-            {t('settings.theme')}
+            {'Theme'}
           </div>
           <div className="text-[10px] text-muted-foreground mt-0.5">Color scheme</div>
         </div>
@@ -1755,9 +1726,9 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       <div className="grid grid-cols-12 gap-4 py-4">
         <div className="col-span-4">
           <div className="text-[11px] font-medium uppercase tracking-wider text-foreground/90">
-            {t('settings.timezone')}
+            {'Timezone'}
           </div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">{t('settings.timezoneHint')}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5">{'Dashboard time will follow this timezone'}</div>
         </div>
         <div className="col-span-8">
           <select
@@ -1775,14 +1746,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       {/* System Info */}
       <div className="pt-5">
         <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2 font-mono">
-          {t('settings.sysInfo')}
+          {'System Information'}
         </div>
         <div className="border border-border rounded-md divide-y divide-border bg-background/40 overflow-hidden">
           {[
-            { label: t('settings.version'), value: '2.0.0' },
-            { label: t('settings.engine'), value: 'Hybrid NIDS' },
+            { label: 'Version', value: '2.0.0' },
+            { label: 'Engine', value: 'Hybrid NIDS' },
             { label: 'Mode', value: 'False Positive Reduction' },
-            { label: t('settings.timezone'), value: timezone },
+            { label: 'Timezone', value: timezone },
           ].map((row, i) => (
             <div key={i} className="flex items-center justify-between px-3.5 py-2.5 text-[11px]">
               <span className="text-muted-foreground">{row.label}</span>
@@ -1795,7 +1766,7 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
       {/* Credits */}
       <div className="pt-8">
         <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-4 font-mono">
-          {t('help.devTeam')}
+          {'Development Team'}
         </div>
         <div className="border border-border rounded-md bg-background/40 px-5 py-5 text-[11px] space-y-2">
           <div className="text-foreground font-medium text-[13px]">C1NE.03 Team</div>

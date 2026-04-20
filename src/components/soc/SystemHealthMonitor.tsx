@@ -26,15 +26,15 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
     pfsense: HealthStatus;
     telegram: HealthStatus;
   }>({
-    nids: { status: 'unknown', message: 'Chưa kiểm tra' },
-    aiEngine: { status: 'unknown', message: 'Chưa kiểm tra' },
-    pfsense: { status: 'unknown', message: 'Chưa kiểm tra' },
-    telegram: { status: 'unknown', message: 'Chưa kiểm tra' },
+    nids: { status: 'unknown', message: 'Not checked' },
+    aiEngine: { status: 'unknown', message: 'Not checked' },
+    pfsense: { status: 'unknown', message: 'Not checked' },
+    telegram: { status: 'unknown', message: 'Not checked' },
   });
 
   const checkNidsHealth = useCallback(async () => {
     if (!apiUrl) {
-      return { status: 'error' as const, message: 'API URL chưa được cấu hình' };
+      return { status: 'error' as const, message: 'API URL not configured' };
     }
     const aiEngineUrl = apiUrl.replace(':3001', ':8000');
 
@@ -52,7 +52,7 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
       if (!data.shipper_seen) {
         return {
           status: 'warning' as const,
-          message: 'Chưa thấy NIDS shipper gửi log',
+          message: 'No NIDS shipper logs detected',
           details: data,
         };
       }
@@ -60,7 +60,7 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
       if (!data.shipper_is_recent) {
         return {
           status: 'warning' as const,
-          message: `NIDS shipper không gửi log gần đây (${data.shipper_age_seconds}s)` ,
+          message: `NIDS shipper has not sent recent logs (${data.shipper_age_seconds}s)` ,
           details: data,
         };
       }
@@ -73,14 +73,14 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
     } catch (error) {
       return {
         status: 'error' as const,
-        message: error instanceof Error ? error.message : 'Không thể kết nối',
+        message: error instanceof Error ? error.message : 'Connection failed',
       };
     }
   }, [apiUrl]);
 
   const checkAIEngineHealth = useCallback(async () => {
     if (!apiUrl) {
-      return { status: 'error' as const, message: 'API URL chưa được cấu hình' };
+      return { status: 'error' as const, message: 'API URL not configured' };
     }
     const aiEngineUrl = apiUrl.replace(':3001', ':8000');
     try {
@@ -92,7 +92,7 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
         const data = await response.json();
         return { 
           status: 'healthy' as const, 
-          message: `AI Engine hoạt động - Models: ${data.models_loaded ? 'Loaded' : 'Not loaded'}`,
+          message: `AI Engine running - Models: ${data.models_loaded ? 'Loaded' : 'Not loaded'}`,
           details: data
         };
       }
@@ -100,14 +100,14 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
     } catch (error) {
       return { 
         status: 'error' as const, 
-        message: error instanceof Error ? error.message : 'Không thể kết nối'
+        message: error instanceof Error ? error.message : 'Connection failed'
       };
     }
   }, [apiUrl]);
 
   const checkPfSenseHealth = useCallback(async () => {
     if (!apiUrl) {
-      return { status: 'error' as const, message: 'API URL chưa được cấu hình' };
+      return { status: 'error' as const, message: 'API URL not configured' };
     }
     const aiEngineUrl = apiUrl.replace(':3001', ':8000');
     try {
@@ -120,16 +120,16 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
         if (data.connected) {
           return { 
             status: 'healthy' as const, 
-            message: `pfSense kết nối OK - ${data.blocked_count || 0} IP blocked`,
+            message: `pfSense connected - ${data.blocked_count || 0} IP blocked`,
             details: data
           };
         } else {
           // Check for 401 error specifically
-          const errorMsg = data.error || data.message || 'Không kết nối được';
+          const errorMsg = data.error || data.message || 'Connection failed';
           if (errorMsg.includes('401')) {
             return { 
               status: 'error' as const, 
-              message: 'HTTP 401 - API Key không hợp lệ hoặc hết hạn',
+              message: 'HTTP 401 - API Key invalid or expired',
               details: data
             };
           }
@@ -144,14 +144,14 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
     } catch (error) {
       return { 
         status: 'error' as const, 
-        message: error instanceof Error ? error.message : 'Không thể kết nối'
+        message: error instanceof Error ? error.message : 'Connection failed'
       };
     }
   }, [apiUrl]);
 
   const checkTelegramHealth = useCallback(async () => {
     if (!apiUrl) {
-      return { status: 'error' as const, message: 'API URL chưa được cấu hình' };
+      return { status: 'error' as const, message: 'API URL not configured' };
     }
     const aiEngineUrl = apiUrl.replace(':3001', ':8000');
     try {
@@ -170,7 +170,7 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
         }
         return {
           status: 'warning' as const,
-          message: 'Telegram chưa cấu hình (token/chat_id)',
+          message: 'Telegram not configured (token/chat_id)',
           details: data
         };
       }
@@ -178,7 +178,7 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
     } catch (error) {
       return {
         status: 'error' as const,
-        message: error instanceof Error ? error.message : 'Không thể kết nối'
+        message: error instanceof Error ? error.message : 'Connection failed'
       };
     }
   }, [apiUrl]);
@@ -188,10 +188,10 @@ const SystemHealthMonitor = ({ isDarkMode, apiUrl, onClose }: SystemHealthMonito
     
     // Mark all as checking
     setHealth(prev => ({
-      nids: { ...prev.nids, status: 'checking', message: 'Đang kiểm tra...' },
-      aiEngine: { ...prev.aiEngine, status: 'checking', message: 'Đang kiểm tra...' },
-      pfsense: { ...prev.pfsense, status: 'checking', message: 'Đang kiểm tra...' },
-      telegram: { ...prev.telegram, status: 'checking', message: 'Đang kiểm tra...' },
+      nids: { ...prev.nids, status: 'checking', message: 'Checking...' },
+      aiEngine: { ...prev.aiEngine, status: 'checking', message: 'Checking...' },
+      pfsense: { ...prev.pfsense, status: 'checking', message: 'Checking...' },
+      telegram: { ...prev.telegram, status: 'checking', message: 'Checking...' },
     }));
 
     // Run all checks in parallel
