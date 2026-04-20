@@ -1693,25 +1693,6 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   
   const renderGeneralSection = () => (
     <div className="divide-y divide-border">
-      <div className="col-span-8 flex gap-1">
-          {[
-            { value: 'en', label: 'English' },
-            
-          ].map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => setLanguage(value as 'en' | 'vi')}
-              className={`h-8 px-3.5 text-[11px] font-medium tracking-normal rounded-md border transition-all ${
-                language === value
-                  ? 'bg-muted border-border text-foreground shadow-sm'
-                  : 'bg-transparent border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Theme */}
       <div className="grid grid-cols-12 gap-4 py-4">
