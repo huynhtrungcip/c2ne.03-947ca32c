@@ -2071,22 +2071,13 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
       <div className="p-4">
         {/* Controls - themed */}
         <div className="flex items-center gap-3 mb-4">
-          {/* WebSocket Status Indicator */}
-          {wsUrl && (
+          {/* WebSocket Status Indicator — only shown when connected to avoid flashing offline state */}
+          {wsUrl && wsIsConnected && (
             <div className={`flex items-center gap-2 px-3 py-1.5 border ${isDarkMode ? 'bg-[#0a0a0a] border-[#1f1f1f]' : 'bg-white border-[#e5e7eb]'}`}>
-              {wsIsConnected ? (
-                <>
-                  <Wifi className="w-3.5 h-3.5 text-[#22c55e]" />
-                  <span className="text-[10px] text-[#22c55e] font-medium">NIDS Connected</span>
-                  {wsEventCount > 0 && (
-                    <span className="text-[9px] text-[#71717a]">({wsEventCount} events)</span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-3.5 h-3.5 text-[#f59e0b]" />
-                  <span className="text-[10px] text-[#f59e0b] font-medium">NIDS Offline</span>
-                </>
+              <Wifi className="w-3.5 h-3.5 text-[#22c55e]" />
+              <span className="text-[10px] text-[#22c55e] font-medium">NIDS Connected</span>
+              {wsEventCount > 0 && (
+                <span className="text-[9px] text-[#71717a]">({wsEventCount} events)</span>
               )}
             </div>
           )}
