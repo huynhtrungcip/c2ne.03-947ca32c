@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SOCEvent, SOCMetrics, TimeRange } from '@/types/soc';
-import { mockEvents, generateMockEvents } from '@/data/mockEvents';
+import { historicalEvents } from '@/data/historicalDataset';
 
 const timeRanges: TimeRange[] = [
   { label: 'Last 15m', value: '15m', minutes: 15 },
@@ -58,7 +58,7 @@ export const useSOCData = (
 
   const [mockEventsState, setMockEventsState] = useState<SOCEvent[]>(() => {
     // Always load persisted mock events — toggling Mock OFF must NOT destroy data.
-    // Data is only cleared via the explicit "Clear" action.
+    // First load uses the fixed 5-day historical dataset (20-24/04/2026).
     const stored = localStorage.getItem('soc-mock-events');
     if (stored) {
       try {
@@ -69,10 +69,17 @@ export const useSOCData = (
           source: 'mock' as const,
         }));
       } catch {
-        return [];
+        return historicalEvents.map(e => ({ ...e, source: 'mock' as const }));
       }
     }
-    return [];
+    // First visit — seed from the deterministic historical dataset
+    const seed = historicalEvents.map(e => ({ ...e, source: 'mock' as const }));
+    try {
+      localStorage.setItem('soc-mock-events', JSON.stringify(seed.map(e => ({
+        ...e, timestamp: e.timestamp.toISOString(),
+      }))));
+    } catch { /* ignore quota */ }
+    return seed;
   });
 
   // Combined events based on enabled sources
