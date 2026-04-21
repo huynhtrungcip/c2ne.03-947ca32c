@@ -36,8 +36,8 @@ cat <<EOF | tee "$LOG"
 EOF
 
 # ---------------------------------------------------------------------
-phase 1 "PortScan — nmap top 1000 SYN, T3 (90s)"
-nmap -sS -T3 --top-ports 1000 -Pn "$TARGET" -oN /tmp/p1-nmap.txt >/dev/null &
+phase 1 "PortScan — nmap top ports SYN, T3 (90s) — port 80 web only"
+nmap -sS -T3 -p 21,22,23,25,53,80,110,139,445,3306,3389,8080 -Pn "$TARGET" -oN /tmp/p1-nmap.txt >/dev/null &
 NMAP_PID=$!
 sleep 90
 kill $NMAP_PID 2>/dev/null || true
