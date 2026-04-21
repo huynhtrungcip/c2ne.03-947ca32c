@@ -356,18 +356,25 @@ const keyEventIds: Record<string, string[]> = {
 };
 
 /* =====================================================================
- * BENIGN BASELINE — every day 06:00 → 23:30, ~80-100 events/day.
- *   - 70% LAN → external (egress through gateway, dst = .254 due to NAT)
- *   - 30% LAN ↔ LAN (DNS lookup, SMB file share)
+ * BENIGN BASELINE — every day 00:00 → 23:59, ~250 events/day with a
+ * diurnal sine wave (low overnight, peak around 10:00–16:00). This gives
+ * the Traffic & Alerts chart a natural rolling shape so attack spikes
+ * read as anomalies, not as the only data on the chart.
  * ===================================================================== */
 for (let day = 20; day <= 24; day++) {
-  const dayBase = new Date(`2026-04-${String(day).padStart(2, '0')}T06:00:00+07:00`).getTime();
-  const dayClose = new Date(`2026-04-${String(day).padStart(2, '0')}T23:30:00+07:00`).getTime();
-  for (let t = dayBase; t <= dayClose; t += between(540_000, 840_000)) {
+  const dayBase = new Date(`2026-04-${String(day).padStart(2, '0')}T00:00:00+07:00`).getTime();
+  // Walk the whole day in ~5-min steps; accept/reject each step based on
+  // a diurnal probability curve so density follows business hours.
+  for (let t = dayBase; t < dayBase + 24 * 3600_000; t += between(180_000, 360_000)) {
     const ts = new Date(t);
+    const hour = ts.getHours() + ts.getMinutes() / 60;
+    // Sine-shaped probability: ~0.15 at 03:00, ~0.95 at 13:00.
+    const diurnal = 0.55 + 0.45 * Math.sin(((hour - 7) / 24) * Math.PI * 2 - Math.PI / 2);
+    if (rand() > diurnal) continue;
+
     const isEgress = rand() < 0.7;
     if (isEgress) {
-      const port = pick([443, 443, 443, 443, 80, 53]);
+      const port = pick([443, 443, 443, 443, 443, 80, 80, 53]);
       const fqdn = pick(EGRESS_FQDNS);
       const src = pick(LAB_HOSTS.filter((ip) => ip !== ATTACKER_IP));
       events.push(
@@ -382,10 +389,10 @@ for (let day = 20; day <= 24; day++) {
           http:
             port === 80 || port === 443
               ? {
-                  method: pick(['GET', 'GET', 'POST']),
+                  method: pick(['GET', 'GET', 'GET', 'POST']),
                   host: fqdn,
-                  uri: pick(['/', '/index.html', '/api/v1/users', '/static/app.js', '/favicon.ico']),
-                  status: pick([200, 200, 200, 304, 301]),
+                  uri: pick(['/', '/index.html', '/api/v1/users', '/static/app.js', '/favicon.ico', '/assets/main.css']),
+                  status: pick([200, 200, 200, 200, 304, 301]),
                 }
               : undefined,
           dns:
@@ -396,7 +403,7 @@ for (let day = 20; day <= 24; day++) {
         })
       );
     } else {
-      const isDns = rand() < 0.5;
+      const isDns = rand() < 0.55;
       events.push(
         mk({
           ts,
@@ -407,7 +414,7 @@ for (let day = 20; day <= 24; day++) {
           attack_type: isDns ? 'Internal DNS Query' : 'SMB File Share',
           source_engine: 'Zeek',
           dns: isDns ? { query: pick(['intranet.lab', 'fileserver.lab', 'gw.lab']), rcode: 'NOERROR' } : undefined,
-          notes: isDns ? 'Internal name resolution.' : 'Internal SMB share access — workstation pulling shared resources.',
+          notes: isDns ? 'Internal name resolution.' : 'Internal SMB share access.',
         })
       );
     }
