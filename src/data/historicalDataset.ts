@@ -802,57 +802,111 @@ for (let day = 20; day <= 24; day++) {
 events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
 /* =====================================================================
- * AI TRIAGE PASS — rebalance verdicts to showcase "AI reduces false alarms".
+ * FALSE_POSITIVE SEED — explicit "AI downgraded" events.
  *
- * Goal target distribution on the historical baseline:
- *   ALERT          ~1.5%   (only true high-impact peaks)
- *   FALSE_POSITIVE ~15%    (signature matched but AI/Zeek context downgraded)
- *   SUSPICIOUS     ~4%     (needs analyst review)
- *   BENIGN         ~80%
+ * These represent the value-prop "AI giảm cảnh báo giả": Suricata raised an
+ * alert based on a signature, but the AI/ML pipeline correlated Zeek flow
+ * context, threat intel, and behavioural baselines and concluded the event
+ * is benign noise. We seed them with low confidence and the FALSE_POSITIVE
+ * verdict from the start so the raw_log Suricata block is consistent.
  *
- * Deterministic rules — no randomness so the dashboard is stable across reloads:
- *  1. Keep ALERT only for: DDoS spike, PortScan with very high confidence
- *     (≥0.93), Web Attack #1 (the SQLi sample), and the tail-end DDoS
- *     mitigation event.
- *  2. Everything else currently ALERT → FALSE_POSITIVE with an AI rationale.
- *  3. SUSPICIOUS BENIGN-looking probes (low confidence) → FALSE_POSITIVE too.
- *  4. Annotate raw_log + notes with "ai_downgrade" so AI analysis can cite it.
+ * Mix of common SOC false positives:
+ *  - Vulnerability scanner from a known internal monitoring host
+ *  - Search-engine crawler hitting weird URLs
+ *  - Misconfigured client probing many ports (NOT the attacker)
+ *  - Antivirus update beacon flagged as Bot
+ *  - Health-check that looks like SSH brute force
  * ===================================================================== */
 {
-  // First pass: identify a small set of true-positive ALERT keepers.
-  const keepAlertIds = new Set<string>();
+  const fpSamples: Array<{
+    day: number; hour: number; minute: number;
+    src: string; dst: string; port: number;
+    attack_type: string; sig: number; confidence: number;
+    notes: string; http?: PayloadOpts['http']; ssh?: PayloadOpts['ssh'];
+  }> = [
+    // Day 20 — many false positives (showcase volume)
+    { day: 20, hour: 3, minute: 14, src: '40.83.92.17', dst: WEB_SERVER, port: 80, attack_type: 'Web Attack', sig: 2017645, confidence: 0.34,
+      notes: 'AI downgrade — Bingbot crawler hitting /robots.txt with unusual UA. Threat intel: clean. ML class BENIGN runner-up 0.71.',
+      http: { method: 'GET', host: 'web.lab.local', uri: '/robots.txt', status: 200, ua: 'Mozilla/5.0 (compatible; bingbot/2.0)' } },
+    { day: 20, hour: 9, minute: 42, src: '74.125.180.12', dst: WEB_SERVER, port: 80, attack_type: 'Bot', sig: 2027865, confidence: 0.28,
+      notes: 'AI downgrade — Googlebot periodic crawl, validated reverse DNS to googlebot.com. Behavioural baseline: matches known crawler pattern.',
+      http: { method: 'GET', host: 'web.lab.local', uri: '/sitemap.xml', status: 200, ua: 'Mozilla/5.0 (compatible; Googlebot/2.1)' } },
+    { day: 20, hour: 14, minute: 18, src: '52.96.10.44', dst: WEB_SERVER, port: 80, attack_type: 'PortScan', sig: 2010935, confidence: 0.31,
+      notes: 'AI downgrade — Office365 connectivity check, single SYN to port 80. Confirmed Microsoft ASN 8075.' },
+    { day: 20, hour: 21, minute: 7, src: '185.199.108.153', dst: WEB_SERVER, port: 80, attack_type: 'DoS slowloris', sig: 2018472, confidence: 0.36,
+      notes: 'AI downgrade — Github Pages CDN keep-alive, long header but matches CDN profile. Zeek: SF state, normal completion.',
+      http: { method: 'GET', host: 'web.lab.local', uri: '/', status: 200, ua: 'Mozilla/5.0 GitHub-Camo' } },
 
-  // Keep top ~5% of ALERTs by confidence per attack_type as the "true" alerts.
-  const alertsByType: Record<string, SOCEvent[]> = {};
-  events.forEach((e) => {
-    if (e.verdict === 'ALERT') {
-      (alertsByType[e.attack_type] ||= []).push(e);
-    }
-  });
-  Object.values(alertsByType).forEach((list) => {
-    list.sort((a, b) => b.confidence - a.confidence);
-    // Keep at most 2 truly high-conf alerts per class (≥ 0.9).
-    list.slice(0, 2).forEach((e) => {
-      if (e.confidence >= 0.9) keepAlertIds.add(e.id);
-    });
-  });
+    // Day 21
+    { day: 21, hour: 6, minute: 35, src: '157.55.39.85', dst: WEB_SERVER, port: 80, attack_type: 'Web Attack', sig: 2017645, confidence: 0.29,
+      notes: 'AI downgrade — Bing crawler probing 404 paths after sitemap update. Threat intel clean.',
+      http: { method: 'GET', host: 'web.lab.local', uri: '/old-page.html', status: 404, ua: 'Mozilla/5.0 (compatible; bingbot/2.0)' } },
+    { day: 21, hour: 11, minute: 52, src: '13.107.42.14', dst: WEB_SERVER, port: 22, attack_type: 'SSH-Patator', sig: 2003068, confidence: 0.33,
+      notes: 'AI downgrade — Microsoft Defender for Cloud Apps health probe. ML detected single connection, not brute-force pattern.',
+      ssh: { client_version: 'SSH-2.0-MS-Defender-Probe', auth_attempt: false } },
+    { day: 21, hour: 16, minute: 28, src: '142.250.80.46', dst: WEB_SERVER, port: 80, attack_type: 'Bot', sig: 2027865, confidence: 0.27,
+      notes: 'AI downgrade — Google Safe Browsing scanner. Periodic but expected; reverse DNS validated.',
+      http: { method: 'HEAD', host: 'web.lab.local', uri: '/', status: 200, ua: 'Mozilla/5.0 (compatible; Google-Safety)' } },
+    { day: 21, hour: 19, minute: 40, src: '23.21.117.230', dst: WEB_SERVER, port: 80, attack_type: 'DoS Hulk', sig: 2019825, confidence: 0.38,
+      notes: 'AI downgrade — AWS health check from registered Route53 monitor. Cache-control header normal.' },
 
-  // Always keep DDoS mitigation marker if present.
-  events.forEach((e) => {
-    if (e.action_taken === 'auto_blocked_pfsense_alias') keepAlertIds.add(e.id);
-  });
+    // Day 22 (PortScan day — extra FPs to balance the scan alerts)
+    { day: 22, hour: 8, minute: 12, src: '199.59.243.222', dst: WEB_SERVER, port: 80, attack_type: 'Web Attack', sig: 2017645, confidence: 0.32,
+      notes: 'AI downgrade — Yandex crawler hitting /admin (404). Single request, not brute force pattern.',
+      http: { method: 'GET', host: 'web.lab.local', uri: '/admin', status: 404, ua: 'Mozilla/5.0 (compatible; YandexBot/3.0)' } },
+    { day: 22, hour: 17, minute: 50, src: '40.114.177.156', dst: WEB_SERVER, port: 21, attack_type: 'FTP-Patator', sig: 2002383, confidence: 0.35,
+      notes: 'AI downgrade — Internal Azure backup agent attempting FTP fallback after FTPS timeout. Source confirmed in allowlist.' },
+    { day: 22, hour: 22, minute: 5, src: '54.230.97.85', dst: WEB_SERVER, port: 80, attack_type: 'DoS slowloris', sig: 2018472, confidence: 0.31,
+      notes: 'AI downgrade — CloudFront edge keep-alive. Long-lived connection is expected behaviour for CDN.',
+      http: { method: 'GET', host: 'web.lab.local', uri: '/api/v1/products', status: 200, ua: 'Amazon CloudFront' } },
 
-  // Apply downgrades.
-  for (const e of events) {
-    if (e.verdict === 'ALERT' && !keepAlertIds.has(e.id)) {
-      e.verdict = 'FALSE_POSITIVE';
-      e.confidence = round2(Math.min(0.42, e.confidence * 0.45));
-    } else if (e.verdict === 'SUSPICIOUS' && e.confidence < 0.5) {
-      e.verdict = 'FALSE_POSITIVE';
-      e.confidence = round2(Math.min(0.35, e.confidence * 0.6));
-    }
-  }
+    // Day 23 (DDoS day — show FPs from other vectors)
+    { day: 23, hour: 9, minute: 22, src: '8.8.4.4', dst: WEB_SERVER, port: 53, attack_type: 'Bot', sig: 2027865, confidence: 0.25,
+      notes: 'AI downgrade — DNS resolver health check. Validated source = Google Public DNS.' },
+    { day: 23, hour: 14, minute: 40, src: '20.42.65.92', dst: WEB_SERVER, port: 80, attack_type: 'DoS GoldenEye', sig: 2019826, confidence: 0.34,
+      notes: 'AI downgrade — Pingdom external uptime monitor with high frequency probes. Account verified.',
+      http: { method: 'GET', host: 'web.lab.local', uri: '/health', status: 200, ua: 'Pingdom.com_bot_version_1.4' } },
+    { day: 23, hour: 20, minute: 14, src: '104.131.14.231', dst: WEB_SERVER, port: 80, attack_type: 'PortScan', sig: 2010935, confidence: 0.30,
+      notes: 'AI downgrade — Shodan scanner (research). Public scanner, not part of an attack chain. Threat intel: research/educational.' },
+
+    // Day 24
+    { day: 24, hour: 5, minute: 17, src: '34.102.136.180', dst: WEB_SERVER, port: 80, attack_type: 'Web Attack', sig: 2017645, confidence: 0.33,
+      notes: 'AI downgrade — Google Lighthouse audit triggered by webmaster. Behavioural pattern matches periodic site audit.',
+      http: { method: 'GET', host: 'web.lab.local', uri: '/', status: 200, ua: 'Mozilla/5.0 Chrome-Lighthouse' } },
+    { day: 24, hour: 12, minute: 45, src: '64.62.197.79', dst: WEB_SERVER, port: 80, attack_type: 'PortScan', sig: 2010935, confidence: 0.32,
+      notes: 'AI downgrade — Censys scanner (academic research). Single SYN, no follow-up. Whitelisted ASN.' },
+    { day: 24, hour: 18, minute: 33, src: '40.77.167.42', dst: WEB_SERVER, port: 80, attack_type: 'DoS Hulk', sig: 2019825, confidence: 0.37,
+      notes: 'AI downgrade — Bing site indexing burst after sitemap submission. Pattern matches scheduled crawl, not attack.',
+      http: { method: 'GET', host: 'web.lab.local', uri: '/', status: 200, ua: 'Mozilla/5.0 (compatible; bingbot/2.0)' } },
+    { day: 24, hour: 23, minute: 8, src: '17.142.150.10', dst: WEB_SERVER, port: 80, attack_type: 'Bot', sig: 2027865, confidence: 0.26,
+      notes: 'AI downgrade — Apple bot validating App Site Association file. Reverse DNS confirms apple.com.',
+      http: { method: 'GET', host: 'web.lab.local', uri: '/.well-known/apple-app-site-association', status: 200, ua: 'apple-bot/1.0' } },
+  ];
+
+  fpSamples.forEach((s) => {
+    const ts = new Date(`2026-04-${String(s.day).padStart(2, '0')}T${String(s.hour).padStart(2, '0')}:${String(s.minute).padStart(2, '0')}:${String(between(0, 59)).padStart(2, '0')}+07:00`);
+    events.push(
+      mk({
+        ts,
+        src_ip: s.src,
+        dst_ip: s.dst,
+        dst_port: s.port,
+        protocol: 'TCP',
+        attack_type: s.attack_type,
+        verdict: 'FALSE_POSITIVE',
+        confidence: s.confidence,
+        source_engine: 'Suricata+Zeek+ML',
+        signature_id: s.sig,
+        http: s.http,
+        ssh: s.ssh,
+        notes: s.notes,
+      })
+    );
+  });
 }
+
+// Re-sort after adding FP samples
+events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
 export const historicalEvents: SOCEvent[] = events;
 
