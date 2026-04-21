@@ -302,6 +302,39 @@ async def analyze_ip(req: AnalyzeIPRequest, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/analyze/zeek")
+async def analyze_zeek_only(req: AnalyzeZeekRequest):
+    """
+    Run ML directly on a Zeek flow (no Suricata alert).
+    Used for Zeek-only attack detection — ML was trained on CICIDS,
+    which is Zeek-shaped, so the model can flag malicious flows even
+    when Suricata signatures missed them.
+    """
+    try:
+        from ai_analyzer import analyze_with_models
+        zf = req.zeek_flow or {}
+        verdict, confidence, reasoning = analyze_with_models(zf, signature="")
+
+        return {
+            "success": True,
+            "analysis": {
+                "verdict": verdict,
+                "confidence": float(confidence),
+                "reasoning": reasoning,
+                "zeek_matched": True,
+                "ml_used": bool(AI_BRAIN),
+                "should_block": verdict == "ALERT" and confidence >= 0.8,
+                "details": {
+                    "source": "zeek_only_ml",
+                    "community_id": zf.get("community_id", ""),
+                },
+            },
+        }
+    except Exception as e:
+        logger.error(f"Zeek-only analysis error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== BLOCKING ====================
 
 @app.post("/block")
