@@ -69,9 +69,10 @@ export const useSOCData = (
 
   const [mockEventsState, setMockEventsState] = useState<SOCEvent[]>(() => {
     // Historical baseline (20-24/04/2026) — always loaded, never togglable.
-    // Bumped key (v2) to force reseed after dataset fix (NAT dst + full 5-day coverage).
-    const STORAGE_KEY = 'soc-mock-events-v2';
+    // v3 = rich raw_log payloads (Suricata+Zeek+ML+MITRE) and tighter APT storyline.
+    const STORAGE_KEY = 'soc-mock-events-v3';
     try { localStorage.removeItem('soc-mock-events'); } catch { /* ignore */ }
+    try { localStorage.removeItem('soc-mock-events-v2'); } catch { /* ignore */ }
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
