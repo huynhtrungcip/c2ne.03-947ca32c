@@ -694,26 +694,13 @@ const SOCDashboard = () => {
   const wsUrl = apiUrl ? apiUrl.replace('http://', 'ws://').replace(':3001', ':8000') + '/ws' : '';
   const [useWsRealtime, setUseWsRealtime] = useState(true);
 
-  // Track NIDS (live) data source toggle reactively — when OFF, WebSocket must not pump events in.
-  const [nidsEnabled, setNidsEnabled] = useState(
-    () => localStorage.getItem('soc-nids-data-enabled') !== 'false'
-  );
-  useEffect(() => {
-    const sync = () => setNidsEnabled(localStorage.getItem('soc-nids-data-enabled') !== 'false');
-    window.addEventListener('soc-data-updated', sync);
-    window.addEventListener('storage', sync);
-    return () => {
-      window.removeEventListener('soc-data-updated', sync);
-      window.removeEventListener('storage', sync);
-    };
-  }, []);
-
+  // NIDS live source is always enabled — there is no longer a user-facing toggle.
   const { events, metrics, topSources, attackTypeData, trafficData, timeRanges, wsConnected, setWsConnected, addEvent } = useSOCData(
     timeRange,
     viewMode,
     isLive,
     { verdictFocus, ipFilter, sigFilter, minConfidence },
-    { useWebSocket: useWsRealtime && isLive && !!wsUrl && nidsEnabled }
+    { useWebSocket: useWsRealtime && isLive && !!wsUrl }
   );
 
   // WebSocket connection for real-time events — only ingest when NIDS source is enabled.
