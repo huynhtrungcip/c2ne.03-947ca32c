@@ -117,6 +117,20 @@ export function setActiveProviderId(id: string): void {
   localStorage.setItem(ACTIVE_KEY, id);
 }
 
+/**
+ * Wipe ALL AI provider data from browser localStorage.
+ * Use after a fresh deploy to ensure no stale API keys (Grok/Gemini/etc.)
+ * survive from a previous session.
+ */
+export function clearAllProviders(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(ACTIVE_KEY);
+  } catch (e) {
+    console.error('Failed to clear providers:', e);
+  }
+}
+
 export function getActiveProvider(): AIProviderConfig | null {
   const id = getActiveProviderId();
   if (!id) return null;
