@@ -349,9 +349,8 @@ export const useSOCData = (
     setWsConnected,
     wsEventCount,
     addEvent,
-    // Data source controls
+    // Data source controls — only "Clear day-25 live data" is exposed.
     clearNidsEvents,
-    clearMockEvents,
     nidsEventCount: nidsEvents.length,
     mockEventCount: mockEventsState.length,
   };
