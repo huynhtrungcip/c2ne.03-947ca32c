@@ -6,9 +6,21 @@ interface TrafficChartProps {
   data: TrafficData[];
 }
 
-// Format helpers — switch label between time-only and date+time depending on span.
-const formatTick = (d: Date, multiDay: boolean) => {
-  if (multiDay) {
+// Choose label format based on the total span of the dataset.
+//   < 24h          → HH:mm
+//   24h – 3d       → MM/DD HH:mm
+//   > 3d (incl. "All" over the 5-day demo dataset) → MMM DD (date only)
+type TickMode = 'time' | 'datetime' | 'date';
+const pickMode = (spanMs: number): TickMode => {
+  if (spanMs <= 24 * 3600_000) return 'time';
+  if (spanMs <= 3 * 24 * 3600_000) return 'datetime';
+  return 'date';
+};
+const formatTick = (d: Date, mode: TickMode) => {
+  if (mode === 'date') {
+    return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+  }
+  if (mode === 'datetime') {
     return d.toLocaleString('en-US', {
       month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
     });
@@ -22,10 +34,10 @@ export const TrafficChart = ({ data }: TrafficChartProps) => {
 
     const first = data[0].timestamp.getTime();
     const last = data[data.length - 1].timestamp.getTime();
-    const multiDay = last - first > 24 * 3600_000;
+    const mode = pickMode(last - first);
 
     const cd = data.map((d) => ({
-      time: formatTick(d.timestamp, multiDay),
+      time: formatTick(d.timestamp, mode),
       traffic: d.total,
       alerts: d.alerts,
     }));
