@@ -68,35 +68,29 @@ export const useSOCData = (
   });
 
   const [mockEventsState, setMockEventsState] = useState<SOCEvent[]>(() => {
-    // Historical baseline (20-24/04/2026) — always loaded, never togglable.
-    // v4 = denser diurnal benign baseline + spread-out PortScan/DDoS spikes
-    //      so Traffic & Alerts chart has a balanced, professional shape.
-    const STORAGE_KEY = 'soc-mock-events-v6';
-    try { localStorage.removeItem('soc-mock-events'); } catch { /* ignore */ }
-    try { localStorage.removeItem('soc-mock-events-v2'); } catch { /* ignore */ }
-    try { localStorage.removeItem('soc-mock-events-v3'); } catch { /* ignore */ }
-    try { localStorage.removeItem('soc-mock-events-v4'); } catch { /* ignore */ }
-    try { localStorage.removeItem('soc-mock-events-v5'); } catch { /* ignore */ }
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        return parsed.map((e: Record<string, unknown>) => ({
-          ...e,
-          timestamp: new Date(e.timestamp as string),
-          source: 'mock' as const,
-        }));
-      } catch {
-        return historicalEvents.map(e => ({ ...e, source: 'mock' as const }));
-      }
-    }
-    const seed = historicalEvents.map(e => ({ ...e, source: 'mock' as const }));
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(seed.map(e => ({
-        ...e, timestamp: e.timestamp.toISOString(),
-      }))));
-    } catch { /* ignore quota */ }
-    return seed;
+    // Historical baseline (5 days ending "now") — always re-shifted on load
+    // so the X-axis matches wall-clock time at demo time, regardless of when
+    // the operator actually runs the demo.
+    //
+    // The raw dataset lives on the calendar 2026-04-20 → 2026-04-25. We shift
+    // every timestamp by Δ = (Date.now() - newestRawTimestamp) so the most
+    // recent historical event lands at the current wall-clock minute.
+    //
+    // We DO NOT cache the shifted result in localStorage — re-shifting on
+    // every page load is cheap (~5k events) and guarantees the chart always
+    // ends at "now". Old cached versions are purged.
+    ['soc-mock-events', 'soc-mock-events-v2', 'soc-mock-events-v3',
+     'soc-mock-events-v4', 'soc-mock-events-v5', 'soc-mock-events-v6']
+      .forEach(k => { try { localStorage.removeItem(k); } catch { /* ignore */ } });
+
+    if (historicalEvents.length === 0) return [];
+    const newestRaw = Math.max(...historicalEvents.map(e => e.timestamp.getTime()));
+    const delta = Date.now() - newestRaw;
+    return historicalEvents.map(e => ({
+      ...e,
+      timestamp: new Date(e.timestamp.getTime() + delta),
+      source: 'mock' as const,
+    }));
   });
 
   // Always combine: historical baseline + live NIDS (no toggles).
@@ -162,20 +156,15 @@ export const useSOCData = (
         }
       }
 
-      // Reload Mock events from storage (regardless of enabled flag — preserve data when toggled off)
-      const storedMock = localStorage.getItem('soc-mock-events-v6');
-      if (storedMock) {
-        try {
-          const parsed = JSON.parse(storedMock);
-          const eventsWithDates = parsed.map((e: Record<string, unknown>) => ({
-            ...e,
-            timestamp: new Date(e.timestamp as string),
-            source: 'mock' as const,
-          }));
-          setMockEventsState(eventsWithDates);
-        } catch (err) {
-          console.error('Failed to parse stored mock events:', err);
-        }
+      // Re-shift historical baseline so newest event = current wall-clock time.
+      if (historicalEvents.length > 0) {
+        const newestRaw = Math.max(...historicalEvents.map(e => e.timestamp.getTime()));
+        const delta = Date.now() - newestRaw;
+        setMockEventsState(historicalEvents.map(e => ({
+          ...e,
+          timestamp: new Date(e.timestamp.getTime() + delta),
+          source: 'mock' as const,
+        })));
       }
       setLastUpdate(new Date());
     };
