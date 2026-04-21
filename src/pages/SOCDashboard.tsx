@@ -675,6 +675,7 @@ const SOCDashboard = () => {
   const [showAnalysisOptions, setShowAnalysisOptions] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [analysisModel, setAnalysisModel] = useState<string>(DEFAULT_MODEL);
   const [blockingIP, setBlockingIP] = useState(false);
   const [pieHoverIdx, setPieHoverIdx] = useState<number | null>(null);
   const [blockResult, setBlockResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -871,59 +872,67 @@ const SOCDashboard = () => {
       setShowAnalysisOptions(false);
       setAnalysisLoading(true);
       setAnalysisResult(null);
-      
+
+      // Use the SAME provider/model the user picked for the AI Assistant.
+      // Fall back to legacy MegaLLM only if nothing is configured.
+      const provider = getActiveProvider() ?? FALLBACK_PROVIDER;
+      setAnalysisModel(provider.model);
+
       try {
-        const eventData = analyzeAll 
+        const eventData = analyzeAll
           ? { ip: selectedEvent.src_ip, events: events.filter(e => e.src_ip === selectedEvent.src_ip).slice(0, 50) }
           : { event: selectedEvent };
-        
-        const prompt = analyzeAll 
+
+        const prompt = analyzeAll
           ? `Phân tích TẤT CẢ flows từ IP ${selectedEvent.src_ip}. Dữ liệu:\n${JSON.stringify(eventData, null, 2)}`
           : `Phân tích flow đơn lẻ này:\n${JSON.stringify(eventData, null, 2)}`;
-        
-        // Call MegaLLM API directly
-        const response = await fetch(`${MEGALLM_BASE_URL}/chat/completions`, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${MEGALLM_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: DEFAULT_MODEL,
-            messages: [
-              { role: 'system', content: `You are an AI SOC analyst (Tier 2). Analyze the provided network flow data and provide a CONCISE report with:
+
+        const systemPrompt = `You are an AI SOC analyst (Tier 2). Analyze the provided network flow data and produce a CONCISE markdown report.
+
+Use this EXACT structure (GitHub-flavored markdown, valid tables):
 
 ## Risk Level
-(Critical/High/Medium/Low) - One line explanation
+**[Critical | High | Medium | Low]** — one short sentence why.
 
 ## Attack Classification
-- Attack Type: [type]
-- Technique: [MITRE ATT&CK if applicable]
+- **Attack Type:** ...
+- **MITRE ATT&CK:** Txxxx — name (if applicable)
 
 ## Key Indicators
-- List 2-3 bullet points of suspicious indicators
+- bullet 1
+- bullet 2
+- bullet 3
 
 ## Recommended Actions
-| Priority | Action | Reason |
-|----------|--------|--------|
+
+| # | Action | Reason |
+|---|--------|--------|
 | 1 | ... | ... |
 | 2 | ... | ... |
 
-Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms in English.` },
-              { role: 'user', content: prompt }
-            ],
-            max_tokens: 1500,
-            temperature: 0.5
-          }),
+Rules:
+- Keep tables SHORT (≤4 columns, ≤4 rows). Never wrap multi-line content inside a single cell.
+- Answer in Vietnamese, keep technical terms in English.
+- Do not invent fields that are not present in the input.`;
+
+        // Stream via the same multi-provider client used by the Assistant.
+        let acc = '';
+        await streamChat({
+          provider,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.4,
+          onDelta: (chunk) => {
+            acc += chunk;
+            setAnalysisResult(acc);
+          },
         });
-        
-        if (!response.ok) throw new Error(`API Error: ${response.status}`);
-        
-        const data = await response.json();
-        const analysis = data.choices?.[0]?.message?.content || 'Không thể phân tích';
-        
-        // Store result to display inline
-        setAnalysisResult(analysis);
+
+        if (!acc.trim()) {
+          setAnalysisResult('Không thể phân tích (model trả về rỗng).');
+        }
       } catch (error) {
         console.error('Analysis error:', error);
         setAnalysisResult(`**Lỗi phân tích:** ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -1173,7 +1182,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                   </span>
                   <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">/</span>
                   <span className="text-[10px] font-mono text-muted-foreground truncate">
-                    {analysisLoading ? `model=${DEFAULT_MODEL} status=streaming` : `model=${DEFAULT_MODEL} status=complete`}
+                    {analysisLoading ? `model=${analysisModel} status=streaming` : `model=${analysisModel} status=complete`}
                   </span>
                 </div>
                 {analysisResult && (
@@ -1192,7 +1201,7 @@ Keep response SHORT and actionable. Answer in Vietnamese, keep technical terms i
                 <div className="px-4 py-6 flex items-center gap-3">
                   <div className="w-3.5 h-3.5 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" />
                   <span className="text-[11px] font-mono text-muted-foreground">
-                    awaiting response from {DEFAULT_MODEL}…
+                    awaiting response from {analysisModel}…
                   </span>
                 </div>
               ) : analysisResult && (
