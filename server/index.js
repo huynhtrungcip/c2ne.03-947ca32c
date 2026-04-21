@@ -314,6 +314,114 @@ async function reCorrelateAndAnalyze() {
 setInterval(reCorrelateAndAnalyze, RECORRELATION_INTERVAL_MS);
 console.log(`[RE-CORRELATE] Background loop scheduled every ${RECORRELATION_INTERVAL_MS / 1000}s (lookback ${RECORRELATION_LOOKBACK_MIN}min)`);
 
+// ==================== ZEEK-ONLY ML DETECTION ====================
+// ML was trained on CICIDS dataset which mirrors Zeek conn.log shape.
+// → Run ML on every Zeek flow that has NO matching Suricata alert.
+// If ML flags it as ALERT with high confidence, create a brand-new
+// event sourced as "Zeek+ML" so it shows up on the Event Stream.
+const ZEEK_ML_INTERVAL_MS = 30000;
+const ZEEK_ML_LOOKBACK_MIN = 30;
+const ZEEK_ML_BATCH = 100;
+const ZEEK_ML_MIN_CONFIDENCE = 0.7; // anything below stays silent
+
+// Track which Zeek flow IDs we've already pushed through ML to avoid re-processing
+const processedZeekIds = new Set();
+
+async function scanZeekOnlyFlows() {
+  try {
+    // Find recent Zeek flows that have NO matching Suricata event by community_id
+    const flows = db.prepare(`
+      SELECT z.* FROM zeek_flows z
+      LEFT JOIN events e
+        ON e.community_id IS NOT NULL
+       AND e.community_id = z.community_id
+      WHERE z.timestamp >= datetime('now', '-${ZEEK_ML_LOOKBACK_MIN} minutes')
+        AND e.id IS NULL
+      ORDER BY z.timestamp DESC
+      LIMIT ${ZEEK_ML_BATCH}
+    `).all();
+
+    if (flows.length === 0) return;
+
+    let created = 0;
+    for (const zf of flows) {
+      if (processedZeekIds.has(zf.id)) continue;
+      processedZeekIds.add(zf.id);
+
+      try {
+        const res = await fetch(`${AI_ENGINE_URL}/analyze/zeek`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zeek_flow: zf }),
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!res.ok) continue;
+        const result = await res.json();
+        const a = result?.analysis;
+        if (!a) continue;
+
+        // Only surface ALERTs with meaningful confidence
+        if (a.verdict !== 'ALERT' || (a.confidence ?? 0) < ZEEK_ML_MIN_CONFIDENCE) continue;
+
+        const newEvent = {
+          id: uuidv4(),
+          timestamp: zf.timestamp || new Date().toISOString(),
+          src_ip: zf.src_ip || 'unknown',
+          dst_ip: zf.dst_ip || 'unknown',
+          src_port: zf.src_port || null,
+          dst_port: zf.dst_port || null,
+          protocol: (zf.protocol || 'TCP').toUpperCase(),
+          attack_type: `ML Detected: ${a.reasoning || 'Anomalous Zeek flow'}`.substring(0, 200),
+          verdict: 'ALERT',
+          final_verdict: 'ALERT',
+          confidence: a.confidence,
+          source_engine: 'Zeek+ML',
+          community_id: zf.community_id || null,
+          flow_id: zf.uid || null,
+          raw_log: JSON.stringify({ zeek_flow: zf, ml_analysis: a }),
+          ai_analyzed: 1,
+          ai_analysis: JSON.stringify(a),
+          zeek_correlated: 1,
+        };
+
+        db.prepare(`
+          INSERT INTO events (id, timestamp, src_ip, dst_ip, src_port, dst_port, protocol,
+            attack_type, verdict, final_verdict, confidence, source_engine, community_id,
+            flow_id, raw_log, ai_analyzed, ai_analysis, zeek_correlated)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          newEvent.id, newEvent.timestamp, newEvent.src_ip, newEvent.dst_ip,
+          newEvent.src_port, newEvent.dst_port, newEvent.protocol, newEvent.attack_type,
+          newEvent.verdict, newEvent.final_verdict, newEvent.confidence, newEvent.source_engine,
+          newEvent.community_id, newEvent.flow_id, newEvent.raw_log,
+          newEvent.ai_analyzed, newEvent.ai_analysis, newEvent.zeek_correlated
+        );
+
+        broadcastEvent({ ...newEvent, type: 'NEW_EVENT' });
+        created++;
+      } catch (err) {
+        // Silent skip on AI engine errors — try again next cycle
+      }
+    }
+
+    if (created > 0) {
+      console.log(`[ZEEK-ML] Created ${created} ML-detected ALERT events from Zeek-only flows`);
+    }
+
+    // Trim memo set to avoid unbounded growth
+    if (processedZeekIds.size > 5000) {
+      const arr = Array.from(processedZeekIds);
+      processedZeekIds.clear();
+      arr.slice(-2000).forEach((x) => processedZeekIds.add(x));
+    }
+  } catch (err) {
+    console.error('[ZEEK-ML] Loop error:', err.message);
+  }
+}
+
+setInterval(scanZeekOnlyFlows, ZEEK_ML_INTERVAL_MS);
+console.log(`[ZEEK-ML] Background ML scan scheduled every ${ZEEK_ML_INTERVAL_MS / 1000}s (min confidence ${ZEEK_ML_MIN_CONFIDENCE})`);
+
 // ==================== API ENDPOINTS ====================
 
 // Health check
