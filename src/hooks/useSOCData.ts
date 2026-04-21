@@ -69,9 +69,10 @@ export const useSOCData = (
 
   const [mockEventsState, setMockEventsState] = useState<SOCEvent[]>(() => {
     // Historical baseline (20-24/04/2026) — always loaded, never togglable.
-    // Bumped key (v2) to force reseed after dataset fix (NAT dst + full 5-day coverage).
-    const STORAGE_KEY = 'soc-mock-events-v2';
+    // v3 = rich raw_log payloads (Suricata+Zeek+ML+MITRE) and tighter APT storyline.
+    const STORAGE_KEY = 'soc-mock-events-v3';
     try { localStorage.removeItem('soc-mock-events'); } catch { /* ignore */ }
+    try { localStorage.removeItem('soc-mock-events-v2'); } catch { /* ignore */ }
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
@@ -158,7 +159,7 @@ export const useSOCData = (
       }
 
       // Reload Mock events from storage (regardless of enabled flag — preserve data when toggled off)
-      const storedMock = localStorage.getItem('soc-mock-events-v2');
+      const storedMock = localStorage.getItem('soc-mock-events-v3');
       if (storedMock) {
         try {
           const parsed = JSON.parse(storedMock);
@@ -261,20 +262,29 @@ export const useSOCData = (
       baseEvents = baseEvents.filter(e => e.timestamp >= cutoff);
     }
 
-    const counts: Record<string, { count: number; lastSeen: Date }> = {};
+    const counts: Record<string, { count: number; alerts: number; suspicious: number; lastSeen: Date }> = {};
     baseEvents.forEach(e => {
       if (!counts[e.src_ip]) {
-        counts[e.src_ip] = { count: 0, lastSeen: e.timestamp };
+        counts[e.src_ip] = { count: 0, alerts: 0, suspicious: 0, lastSeen: e.timestamp };
       }
       counts[e.src_ip].count++;
+      if (e.verdict === 'ALERT') counts[e.src_ip].alerts++;
+      if (e.verdict === 'SUSPICIOUS') counts[e.src_ip].suspicious++;
       if (e.timestamp > counts[e.src_ip].lastSeen) {
         counts[e.src_ip].lastSeen = e.timestamp;
       }
     });
 
+    // Threat-weighted ranking: ALERT ×5, SUSPICIOUS ×2, BENIGN ×0.05.
+    // Surfaces real attackers above benign-noisy hosts.
     return Object.entries(counts)
-      .map(([ip, data]) => ({ ip, ...data }))
-      .sort((a, b) => b.count - a.count)
+      .map(([ip, data]) => ({
+        ip,
+        count: data.count,
+        lastSeen: data.lastSeen,
+        threatScore: data.alerts * 5 + data.suspicious * 2 + data.count * 0.05,
+      }))
+      .sort((a, b) => b.threatScore - a.threatScore)
       .slice(0, 8);
   })();
 
