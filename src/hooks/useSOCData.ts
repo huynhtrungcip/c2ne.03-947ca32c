@@ -262,20 +262,29 @@ export const useSOCData = (
       baseEvents = baseEvents.filter(e => e.timestamp >= cutoff);
     }
 
-    const counts: Record<string, { count: number; lastSeen: Date }> = {};
+    const counts: Record<string, { count: number; alerts: number; suspicious: number; lastSeen: Date }> = {};
     baseEvents.forEach(e => {
       if (!counts[e.src_ip]) {
-        counts[e.src_ip] = { count: 0, lastSeen: e.timestamp };
+        counts[e.src_ip] = { count: 0, alerts: 0, suspicious: 0, lastSeen: e.timestamp };
       }
       counts[e.src_ip].count++;
+      if (e.verdict === 'ALERT') counts[e.src_ip].alerts++;
+      if (e.verdict === 'SUSPICIOUS') counts[e.src_ip].suspicious++;
       if (e.timestamp > counts[e.src_ip].lastSeen) {
         counts[e.src_ip].lastSeen = e.timestamp;
       }
     });
 
+    // Threat-weighted ranking: ALERT ×5, SUSPICIOUS ×2, BENIGN ×0.05.
+    // Surfaces real attackers above benign-noisy hosts.
     return Object.entries(counts)
-      .map(([ip, data]) => ({ ip, ...data }))
-      .sort((a, b) => b.count - a.count)
+      .map(([ip, data]) => ({
+        ip,
+        count: data.count,
+        lastSeen: data.lastSeen,
+        threatScore: data.alerts * 5 + data.suspicious * 2 + data.count * 0.05,
+      }))
+      .sort((a, b) => b.threatScore - a.threatScore)
       .slice(0, 8);
   })();
 
