@@ -284,48 +284,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     setPendingDelete(null);
   }, [pendingDelete]);
 
-  const handleAddMockData = useCallback(async () => {
-    setAddingMockData(true);
+  // Clear ONLY day-25 (live NIDS) data. Historical baseline 20-24/04 is preserved.
+  const handleClearDay25 = useCallback(() => {
+    setClearingDay25(true);
     try {
-      const { generateMockEvents } = await import('@/data/mockEvents');
-      // Generate 1000 events spread across 1 day for realistic demo
-      const generated = generateMockEvents(1000).map(e => ({
-        ...e,
-        source: 'mock' as const,
-      }));
-
-      // Merge with existing mock events (correct key used by useSOCData)
-      const existingRaw = localStorage.getItem('soc-mock-events');
-      let existing: unknown[] = [];
-      if (existingRaw) {
-        try { existing = JSON.parse(existingRaw); } catch { existing = []; }
-      }
-
-      const serialized = generated.map(e => ({
-        ...e,
-        timestamp: e.timestamp.toISOString(),
-      }));
-      const merged = [...serialized, ...existing].slice(0, 2000);
-
-      try {
-        localStorage.setItem('soc-mock-events', JSON.stringify(merged));
-      } catch {
-        // Quota fallback
-        localStorage.setItem('soc-mock-events', JSON.stringify(serialized.slice(0, 500)));
-      }
-
-      // Mutually exclusive: enabling Mock disables NIDS (data is preserved)
-      localStorage.setItem('soc-mock-data-enabled', 'true');
-      localStorage.setItem('soc-nids-data-enabled', 'false');
-      setMockDataEnabled(true);
-      setNidsDataEnabled(false);
-
-      // Notify dashboard to reload
+      localStorage.removeItem('soc-nids-events');
       window.dispatchEvent(new CustomEvent('soc-data-updated'));
-    } catch (error) {
-      console.error('Failed to add mock data:', error);
     } finally {
-      setAddingMockData(false);
+      setTimeout(() => setClearingDay25(false), 400);
     }
   }, []);
 
