@@ -292,61 +292,83 @@ export const useSOCData = (
     const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
     const now = new Date();
     const cutoff = new Date(now.getTime() - range.minutes * 60000);
-    
+
     let baseEvents = events;
     if (range.minutes !== Infinity) {
       baseEvents = baseEvents.filter(e => e.timestamp >= cutoff);
     }
 
-    const alertEvents = baseEvents.filter(e => e.verdict === 'ALERT');
+    // Include ALERT + SUSPICIOUS so the donut shows the full threat mix
+    // (not just the 1-2 high-volume ALERT classes). Skip BENIGN noise.
+    const threatEvents = baseEvents.filter(
+      e => e.verdict === 'ALERT' || e.verdict === 'SUSPICIOUS'
+    );
     const counts: Record<string, number> = {};
-    alertEvents.forEach(e => {
+    threatEvents.forEach(e => {
       counts[e.attack_type] = (counts[e.attack_type] || 0) + 1;
     });
 
-    const total = alertEvents.length;
+    const total = threatEvents.length;
     return Object.entries(counts)
       .map(([type, count]) => ({
         type,
         count,
-        percentage: total > 0 ? (count / total) * 100 : 0
+        percentage: total > 0 ? (count / total) * 100 : 0,
       }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
+      .slice(0, 8);
   })();
 
   const trafficData = (() => {
     const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
     const now = new Date();
     const cutoff = new Date(now.getTime() - range.minutes * 60000);
-    
+
     let baseEvents = events;
     if (range.minutes !== Infinity) {
       baseEvents = baseEvents.filter(e => e.timestamp >= cutoff);
     }
+    if (baseEvents.length === 0) return [];
 
-    const buckets: Record<string, { total: number; alerts: number }> = {};
-    
+    // SMART BUCKETING — pick a bucket size that yields ~60 buckets across
+    // the actual data span. Avoids the "5 days of 1-min bins = mostly empty"
+    // chart. Snaps to standard intervals (1m/5m/15m/1h/6h/1d).
+    const tsList = baseEvents.map(e => e.timestamp.getTime());
+    const newest = Math.max(...tsList);
+    const oldest = Math.min(...tsList);
+    const spanMs = Math.max(60_000, newest - oldest);
+    const TARGET_BUCKETS = 60;
+    const STANDARD_BUCKETS_MS = [
+      60_000,           // 1m
+      5 * 60_000,       // 5m
+      15 * 60_000,      // 15m
+      30 * 60_000,      // 30m
+      60 * 60_000,      // 1h
+      3 * 60 * 60_000,  // 3h
+      6 * 60 * 60_000,  // 6h
+      24 * 60 * 60_000, // 1d
+    ];
+    const idealBucket = spanMs / TARGET_BUCKETS;
+    const bucketMs = STANDARD_BUCKETS_MS.find(b => b >= idealBucket) ?? STANDARD_BUCKETS_MS[STANDARD_BUCKETS_MS.length - 1];
+
+    // Build CONTIGUOUS bucket series (no gaps) so chart shows zero-line not jumps.
+    const startBucket = Math.floor(oldest / bucketMs) * bucketMs;
+    const endBucket = Math.floor(newest / bucketMs) * bucketMs;
+    const numBuckets = Math.min(180, Math.max(1, Math.floor((endBucket - startBucket) / bucketMs) + 1));
+    const seq: { timestamp: Date; total: number; alerts: number }[] = [];
+    for (let i = 0; i < numBuckets; i++) {
+      seq.push({ timestamp: new Date(startBucket + i * bucketMs), total: 0, alerts: 0 });
+    }
     baseEvents.forEach(e => {
-      const bucketTime = new Date(Math.floor(e.timestamp.getTime() / 60000) * 60000);
-      const key = bucketTime.toISOString();
-      
-      if (!buckets[key]) {
-        buckets[key] = { total: 0, alerts: 0 };
-      }
-      buckets[key].total++;
-      if (e.verdict === 'ALERT') {
-        buckets[key].alerts++;
+      const idx = Math.floor((e.timestamp.getTime() - startBucket) / bucketMs);
+      if (idx >= 0 && idx < seq.length) {
+        seq[idx].total++;
+        if (e.verdict === 'ALERT') seq[idx].alerts++;
       }
     });
-
-    return Object.entries(buckets)
-      .map(([timestamp, data]) => ({
-        timestamp: new Date(timestamp),
-        ...data
-      }))
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    return seq;
   })();
+
 
   return {
     events: filteredEvents,
