@@ -719,7 +719,42 @@ const ML_CLASSES = [
   'PortScan', 'SSH-Patator', 'Web Attack',
 ];
 
+/**
+ * Signature-based confidence scoring — applied to ALL events.
+ * Mirrors the logic in ai-engine/ai_analyzer.py so that critical signatures
+ * (DDoS, RCE, SQLi, etc.) get realistic confidence values instead of the
+ * raw severity-derived 0.33 / 0.66.
+ */
+const HIGH_CONFIDENCE_PATTERNS = [
+  [/\b(rce|remote.?code.?exec)\b/i, 0.95],
+  [/\b(trojan|malware|ransomware|c2|cnc|beacon)\b/i, 0.95],
+  [/\b(ddos|http.?flood|hulk|goldeneye)\b/i, 0.92],
+  [/\b(sql.?injection|sqli|command.?injection)\b/i, 0.90],
+  [/\b(exploit|shellcode|metasploit)\b/i, 0.90],
+  [/\b(dos|flood|slowloris|slowhttp)\b/i, 0.88],
+  [/\b(xss|cross.?site|path.?traversal)\b/i, 0.85],
+  [/\b(brute.?force|patator|hydra)\b/i, 0.82],
+  [/\b(port.?scan|portscan|nmap|syn.?scan)\b/i, 0.78],
+  [/\b(recon|enumeration|probe)\b/i, 0.65],
+];
+
+function scoreSignature(signature, fallback) {
+  if (!signature) return fallback;
+  for (const [re, conf] of HIGH_CONFIDENCE_PATTERNS) {
+    if (re.test(signature)) return conf;
+  }
+  return fallback;
+}
+
 function reshapeForDemo(event, log) {
+  // Always score real signatures first so non-demo traffic gets sensible numbers.
+  const scored = scoreSignature(event.attack_type, null);
+  if (scored !== null && (event.confidence ?? 0) < scored) {
+    event = { ...event, confidence: scored };
+    if (scored >= 0.8 && event.verdict === 'PENDING') {
+      event.verdict = 'ALERT';
+    }
+  }
   if (event.src_ip !== DEMO_ATTACKER_IP) return event;
   const sig = (event.attack_type || '').toLowerCase();
   const dport = event.dst_port;
