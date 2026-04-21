@@ -12,8 +12,9 @@ import {
   getActiveProviderId,
   setActiveProviderId,
   testProvider,
+  clearAllProviders,
 } from '@/lib/aiProviders';
-import { Plus, Trash2, CheckCircle2, AlertCircle, Loader2, Zap } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, AlertCircle, Loader2, Zap, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
