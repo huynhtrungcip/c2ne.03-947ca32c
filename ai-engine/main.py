@@ -76,6 +76,11 @@ class AnalyzeIPRequest(BaseModel):
     zeek_flows: List[Dict[str, Any]]
 
 
+class AnalyzeZeekRequest(BaseModel):
+    """Run ML directly on a Zeek flow with no Suricata alert."""
+    zeek_flow: Dict[str, Any]
+
+
 class BlockIPRequest(BaseModel):
     ip: str
     reason: Optional[str] = None
