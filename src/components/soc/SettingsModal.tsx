@@ -807,214 +807,70 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     </div>
   );
 
-  const handleDeleteData = (timeRange: string) => {
-    const range = TIME_RANGES.find(r => r.value === timeRange);
-    confirmAction(
-      'delete_data',
-      () => executeDeleteData(timeRange),
-      range?.label || timeRange,
-      'Data can be restored within 2 minutes'
-    );
-  };
-
-  const handleToggleMockData = (enabled: boolean) => {
-    setMockDataEnabled(enabled);
-    localStorage.setItem('soc-mock-data-enabled', enabled ? 'true' : 'false');
-    // Mutually exclusive: turning Mock ON forces NIDS OFF (data preserved, not deleted)
-    if (enabled) {
-      setNidsDataEnabled(false);
-      localStorage.setItem('soc-nids-data-enabled', 'false');
-    }
-    // Dispatch event to update dashboard
-    window.dispatchEvent(new CustomEvent('soc-data-updated'));
-  };
-
   const renderDataManagementSection = () => (
     <div className="space-y-6">
       <div className={`text-sm font-semibold text-foreground`}>
         Data Management
       </div>
       <p className={`text-[11px] text-muted-foreground`}>
-        Manage dashboard event data. Toggle mock data, delete old data, or add demo data.
+        The dashboard ships with a fixed historical baseline (20–24/04/2026) that
+        cannot be deleted. Live attack data from the demo Kali host
+        (192.168.168.23) is timestamped onto 25/04/2026 and can be cleared below.
       </p>
 
-      {/* NIDS Data Toggle */}
+      {/* Historical baseline (read-only info) */}
       <div className={`p-4 rounded-md border bg-background/40 border-border`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-md flex items-center justify-center ${nidsDataEnabled ? 'bg-[hsl(var(--soc-success))]/20 text-[#4ade80]' : isDarkMode ? 'bg-muted text-muted-foreground/70' : 'bg-muted text-muted-foreground/70'}`}>
-              <Wifi className="w-5 h-5" />
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-md flex items-center justify-center bg-[hsl(var(--soc-success))]/15 text-[hsl(var(--soc-success))]">
+            <Database className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[12px] font-semibold text-foreground">
+              Historical Baseline (20/04 → 24/04/2026)
             </div>
-            <div>
-              <div className={`text-[12px] font-semibold text-foreground`}>
-                NIDS Data (Real)
-              </div>
-              <div className={`text-[10px] text-muted-foreground`}>
-                {nidsDataEnabled ? 'Enabled - Receiving data from Suricata/Zeek' : 'Disabled - Not showing NIDS data'}
-              </div>
+            <div className="text-[10px] text-muted-foreground">
+              Pre-loaded, deterministic. Cannot be cleared.
             </div>
           </div>
-          <button
-            onClick={() => {
-              const newValue = !nidsDataEnabled;
-              setNidsDataEnabled(newValue);
-              localStorage.setItem('soc-nids-data-enabled', String(newValue));
-              // Mutually exclusive: turning NIDS ON forces Mock OFF (data preserved)
-              if (newValue) {
-                setMockDataEnabled(false);
-                localStorage.setItem('soc-mock-data-enabled', 'false');
-              }
-              window.dispatchEvent(new CustomEvent('soc-data-updated'));
-            }}
-            className={`w-12 h-6 rounded-full transition-colors relative ${
-              nidsDataEnabled ? 'bg-[hsl(var(--soc-success))]' : isDarkMode ? 'bg-muted' : 'bg-muted'
-            }`}
-          >
-            <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${
-              nidsDataEnabled ? 'translate-x-6' : 'translate-x-0.5'
-            }`} />
-          </button>
         </div>
-        <p className={`mt-3 text-[9px] text-muted-foreground/70`}>
-          Real data from NIDS (Suricata/Zeek) via WebSocket. Default: ON.
-        </p>
       </div>
 
-      {/* Mock Data Toggle */}
-      <div className={`p-4 rounded-md border bg-background/40 border-border`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-md flex items-center justify-center ${mockDataEnabled ? 'bg-[hsl(var(--soc-warning))]/10 text-[hsl(var(--soc-warning))]' : isDarkMode ? 'bg-muted text-muted-foreground/70' : 'bg-muted text-muted-foreground/70'}`}>
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <div className={`text-[12px] font-semibold text-foreground`}>
-                Mock Data (Demo)
-              </div>
-              <div className={`text-[10px] text-muted-foreground`}>
-                {mockDataEnabled ? 'Enabled - Auto-generating mock data' : 'Disabled - Showing real data only'}
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={() => handleToggleMockData(!mockDataEnabled)}
-            className={`w-12 h-6 rounded-full transition-colors relative ${
-              mockDataEnabled ? 'bg-[#f59e0b]' : isDarkMode ? 'bg-muted' : 'bg-muted'
-            }`}
-          >
-            <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${
-              mockDataEnabled ? 'translate-x-6' : 'translate-x-0.5'
-            }`} />
-          </button>
-        </div>
-        <p className={`mt-3 text-[9px] text-muted-foreground/70`}>
-          When off, the dashboard only shows real NIDS data. Default: OFF.
-        </p>
-      </div>
-
-      {/* Recovery Banner */}
-      {pendingDelete && (
-        <div className={`p-4 rounded-md border-2 animate-pulse ${isDarkMode ? 'bg-[#422006] border-[hsl(var(--soc-warning))]/40' : 'bg-[#fef3c7] border-[hsl(var(--soc-warning))]/40'}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-[hsl(var(--soc-warning))]" />
-              <div>
-                <div className={`text-[12px] font-semibold ${isDarkMode ? 'text-[hsl(var(--soc-warning))]' : 'text-[#92400e]'}`}>
-                  Data deleted — can be restored
-                </div>
-                <div className={`text-[10px] ${isDarkMode ? 'text-[#fcd34d]' : 'text-[#a16207]'}`}>
-                  {pendingDelete.deletedData?.length || 0} events deleted. {pendingDelete.countdown}s left to restore.
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={handleRecoverData}
-              className="flex items-center gap-2 px-4 py-2 rounded-md bg-[hsl(var(--soc-success))] text-background text-[11px] font-semibold hover:bg-[hsl(var(--soc-success))]/85 transition-colors"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Restore ({pendingDelete.countdown}s)
-            </button>
-          </div>
-          <div className="mt-3 h-1 bg-[#fcd34d]/30 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-[#f59e0b] transition-all duration-1000"
-              style={{ width: `${(pendingDelete.countdown / 120) * 100}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Delete Data Section */}
+      {/* Clear Day-25 Live Data */}
       <div className={`p-4 rounded-md border bg-background/40 border-border`}>
         <div className={`text-[11px] font-semibold mb-3 flex items-center gap-2 text-foreground`}>
           <Trash2 className="w-4 h-4 text-[hsl(var(--soc-alert))]" />
-          Delete Event Data
+          Clear Day-25 Live Attack Data
         </div>
         <p className={`text-[10px] mb-4 text-muted-foreground`}>
-          Delete events within a time range. Data can be restored within 2 minutes after deletion.
+          Removes ALL live NIDS events received from Suricata/Zeek (always
+          shown on the dashboard as 25/04/2026). The 5-day historical baseline
+          is preserved.
         </p>
-        
-        <div className="grid grid-cols-3 gap-2">
-          {TIME_RANGES.map((range) => (
-            <button
-              key={range.value}
-              onClick={() => handleDeleteData(range.value)}
-              disabled={!!pendingDelete}
-              className={`p-3 rounded-md border text-center transition-all ${
-                isDarkMode
-                  ? 'bg-background/60 border-border text-muted-foreground hover:border-[hsl(var(--soc-alert))]/40 hover:text-[hsl(var(--soc-alert))] disabled:opacity-50'
-                  : 'bg-white border-border text-muted-foreground hover:border-[hsl(var(--soc-alert))]/40 hover:text-[hsl(var(--soc-alert))] disabled:opacity-50'
-              }`}
-            >
-              <div className={`text-[12px] font-medium text-foreground`}>
-                {range.label}
-              </div>
-              <div className={`text-[9px] mt-0.5 text-muted-foreground/70`}>
-                {range.value === 'all' ? 'Delete all' : `Last ${range.label}`}
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
 
-      {/* Add Mock Data Section */}
-      <div className={`p-4 rounded-md border bg-background/40 border-border`}>
-        <div className={`text-[11px] font-semibold mb-3 flex items-center gap-2 text-foreground`}>
-          <Plus className="w-4 h-4 text-foreground" />
-          Add Demo Data
-        </div>
-        <p className={`text-[10px] mb-4 text-muted-foreground`}>
-          Add 1000 mock events (70% Suricata, 30% Zeek) spread over 24h to demo the dashboard. Note: Zeek does not have ALERT, only Suricata does.
-        </p>
-        
         <button
-          onClick={handleAddMockData}
-          disabled={addingMockData}
-          className={`w-full p-3 rounded-md border flex items-center justify-center gap-2 transition-all ${
+          onClick={handleClearDay25}
+          disabled={clearingDay25}
+          className={`w-full p-3 rounded-md border flex items-center justify-center gap-2 transition-all text-[12px] font-semibold ${
             isDarkMode
-              ? 'bg-[#1e3a5f] border-border text-foreground hover:bg-[#1e40af] disabled:opacity-50'
-              : 'bg-[#eff6ff] border-border text-foreground hover:bg-[#dbeafe] disabled:opacity-50'
+              ? 'bg-[hsl(var(--soc-alert))]/10 border-[hsl(var(--soc-alert))]/40 text-[hsl(var(--soc-alert))] hover:bg-[hsl(var(--soc-alert))]/20 disabled:opacity-50'
+              : 'bg-[#fef2f2] border-[hsl(var(--soc-alert))]/40 text-[hsl(var(--soc-alert))] hover:bg-[#fee2e2] disabled:opacity-50'
           }`}
         >
-          {addingMockData ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              Adding...
-            </>
+          {clearingDay25 ? (
+            <><RefreshCw className="w-4 h-4 animate-spin" /> Clearing…</>
           ) : (
-            <>
-              <Plus className="w-4 h-4" />
-              Add 1000 Demo Events
-            </>
+            <><Trash2 className="w-4 h-4" /> Clear Day-25 Live Data</>
           )}
         </button>
       </div>
 
-      {/* Warning */}
-      <div className={`p-3 rounded-md border ${isDarkMode ? 'bg-[#450a0a] border-[hsl(var(--soc-alert))]/40/30' : 'bg-[#fef2f2] border-[#fecaca]'}`}>
-        <div className={`text-[10px] ${isDarkMode ? 'text-[#fca5a5]' : 'text-[#b91c1c]'}`}>
-          <strong>Note:</strong> After 2 minutes, the data will be permanently deleted and cannot be restored. 
-          Make sure to back up important data before deleting.
+      {/* Note */}
+      <div className={`p-3 rounded-md border ${isDarkMode ? 'bg-[#1e293b] border-border' : 'bg-[#f8fafc] border-border'}`}>
+        <div className={`text-[10px] text-muted-foreground`}>
+          <strong>How timestamps work:</strong> any traffic captured from
+          192.168.168.23 — regardless of the real wall-clock day — is normalised
+          onto 2026-04-25 in both the dashboard and the backend. This lets you
+          rehearse the live-attack script on any day.
         </div>
       </div>
     </div>
