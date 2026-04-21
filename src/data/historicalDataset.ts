@@ -188,7 +188,7 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
     'id.resp_h': o.dst_ip,
     'id.resp_p': o.dst_port,
     proto: o.proto.toLowerCase(),
-    service: o.dst_port === 443 ? 'ssl' : o.dst_port === 80 ? 'http' : o.dst_port === 53 ? 'dns' : o.dst_port === 22 ? 'ssh' : o.dst_port === 21 ? 'ftp' : '-',
+    service: o.dst_port === 80 ? 'http' : o.dst_port === 53 ? 'dns' : o.dst_port === 22 ? 'ssh' : o.dst_port === 21 ? 'ftp' : '-',
     duration: duration_s,
     orig_bytes,
     resp_bytes,
@@ -326,11 +326,11 @@ const mk = (o: EventOpts): SOCEvent => {
   _id++;
   const proto = o.protocol || 'TCP';
   const sp = o.src_port ?? between(20000, 65000);
-  const dp = o.dst_port ?? 443;
+  const dp = o.dst_port ?? 80;
   const src_ip = o.src_ip!;
   const dst_ip = o.dst_ip!;
   const verdict = o.verdict || 'BENIGN';
-  const attack_type = o.attack_type || 'Normal HTTPS Traffic';
+  const attack_type = o.attack_type || 'Normal HTTP Traffic';
   const confidence = o.confidence ?? round2(0.05 + rand() * 0.18);
   const evtId = `HIST-${o.ts.getTime()}-${_id}`;
 
@@ -387,7 +387,7 @@ const keyEventIds: Record<string, string[]> = {
 /* =====================================================================
  * BENIGN BASELINE — every day, ~250 events/day with diurnal sine wave.
  * Three traffic patterns are interleaved so Source IP shows variety:
- *   (A) Inbound web traffic   : external client .20-.30 → web 172.16.16.30:443/80
+ *   (A) Inbound web traffic   : external client .20-.30 → web 172.16.16.30:80
  *   (B) Outbound response     : web 172.16.16.30 → external client (responses)
  *   (C) Internal lateral      : SOC AI (10.10.10.20) ↔ DMZ NIDS (172.16.16.20)
  *   (D) Egress browsing       : DMZ web → external CDN/API
@@ -404,16 +404,15 @@ for (let day = 20; day <= 24; day++) {
     if (r < 0.45) {
       // (A) Inbound web request: external client → web server
       const client = pick(EXTERNAL_BENIGN_HOSTS);
-      const port = pick([443, 443, 443, 80]);
       events.push(
         mk({
           ts,
           src_ip: client,
           dst_ip: WEB_SERVER,
           src_port: between(30000, 65000),
-          dst_port: port,
+          dst_port: 80,
           protocol: 'TCP',
-          attack_type: port === 443 ? 'Normal HTTPS / Web Browsing' : 'Normal HTTP / Web Browsing',
+          attack_type: 'Normal HTTP / Web Browsing',
           source_engine: 'Zeek',
           http: {
             method: pick(['GET', 'GET', 'GET', 'GET', 'POST']),
@@ -433,7 +432,7 @@ for (let day = 20; day <= 24; day++) {
           ts: new Date(t + between(50, 800)),
           src_ip: WEB_SERVER,
           dst_ip: client,
-          src_port: pick([443, 80]),
+          src_port: 80,
           dst_port: between(30000, 65000),
           protocol: 'TCP',
           attack_type: 'Web Server Response',
@@ -466,7 +465,7 @@ for (let day = 20; day <= 24; day++) {
           ts,
           src_ip: WEB_SERVER,
           dst_ip: DMZ_GW,
-          dst_port: pick([443, 443, 80, 53]),
+          dst_port: pick([80, 80, 80, 53]),
           protocol: 'TCP',
           attack_type: 'Outbound CDN/API Call',
           source_engine: 'Zeek',
@@ -512,9 +511,9 @@ for (let day = 20; day <= 24; day++) {
     ts: new Date(base + 600_000),
     src_ip: ATTACKER_IP,
     dst_ip: WEB_SERVER,
-    dst_port: 443,
+    dst_port: 80,
     protocol: 'TCP',
-    attack_type: 'HTTPS Connection',
+    attack_type: 'HTTP Connection',
     verdict: 'BENIGN',
     confidence: 0.18,
     source_engine: 'Zeek',
@@ -533,7 +532,7 @@ for (let day = 20; day <= 24; day++) {
  * ===================================================================== */
 {
   const base = new Date('2026-04-21T22:47:00+07:00').getTime();
-  const probedPorts = [22, 80, 443, 8080, 3389];
+  const probedPorts = [22, 80, 8080, 3389, 21];
   probedPorts.forEach((port, i) => {
     const ev = mk({
       ts: new Date(base + i * 12_000),
@@ -583,7 +582,7 @@ for (let day = 20; day <= 24; day++) {
  * ===================================================================== */
 {
   const base = new Date('2026-04-22T02:18:00+07:00').getTime();
-  const ports = [21, 22, 23, 25, 53, 80, 110, 139, 143, 443, 445, 993, 995, 1433, 3306, 3389, 5432, 8080, 8443];
+  const ports = [21, 22, 23, 25, 53, 80, 110, 139, 143, 445, 993, 995, 1433, 3306, 3389, 5432, 8080];
   const SCAN_SPAN_MS = 10 * 60_000;
   for (let i = 0; i < 80; i++) {
     const port = pick(ports);
