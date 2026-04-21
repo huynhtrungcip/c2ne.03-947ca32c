@@ -49,7 +49,8 @@ const DNS_SERVER = '192.168.168.10';
 
 // Lab hosts that produce benign noise
 const LAB_HOSTS = Array.from({ length: 31 }, (_, i) => `192.168.168.${20 + i}`); // .20 → .50
-const BENIGN_EXTERNAL = ['8.8.8.8', '1.1.1.1', '142.250.196.110', '157.240.16.35', '52.84.150.39', '14.225.7.1'];
+// External IPs hidden by NAT — kept for reference only, not used in events.
+// const BENIGN_EXTERNAL = ['8.8.8.8', '1.1.1.1'];
 
 // ---------- Community-id stub (deterministic) ----------
 const communityId = (s: string, sp: number, d: string, dp: number, proto: string) => {
