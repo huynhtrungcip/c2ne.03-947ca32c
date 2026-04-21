@@ -675,6 +675,7 @@ const SOCDashboard = () => {
   const [showAnalysisOptions, setShowAnalysisOptions] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [analysisModel, setAnalysisModel] = useState<string>(DEFAULT_MODEL);
   const [blockingIP, setBlockingIP] = useState(false);
   const [pieHoverIdx, setPieHoverIdx] = useState<number | null>(null);
   const [blockResult, setBlockResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -1181,7 +1182,7 @@ Rules:
                   </span>
                   <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">/</span>
                   <span className="text-[10px] font-mono text-muted-foreground truncate">
-                    {analysisLoading ? `model=${DEFAULT_MODEL} status=streaming` : `model=${DEFAULT_MODEL} status=complete`}
+                    {analysisLoading ? `model=${analysisModel} status=streaming` : `model=${analysisModel} status=complete`}
                   </span>
                 </div>
                 {analysisResult && (
@@ -1200,7 +1201,7 @@ Rules:
                 <div className="px-4 py-6 flex items-center gap-3">
                   <div className="w-3.5 h-3.5 border-2 border-muted-foreground/30 border-t-foreground rounded-full animate-spin" />
                   <span className="text-[11px] font-mono text-muted-foreground">
-                    awaiting response from {DEFAULT_MODEL}…
+                    awaiting response from {analysisModel}…
                   </span>
                 </div>
               ) : analysisResult && (
