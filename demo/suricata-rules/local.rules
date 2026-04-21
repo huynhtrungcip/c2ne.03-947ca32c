@@ -88,3 +88,16 @@ alert http any any -> $EXTERNAL_NET any (msg:"DEMO Bot C2 Beacon (python-request
    content:"User-Agent|3a 20|python-requests"; nocase; \
    threshold:type both, track by_src, count 4, seconds 120; \
    classtype:trojan-activity; sid:9000011; rev:1;)
+
+# ---------------------------------------------------------------------
+# Reference rules — NOT used during live demo (.23 single-IP scenario).
+# Kept here so the historical DDoS sample on 23/04 (160 spoofed-src
+# SYN floods to 172.16.16.30:80) maps to a real signature if the
+# operator chooses to replay it from a packet capture.
+# ---------------------------------------------------------------------
+
+# ---------- REF-A. DDoS — distributed SYN flood (audit only) ----------
+alert tcp $EXTERNAL_NET any -> $HOME_NET 80 (msg:"DEMO DDoS distributed SYN flood"; \
+   flags:S; \
+   threshold:type both, track by_dst, count 100, seconds 30; \
+   classtype:attempted-dos; sid:9000012; rev:1;)

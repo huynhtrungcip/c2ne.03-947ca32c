@@ -23,23 +23,23 @@
 - **What it looks like:** a fresh device joining the LAN.
 
 ### Day 2 — 2026-04-21 22:47  (Light TCP probing)
-- Bash `</dev/tcp>` connects to ports 22, 80, 443, 8080, 3389 of the gateway.
+- `.23`: Bash `</dev/tcp>` connects to ports 22, 80, 443, 8080, 3389 of the **DMZ web server (172.16.16.30)**.
 - Zeek logs `REJ` connection states.
 - **Verdict:** SUSPICIOUS (5 events).
-- **What it looks like:** late-night curiosity. Could be a sysadmin.
+- *Side incident:* `.27` runs FTP-Patator against the web server (3 ALERT events) — opportunistic, unrelated to `.23`.
 
 ### Day 3 — 2026-04-22 02:18  (Targeted PortScan)
-- nmap `-sS -T2 --top-ports 100 -Pn` against the gateway.
+- `.23`: nmap `-sS -T2 --top-ports 100 -Pn` against **172.16.16.30**.
 - ~80 SYN events; first Suricata ALERT triggered.
 - **Verdict:** PortScan ALERT (confidence 0.88+).
-- **What it looks like:** definitely a recon tool, not a human.
+- *Side incident:* `.29` fires 4 Web Attack probes (SQLi/XSS/LFI) at 14:05.
 
 ### Day 4 — 2026-04-23 19:42  (External DDoS, unrelated)
-- 220 SYN packets from ~60 spoofed IPs hitting the gateway port 80.
+- ~160 SYN packets from ~60 spoofed external IPs hitting **172.16.16.30:80**.
 - **Verdict:** DDoS ALERT (confidence 0.9+); auto-block fires on the last source.
-- **What it looks like:** a separate threat actor — used here to give
-  the "Attack Types" panel a DDoS data point so the ML class is
-  represented. Does not involve `.23`.
+- **What it looks like:** a separate threat actor — used to give
+  the "Attack Types" panel a DDoS data point. Does not involve `.23`.
+- *Side incidents:* `.25` SSH-Patator (3 ALERT, 11:20), `.28` DoS slowloris (3 ALERT, 05:48).
 
 ### Day 5 — 2026-04-24 16:31  (Cool-down — APT staging)
 - `.23` makes only **2 SSH probes** (4 minutes apart).
@@ -47,6 +47,7 @@
 - **What it looks like:** the attacker has gone quiet — *exactly* the
   kind of low-and-slow staging behaviour that precedes a real
   campaign. The AI chatbot can highlight this on day 6.
+- *Side incidents:* `.26` DoS Hulk burst (4 ALERT, 08:14), `.30` Bot/C2 beacon (3 SUSPICIOUS, 21:05).
 
 ### Day 6 — 2026-04-25 09:00+  (★ Live attack ★)
 The same actor IP (`.23`) launches a structured 9-phase campaign:
