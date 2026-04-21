@@ -703,12 +703,10 @@ const SOCDashboard = () => {
     { useWebSocket: useWsRealtime && isLive && !!wsUrl }
   );
 
-  // WebSocket connection for real-time events — only ingest when NIDS source is enabled.
+  // WebSocket connection for real-time events.
   const handleWebSocketEvent = useCallback((event: SOCEvent) => {
-    if (isLive && nidsEnabled) {
-      addEvent(event);
-    }
-  }, [isLive, nidsEnabled, addEvent]);
+    if (isLive) addEvent(event);
+  }, [isLive, addEvent]);
 
   const handleConnectionChange = useCallback((connected: boolean) => {
     setWsConnected(connected);
@@ -716,7 +714,7 @@ const SOCDashboard = () => {
 
   const { isConnected: wsIsConnected, eventCount: wsEventCount } = useWebSocket({
     url: wsUrl,
-    enabled: useWsRealtime && isLive && !!wsUrl && nidsEnabled,
+    enabled: useWsRealtime && isLive && !!wsUrl,
     onEvent: handleWebSocketEvent,
     onConnectionChange: handleConnectionChange,
     reconnectInterval: 5000,
