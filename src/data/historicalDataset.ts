@@ -847,11 +847,9 @@ events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     if (e.verdict === 'ALERT' && !keepAlertIds.has(e.id)) {
       e.verdict = 'FALSE_POSITIVE';
       e.confidence = round2(Math.min(0.42, e.confidence * 0.45));
-      e.notes = `AI downgrade — Suricata signature matched but Zeek flow context (short conn, expected service, low-rate) does not corroborate. ${e.notes ?? ''}`.trim();
     } else if (e.verdict === 'SUSPICIOUS' && e.confidence < 0.5) {
       e.verdict = 'FALSE_POSITIVE';
       e.confidence = round2(Math.min(0.35, e.confidence * 0.6));
-      e.notes = `AI downgrade — low-confidence anomaly cleared by behavioural baseline. ${e.notes ?? ''}`.trim();
     }
   }
 }
