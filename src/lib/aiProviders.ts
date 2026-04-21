@@ -62,9 +62,10 @@ export const PROVIDER_PRESETS: Record<ProviderKind, Partial<AIProviderConfig> & 
   grok: {
     label: 'Grok (xAI)',
     baseUrl: 'https://api.x.ai/v1',
-    model: 'grok-2-latest',
+    model: 'grok-4-latest',
     supportsTools: true,
-    models: ['grok-2-latest', 'grok-2-1212', 'grok-beta'],
+    // Updated 2026-04 — xAI deprecated grok-2-* and grok-beta. Current line: grok-4 / grok-3 / grok-code-fast-1.
+    models: ['grok-4-latest', 'grok-4', 'grok-4-fast-reasoning', 'grok-4-fast-non-reasoning', 'grok-3', 'grok-3-mini', 'grok-code-fast-1'],
   },
   gemini: {
     label: 'Gemini',
