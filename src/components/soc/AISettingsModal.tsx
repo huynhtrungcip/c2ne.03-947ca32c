@@ -146,9 +146,31 @@ export const AISettingsModal = ({ open, onClose, onChange }: Props) => {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Providers</h3>
-              <Button size="sm" variant="outline" onClick={startNew} className="h-7 text-[11px]">
-                <Plus className="h-3 w-3 mr-1" /> Add
-              </Button>
+              <div className="flex items-center gap-2">
+                {providers.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      if (!confirm('Wipe ALL saved AI providers and API keys from this browser? This cannot be undone.')) return;
+                      clearAllProviders();
+                      setProviders([]);
+                      setActive(null);
+                      setEditing(null);
+                      setTestResult(null);
+                      onChange?.();
+                      toast.success('All AI providers cleared from browser storage');
+                    }}
+                    className="h-7 text-[11px] text-destructive hover:text-destructive"
+                    title="Remove all stored API keys from this browser (use after a fresh deploy)"
+                  >
+                    <Eraser className="h-3 w-3 mr-1" /> Clear all
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={startNew} className="h-7 text-[11px]">
+                  <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
+              </div>
             </div>
             {providers.length === 0 && (
               <div className="text-[11px] text-muted-foreground italic border border-dashed border-border rounded-md p-3 text-center">
