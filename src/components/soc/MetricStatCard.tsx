@@ -15,22 +15,49 @@ interface MetricStatCardProps {
   kind: MetricKind;
   events: SOCEvent[];
   delta?: string;
-  windowMinutes?: number;
+  /** Number of cells in the heatmap (defaults to 40). */
+  buckets?: number;
 }
 
-const buildSeries = (events: SOCEvent[], kind: MetricKind, windowMinutes: number) => {
-  const now = Date.now();
-  const bucketMs = 60 * 1000;
-  const buckets: number[] = new Array(windowMinutes).fill(0);
-  const ipSets: Set<string>[] = kind === 'sources'
-    ? buckets.map(() => new Set<string>())
-    : [];
+const N_DEFAULT = 40;
+
+// Format a duration in ms as a compact label (e.g. "30m", "2h", "1d", "5d").
+const fmtSpan = (ms: number): string => {
+  if (ms < 60_000) return `${Math.max(1, Math.round(ms / 1000))}s`;
+  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`;
+  if (ms < 86_400_000) return `${Math.round(ms / 3_600_000)}h`;
+  return `${Math.round(ms / 86_400_000)}d`;
+};
+const fmtBucket = (ms: number): string => fmtSpan(ms);
+
+/**
+ * Build a bucketed time series across the full span of the supplied events.
+ * Anchor = newest event (so the rightmost cell is always populated).
+ * Returns counts per bucket plus the bucket size in ms for tooltip labels.
+ */
+const buildSeries = (events: SOCEvent[], kind: MetricKind, nBuckets: number) => {
+  if (events.length === 0) {
+    return { buckets: new Array(nBuckets).fill(0) as number[], bucketMs: 60_000, spanMs: 0 };
+  }
+  const ts = events.map((e) => e.timestamp.getTime());
+  const newest = Math.max(...ts);
+  const oldest = Math.min(...ts);
+  const spanMs = Math.max(60_000, newest - oldest);
+  const bucketMs = Math.max(1000, Math.ceil(spanMs / nBuckets));
+  const startMs = newest - bucketMs * nBuckets + bucketMs; // align so newest sits in last bucket
+
+  const buckets: number[] = new Array(nBuckets).fill(0);
+  const ipSets: Set<string>[] =
+    kind === 'sources' ? buckets.map(() => new Set<string>()) : [];
 
   for (const ev of events) {
-    const ts = ev.timestamp.getTime();
-    const idx = windowMinutes - 1 - Math.floor((now - ts) / bucketMs);
-    if (idx < 0 || idx >= windowMinutes) continue;
+    const idx = Math.floor((ev.timestamp.getTime() - startMs) / bucketMs);
+    if (idx < 0 || idx >= nBuckets) continue;
 
+    if (kind === 'sources') {
+      ipSets[idx].add(ev.src_ip);
+      continue;
+    }
     const v = (ev.verdict || '').toUpperCase();
     let match = false;
     switch (kind) {
@@ -38,14 +65,11 @@ const buildSeries = (events: SOCEvent[], kind: MetricKind, windowMinutes: number
       case 'alert': match = v === 'ALERT'; break;
       case 'suspicious': match = v === 'SUSPICIOUS'; break;
       case 'false_positive': match = v === 'FALSE_POSITIVE'; break;
-      case 'sources':
-        ipSets[idx]?.add(ev.src_ip);
-        continue;
     }
     if (match) buckets[idx] += 1;
   }
   if (kind === 'sources') ipSets.forEach((s, i) => (buckets[i] = s.size));
-  return buckets;
+  return { buckets, bucketMs, spanMs };
 };
 
 // GitHub-style 5-level intensity
@@ -67,11 +91,11 @@ export const MetricStatCard = ({
   kind,
   events,
   delta,
-  windowMinutes = 30,
+  buckets = N_DEFAULT,
 }: MetricStatCardProps) => {
-  const series = useMemo(
-    () => buildSeries(events, kind, windowMinutes),
-    [events, kind, windowMinutes]
+  const { buckets: series, bucketMs, spanMs } = useMemo(
+    () => buildSeries(events, kind, buckets),
+    [events, kind, buckets]
   );
 
   const max = Math.max(1, ...series);
@@ -79,9 +103,12 @@ export const MetricStatCard = ({
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   const hoverInfo = hoverIdx !== null ? {
-    minuteAgo: windowMinutes - 1 - hoverIdx,
+    bucketsAgo: series.length - 1 - hoverIdx,
     count: series[hoverIdx],
   } : null;
+
+  const spanLabel = spanMs > 0 ? fmtSpan(spanMs) : '—';
+  const bucketLabel = fmtBucket(bucketMs);
 
   return (
     <div
@@ -110,8 +137,8 @@ export const MetricStatCard = ({
         {/* Hover tooltip line */}
         <div className="text-[9px] font-mono text-muted-foreground tabular-nums h-3 mb-1">
           {hoverInfo
-            ? `${hoverInfo.minuteAgo === 0 ? 'now' : `${hoverInfo.minuteAgo}m ago`} · ${hoverInfo.count} events`
-            : `Peak ${peak}/min · last ${windowMinutes} min`}
+            ? `${hoverInfo.bucketsAgo === 0 ? 'latest' : `-${hoverInfo.bucketsAgo}·${bucketLabel}`} · ${hoverInfo.count} ${kind === 'sources' ? 'IPs' : 'events'}`
+            : `Peak ${peak}/${bucketLabel} · span ${spanLabel}`}
         </div>
 
         {/* Cells */}
@@ -134,7 +161,7 @@ export const MetricStatCard = ({
                   outlineOffset: '1px',
                 }}
                 onMouseEnter={() => setHoverIdx(i)}
-                title={`${windowMinutes - 1 - i === 0 ? 'now' : `${windowMinutes - 1 - i}m ago`}: ${v} events`}
+                title={`${series.length - 1 - i === 0 ? 'latest' : `-${series.length - 1 - i}·${bucketLabel}`}: ${v} ${kind === 'sources' ? 'IPs' : 'events'}`}
               />
             );
           })}
@@ -142,7 +169,7 @@ export const MetricStatCard = ({
 
         {/* Legend - GitHub style */}
         <div className="flex items-center justify-between mt-1.5 text-[8px] font-mono text-muted-foreground/70">
-          <span>-{windowMinutes}m</span>
+          <span>-{spanLabel}</span>
           <div className="flex items-center gap-1">
             <span>Less</span>
             {[0, 1, 2, 3, 4].map(level => (
