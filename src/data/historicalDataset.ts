@@ -356,18 +356,25 @@ const keyEventIds: Record<string, string[]> = {
 };
 
 /* =====================================================================
- * BENIGN BASELINE — every day 06:00 → 23:30, ~80-100 events/day.
- *   - 70% LAN → external (egress through gateway, dst = .254 due to NAT)
- *   - 30% LAN ↔ LAN (DNS lookup, SMB file share)
+ * BENIGN BASELINE — every day 00:00 → 23:59, ~250 events/day with a
+ * diurnal sine wave (low overnight, peak around 10:00–16:00). This gives
+ * the Traffic & Alerts chart a natural rolling shape so attack spikes
+ * read as anomalies, not as the only data on the chart.
  * ===================================================================== */
 for (let day = 20; day <= 24; day++) {
-  const dayBase = new Date(`2026-04-${String(day).padStart(2, '0')}T06:00:00+07:00`).getTime();
-  const dayClose = new Date(`2026-04-${String(day).padStart(2, '0')}T23:30:00+07:00`).getTime();
-  for (let t = dayBase; t <= dayClose; t += between(540_000, 840_000)) {
+  const dayBase = new Date(`2026-04-${String(day).padStart(2, '0')}T00:00:00+07:00`).getTime();
+  // Walk the whole day in ~5-min steps; accept/reject each step based on
+  // a diurnal probability curve so density follows business hours.
+  for (let t = dayBase; t < dayBase + 24 * 3600_000; t += between(180_000, 360_000)) {
     const ts = new Date(t);
+    const hour = ts.getHours() + ts.getMinutes() / 60;
+    // Sine-shaped probability: ~0.15 at 03:00, ~0.95 at 13:00.
+    const diurnal = 0.55 + 0.45 * Math.sin(((hour - 7) / 24) * Math.PI * 2 - Math.PI / 2);
+    if (rand() > diurnal) continue;
+
     const isEgress = rand() < 0.7;
     if (isEgress) {
-      const port = pick([443, 443, 443, 443, 80, 53]);
+      const port = pick([443, 443, 443, 443, 443, 80, 80, 53]);
       const fqdn = pick(EGRESS_FQDNS);
       const src = pick(LAB_HOSTS.filter((ip) => ip !== ATTACKER_IP));
       events.push(
@@ -382,10 +389,10 @@ for (let day = 20; day <= 24; day++) {
           http:
             port === 80 || port === 443
               ? {
-                  method: pick(['GET', 'GET', 'POST']),
+                  method: pick(['GET', 'GET', 'GET', 'POST']),
                   host: fqdn,
-                  uri: pick(['/', '/index.html', '/api/v1/users', '/static/app.js', '/favicon.ico']),
-                  status: pick([200, 200, 200, 304, 301]),
+                  uri: pick(['/', '/index.html', '/api/v1/users', '/static/app.js', '/favicon.ico', '/assets/main.css']),
+                  status: pick([200, 200, 200, 200, 304, 301]),
                 }
               : undefined,
           dns:
@@ -396,7 +403,7 @@ for (let day = 20; day <= 24; day++) {
         })
       );
     } else {
-      const isDns = rand() < 0.5;
+      const isDns = rand() < 0.55;
       events.push(
         mk({
           ts,
@@ -407,7 +414,7 @@ for (let day = 20; day <= 24; day++) {
           attack_type: isDns ? 'Internal DNS Query' : 'SMB File Share',
           source_engine: 'Zeek',
           dns: isDns ? { query: pick(['intranet.lab', 'fileserver.lab', 'gw.lab']), rcode: 'NOERROR' } : undefined,
-          notes: isDns ? 'Internal name resolution.' : 'Internal SMB share access — workstation pulling shared resources.',
+          notes: isDns ? 'Internal name resolution.' : 'Internal SMB share access.',
         })
       );
     }
@@ -491,13 +498,17 @@ for (let day = 20; day <= 24; day++) {
  *   80 SYN probes to top ports in 2 minutes → Suricata sig 2010935.
  * ===================================================================== */
 {
+  // Spread the 80-port scan over ~10 minutes so it shows as a recognisable
+  // burst (not a single 1-pixel spike that nukes the chart axis).
   const base = new Date('2026-04-22T02:18:00+07:00').getTime();
   const ports = [21, 22, 23, 25, 53, 80, 110, 139, 143, 443, 445, 993, 995, 1433, 3306, 3389, 5432, 8080, 8443];
+  const SCAN_SPAN_MS = 10 * 60_000;
   for (let i = 0; i < 80; i++) {
     const port = pick(ports);
     const isAlert = i > 15;
+    const ts = new Date(base + Math.floor((i / 80) * SCAN_SPAN_MS) + between(-1500, 1500));
     const ev = mk({
-      ts: new Date(base + i * 1_400),
+      ts,
       src_ip: ATTACKER_IP,
       dst_ip: GATEWAY,
       dst_port: port,
@@ -525,12 +536,22 @@ for (let day = 20; day <= 24; day++) {
  *   Purpose: populate the DDoS class on the dashboard.
  * ===================================================================== */
 {
+  // Spread the 220-packet flood over ~30 minutes with a bell-shaped envelope
+  // (ramp-up, peak, mitigation tail). Reads as a real DDoS incident on the
+  // chart instead of a 1-pixel spike. Reduce volume slightly to 160 events.
   const base = new Date('2026-04-23T19:42:00+07:00').getTime();
+  const FLOOD_SPAN_MS = 30 * 60_000;
+  const FLOOD_COUNT = 160;
   const spoofPool = Array.from({ length: 60 }, () => `${between(11, 223)}.${between(0, 255)}.${between(0, 255)}.${between(1, 254)}`);
-  for (let i = 0; i < 220; i++) {
+  for (let i = 0; i < FLOOD_COUNT; i++) {
+    // Bell envelope (cos²): density highest in the middle of the window.
+    const u = i / (FLOOD_COUNT - 1); // 0 → 1
+    const skew = 0.5 - 0.5 * Math.cos(u * Math.PI); // smooth 0→1
+    const offset = Math.floor(skew * FLOOD_SPAN_MS) + between(-4000, 4000);
+    const ts = new Date(base + offset);
     events.push(
       mk({
-        ts: new Date(base + i * 700),
+        ts,
         src_ip: pick(spoofPool),
         dst_ip: GATEWAY,
         dst_port: 80,
@@ -540,13 +561,14 @@ for (let day = 20; day <= 24; day++) {
         confidence: round2(0.9 + rand() * 0.08),
         source_engine: 'Suricata+Zeek+ML',
         signature_id: 2024897,
-        action_taken: i === 219 ? 'auto_blocked_pfsense_alias' : undefined,
+        action_taken: i === FLOOD_COUNT - 1 ? 'auto_blocked_pfsense_alias' : undefined,
         mitre: { tactic: 'Impact', technique: 'Network Denial of Service', id: 'T1498' },
-        notes: i === 0
-          ? 'SYN flood detected from a wide spoofed source pool — typical low-rate distributed DoS. Unrelated to internal recon actor.'
-          : i === 219
-          ? 'Mitigation triggered: pfSense rate-limit + temporary alias block applied.'
-          : undefined,
+        notes:
+          i === 0
+            ? 'SYN flood detected from a wide spoofed source pool — typical low-rate distributed DoS. Unrelated to internal recon actor.'
+            : i === FLOOD_COUNT - 1
+            ? 'Mitigation triggered: pfSense rate-limit + temporary alias block applied.'
+            : undefined,
       })
     );
   }
