@@ -49,7 +49,8 @@ const DNS_SERVER = '192.168.168.10';
 
 // Lab hosts that produce benign noise
 const LAB_HOSTS = Array.from({ length: 31 }, (_, i) => `192.168.168.${20 + i}`); // .20 → .50
-const BENIGN_EXTERNAL = ['8.8.8.8', '1.1.1.1', '142.250.196.110', '157.240.16.35', '52.84.150.39', '14.225.7.1'];
+// External IPs hidden by NAT — kept for reference only, not used in events.
+// const BENIGN_EXTERNAL = ['8.8.8.8', '1.1.1.1'];
 
 // ---------- Community-id stub (deterministic) ----------
 const communityId = (s: string, sp: number, d: string, dp: number, proto: string) => {
@@ -101,23 +102,51 @@ const mk = (o: EventOpts): SOCEvent => {
 const events: SOCEvent[] = [];
 
 /* =====================================================================
- * BENIGN baseline — every 5–15 minutes across the 5 days.
- * Many internal hosts, normal protocols. ~430 events.
+ * BENIGN baseline — guaranteed coverage across ALL 5 days, from early
+ * morning to late night. Every day gets ~90 events spread over 06:00→23:30.
+ *
+ * NETWORK TOPOLOGY NOTE:
+ *   pfSense does NAT for the LAN. Anything coming from "outside" (WAN, Kali
+ *   simulated hosts, internet) is seen on the LAN side as hitting the
+ *   gateway 192.168.168.254 — pfSense then forwards internally. So for the
+ *   dashboard:
+ *     • WAN/external/attacker → dst_ip MUST be 192.168.168.254
+ *     • Internal LAN host → External web → src is internal, dst is .254
+ *       (the gateway egress); the public IP is hidden by NAT.
+ *     • LAN ↔ LAN benign chatter (DNS, file share) keeps real internal dst.
  * ===================================================================== */
-const dayStart = new Date('2026-04-20T00:00:00+07:00').getTime();
-const dayEnd = new Date('2026-04-24T23:59:59+07:00').getTime();
-for (let t = dayStart; t <= dayEnd; t += between(300_000, 900_000)) {
-  const ts = new Date(t);
-  // Internal → External browsing
-  events.push(mk({
-    ts,
-    src_ip: pick(LAB_HOSTS.filter(ip => ip !== ATTACKER_IP)),
-    dst_ip: pick(BENIGN_EXTERNAL),
-    dst_port: pick([443, 443, 443, 80, 53]),
-    protocol: pick(['TCP', 'TCP', 'UDP']),
-    attack_type: 'Normal HTTPS / DNS',
-    source_engine: 'Zeek',
-  }));
+for (let day = 20; day <= 24; day++) {
+  const dayBase = new Date(`2026-04-${String(day).padStart(2, '0')}T06:00:00+07:00`).getTime();
+  const dayClose = new Date(`2026-04-${String(day).padStart(2, '0')}T23:30:00+07:00`).getTime();
+  for (let t = dayBase; t <= dayClose; t += between(600_000, 900_000)) {
+    const ts = new Date(t);
+    // 70% LAN → Internet (egress through gateway, dst = .254 due to NAT)
+    // 30% LAN ↔ LAN (DNS lookup, file share)
+    const isEgress = rand() < 0.7;
+    if (isEgress) {
+      events.push(mk({
+        ts,
+        src_ip: pick(LAB_HOSTS.filter(ip => ip !== ATTACKER_IP)),
+        dst_ip: GATEWAY, // pfSense NAT egress
+        dst_port: pick([443, 443, 443, 80, 53]),
+        protocol: pick(['TCP', 'TCP', 'UDP']),
+        attack_type: 'Normal HTTPS / Web Browsing',
+        source_engine: 'Zeek',
+      }));
+    } else {
+      // Internal DNS or file share
+      const isDns = rand() < 0.5;
+      events.push(mk({
+        ts,
+        src_ip: pick(LAB_HOSTS.filter(ip => ip !== ATTACKER_IP && ip !== DNS_SERVER)),
+        dst_ip: isDns ? DNS_SERVER : FILE_SERVER,
+        dst_port: isDns ? 53 : 445,
+        protocol: isDns ? 'UDP' : 'TCP',
+        attack_type: isDns ? 'Internal DNS Query' : 'SMB File Share',
+        source_engine: 'Zeek',
+      }));
+    }
+  }
 }
 
 /* =====================================================================

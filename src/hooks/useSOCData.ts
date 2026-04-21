@@ -69,7 +69,10 @@ export const useSOCData = (
 
   const [mockEventsState, setMockEventsState] = useState<SOCEvent[]>(() => {
     // Historical baseline (20-24/04/2026) — always loaded, never togglable.
-    const stored = localStorage.getItem('soc-mock-events');
+    // Bumped key (v2) to force reseed after dataset fix (NAT dst + full 5-day coverage).
+    const STORAGE_KEY = 'soc-mock-events-v2';
+    try { localStorage.removeItem('soc-mock-events'); } catch { /* ignore */ }
+    const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
@@ -82,10 +85,9 @@ export const useSOCData = (
         return historicalEvents.map(e => ({ ...e, source: 'mock' as const }));
       }
     }
-    // First visit — seed from the deterministic historical dataset
     const seed = historicalEvents.map(e => ({ ...e, source: 'mock' as const }));
     try {
-      localStorage.setItem('soc-mock-events', JSON.stringify(seed.map(e => ({
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(seed.map(e => ({
         ...e, timestamp: e.timestamp.toISOString(),
       }))));
     } catch { /* ignore quota */ }
@@ -156,7 +158,7 @@ export const useSOCData = (
       }
 
       // Reload Mock events from storage (regardless of enabled flag — preserve data when toggled off)
-      const storedMock = localStorage.getItem('soc-mock-events');
+      const storedMock = localStorage.getItem('soc-mock-events-v2');
       if (storedMock) {
         try {
           const parsed = JSON.parse(storedMock);
