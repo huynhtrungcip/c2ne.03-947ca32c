@@ -2,6 +2,7 @@
  * SOC Tool definitions + executors cho AI function calling.
  */
 import { SOCEvent } from '@/types/soc';
+import { getAttackerTimeline } from '@/data/historicalDataset';
 import type { ToolDef } from './aiProviders';
 
 export const SOC_TOOLS: ToolDef[] = [
@@ -77,6 +78,20 @@ export const SOC_TOOLS: ToolDef[] = [
           ip: { type: 'string', description: 'IPv4 to analyze (matched as src_ip OR dst_ip)' },
           since_minutes: { type: 'number', description: 'Time window in minutes', default: 60 },
           bucket_minutes: { type: 'number', description: 'Timeline bucket size (default 5)', default: 5 },
+        },
+        required: ['ip'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_ip_history',
+      description: 'Retrieve the FULL multi-day historical timeline (2026-04-20 → present) for a given IP from the historical baseline. Use this to detect APT-style staging where an attacker performs reconnaissance days before launching the real attack. Returns chronological actions with verdict and target.',
+      parameters: {
+        type: 'object',
+        properties: {
+          ip: { type: 'string', description: 'IPv4 address to look up across the full 5-day history' },
         },
         required: ['ip'],
       },
@@ -265,6 +280,29 @@ export async function executeTool(
             top_attack_types: topAttacks,
             timeline: buckets,
             sample_alerts: sampleAlerts,
+          },
+        };
+      }
+      case 'get_ip_history': {
+        const ip = String(args.ip || '');
+        if (!ip) return { ok: false, error: 'Missing ip parameter' };
+        const timeline = getAttackerTimeline(ip);
+        if (timeline.length === 0) {
+          return { ok: true, data: { ip, total_actions: 0, note: 'No historical activity recorded for this IP in the 20–24/04/2026 baseline.' } };
+        }
+        const days = new Set(timeline.map((t) => t.day));
+        const verdicts = timeline.reduce<Record<string, number>>((m, t) => { m[t.verdict] = (m[t.verdict] || 0) + 1; return m; }, {});
+        return {
+          ok: true,
+          data: {
+            ip,
+            total_actions: timeline.length,
+            active_days: Array.from(days).sort(),
+            day_count: days.size,
+            verdict_breakdown: verdicts,
+            first_seen: timeline[0].ts,
+            last_seen: timeline[timeline.length - 1].ts,
+            timeline,
           },
         };
       }

@@ -632,7 +632,7 @@ const SOCDashboard = () => {
   // Realtime streaming is always-on (SIEM-style). No pause toggle.
   const isLive = true;
   const [autoBlock, setAutoBlock] = useState(false);
-  const [timeRange, setTimeRange] = useState('1h');
+  const [timeRange, setTimeRange] = useState('all');
   const [viewMode, setViewMode] = useState<'all' | 'alerts'>('all');
   const [selectedEvent, setSelectedEvent] = useState<SOCEvent | null>(null);
   const [showAIChat, setShowAIChat] = useState(false);

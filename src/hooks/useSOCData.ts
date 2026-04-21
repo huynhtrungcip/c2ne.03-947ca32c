@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SOCEvent, SOCMetrics, TimeRange } from '@/types/soc';
-import { mockEvents, generateMockEvents } from '@/data/mockEvents';
+import { historicalEvents } from '@/data/historicalDataset';
 
 const timeRanges: TimeRange[] = [
   { label: 'Last 15m', value: '15m', minutes: 15 },
   { label: 'Last 1h', value: '1h', minutes: 60 },
   { label: 'Last 24h', value: '24h', minutes: 1440 },
+  { label: 'Last 7d', value: '7d', minutes: 1440 * 7 },
   { label: 'All', value: 'all', minutes: Infinity }
 ];
 
@@ -58,7 +59,7 @@ export const useSOCData = (
 
   const [mockEventsState, setMockEventsState] = useState<SOCEvent[]>(() => {
     // Always load persisted mock events — toggling Mock OFF must NOT destroy data.
-    // Data is only cleared via the explicit "Clear" action.
+    // First load uses the fixed 5-day historical dataset (20-24/04/2026).
     const stored = localStorage.getItem('soc-mock-events');
     if (stored) {
       try {
@@ -69,10 +70,17 @@ export const useSOCData = (
           source: 'mock' as const,
         }));
       } catch {
-        return [];
+        return historicalEvents.map(e => ({ ...e, source: 'mock' as const }));
       }
     }
-    return [];
+    // First visit — seed from the deterministic historical dataset
+    const seed = historicalEvents.map(e => ({ ...e, source: 'mock' as const }));
+    try {
+      localStorage.setItem('soc-mock-events', JSON.stringify(seed.map(e => ({
+        ...e, timestamp: e.timestamp.toISOString(),
+      }))));
+    } catch { /* ignore quota */ }
+    return seed;
   });
 
   // Combined events based on enabled sources
@@ -172,45 +180,9 @@ export const useSOCData = (
     return () => window.removeEventListener('soc-data-updated', handleDataUpdate);
   }, []);
 
-  // Mock event generation (only when enabled and WebSocket not connected)
-  useEffect(() => {
-    if (!isLive) return;
-    
-    // If WebSocket is connected OR mock data is disabled, don't generate mock events
-    if (options?.useWebSocket && wsConnected) return;
-    if (!isMockDataEnabled()) return;
-
-    const interval = setInterval(() => {
-      const newEvents = generateMockEvents(Math.floor(Math.random() * 3) + 1).map(e => ({
-        ...e,
-        source: 'mock' as const,
-      }));
-      setMockEventsState(prev => {
-        const updated = [...newEvents, ...prev].slice(0, 2000);
-        try {
-          localStorage.setItem('soc-mock-events', JSON.stringify(updated.map(e => ({
-            ...e,
-            timestamp: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
-          }))));
-        } catch (err) {
-          // Quota exceeded — trim further and retry once, then give up silently
-          try {
-            const trimmed = updated.slice(0, 500);
-            localStorage.setItem('soc-mock-events', JSON.stringify(trimmed.map(e => ({
-              ...e,
-              timestamp: e.timestamp instanceof Date ? e.timestamp.toISOString() : e.timestamp,
-            }))));
-          } catch {
-            localStorage.removeItem('soc-mock-events');
-          }
-        }
-        return updated;
-      });
-      setLastUpdate(new Date());
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [isLive, wsConnected, options?.useWebSocket]);
+  // NOTE: The historical dataset (20-24/04/2026) is fixed and deterministic.
+  // We no longer generate random mock events on a timer — live events come
+  // exclusively from the NIDS WebSocket stream (Suricata/Zeek shippers).
 
   const filteredEvents = (() => {
     const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
