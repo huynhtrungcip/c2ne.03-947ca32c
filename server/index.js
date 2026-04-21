@@ -735,9 +735,16 @@ function reshapeForDemo(event, log) {
   else if (/hulk|http.?flood/.test(sig)) cls = 'DoS Hulk';
   else if (/bot|c2|beacon|cnc/.test(sig)) cls = 'Bot';
 
-  if (!cls) return event;
+  // Force timestamp onto the live-demo day (2026-04-25) keeping current time-of-day.
+  const now = new Date();
+  const demoTs = new Date(Date.UTC(2026, 3, 25, now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds())).toISOString();
+
+  if (!cls) {
+    return { ...event, timestamp: demoTs };
+  }
   return {
     ...event,
+    timestamp: demoTs,
     attack_type: cls,
     verdict: 'ALERT',
     confidence: Math.min(0.99, 0.92 + Math.random() * 0.07),
