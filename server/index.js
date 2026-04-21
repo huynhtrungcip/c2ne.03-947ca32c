@@ -229,6 +229,91 @@ function processPendingAlerts() {
 // Run correlation every 5 seconds
 setInterval(processPendingAlerts, 5000);
 
+// ==================== BACKGROUND RE-CORRELATION + AI RE-ANALYZE ====================
+// Every 30s: scan events that are still uncorrelated OR not yet AI-analyzed.
+// If Zeek log has now arrived (community_id / 5-tuple match), call AI engine
+// /analyze/flow and push the updated verdict to all WS clients.
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://localhost:8000';
+const RECORRELATION_INTERVAL_MS = 30000;
+const RECORRELATION_LOOKBACK_MIN = 30; // only re-check recent events
+
+async function reCorrelateAndAnalyze() {
+  try {
+    // Candidates: events that are PENDING, or zeek_correlated=0/-1, or never AI-analyzed
+    const candidates = db.prepare(`
+      SELECT * FROM events
+      WHERE (verdict = 'PENDING' OR zeek_correlated <= 0 OR ai_analyzed = 0)
+        AND timestamp >= datetime('now', '-${RECORRELATION_LOOKBACK_MIN} minutes')
+      ORDER BY timestamp DESC
+      LIMIT 50
+    `).all();
+
+    if (candidates.length === 0) return;
+
+    let reanalyzed = 0;
+
+    for (const event of candidates) {
+      const zeekFlow = findZeekCorrelation(event);
+      // Only re-analyze if we now have a Zeek match that we didn't have before,
+      // OR if the event was never AI-analyzed at all.
+      if (!zeekFlow && event.ai_analyzed === 1) continue;
+
+      try {
+        const res = await fetch(`${AI_ENGINE_URL}/analyze/flow`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_id: event.id,
+            suricata_alert: event,
+            zeek_flows: zeekFlow ? [zeekFlow] : [],
+          }),
+          // Avoid hanging the loop on AI engine downtime
+          signal: AbortSignal.timeout(8000),
+        });
+
+        if (!res.ok) continue;
+        const result = await res.json();
+        if (!result?.success || !result.analysis) continue;
+
+        const analysis = result.analysis;
+
+        db.prepare(`
+          UPDATE events SET
+            verdict = ?,
+            final_verdict = ?,
+            confidence = ?,
+            ai_analyzed = 1,
+            ai_analysis = ?,
+            zeek_correlated = ?
+          WHERE id = ?
+        `).run(
+          analysis.verdict,
+          analysis.verdict,
+          analysis.confidence ?? event.confidence,
+          JSON.stringify(analysis),
+          zeekFlow ? 1 : (event.zeek_correlated ?? -1),
+          event.id
+        );
+
+        const updated = db.prepare('SELECT * FROM events WHERE id = ?').get(event.id);
+        broadcastEvent({ ...updated, type: 'VERDICT_UPDATED' });
+        reanalyzed++;
+      } catch (err) {
+        // Network / timeout — silently skip, will retry next cycle
+      }
+    }
+
+    if (reanalyzed > 0) {
+      console.log(`[RE-CORRELATE] Re-analyzed ${reanalyzed}/${candidates.length} events via AI engine`);
+    }
+  } catch (err) {
+    console.error('[RE-CORRELATE] Loop error:', err.message);
+  }
+}
+
+setInterval(reCorrelateAndAnalyze, RECORRELATION_INTERVAL_MS);
+console.log(`[RE-CORRELATE] Background loop scheduled every ${RECORRELATION_INTERVAL_MS / 1000}s (lookback ${RECORRELATION_LOOKBACK_MIN}min)`);
+
 // ==================== API ENDPOINTS ====================
 
 // Health check
