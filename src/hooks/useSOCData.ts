@@ -6,6 +6,7 @@ const timeRanges: TimeRange[] = [
   { label: 'Last 15m', value: '15m', minutes: 15 },
   { label: 'Last 1h', value: '1h', minutes: 60 },
   { label: 'Last 24h', value: '24h', minutes: 1440 },
+  { label: 'Last 7d', value: '7d', minutes: 1440 * 7 },
   { label: 'All', value: 'all', minutes: Infinity }
 ];
 
