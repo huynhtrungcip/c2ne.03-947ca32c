@@ -498,13 +498,17 @@ for (let day = 20; day <= 24; day++) {
  *   80 SYN probes to top ports in 2 minutes → Suricata sig 2010935.
  * ===================================================================== */
 {
+  // Spread the 80-port scan over ~10 minutes so it shows as a recognisable
+  // burst (not a single 1-pixel spike that nukes the chart axis).
   const base = new Date('2026-04-22T02:18:00+07:00').getTime();
   const ports = [21, 22, 23, 25, 53, 80, 110, 139, 143, 443, 445, 993, 995, 1433, 3306, 3389, 5432, 8080, 8443];
+  const SCAN_SPAN_MS = 10 * 60_000;
   for (let i = 0; i < 80; i++) {
     const port = pick(ports);
     const isAlert = i > 15;
+    const ts = new Date(base + Math.floor((i / 80) * SCAN_SPAN_MS) + between(-1500, 1500));
     const ev = mk({
-      ts: new Date(base + i * 1_400),
+      ts,
       src_ip: ATTACKER_IP,
       dst_ip: GATEWAY,
       dst_port: port,
@@ -532,12 +536,22 @@ for (let day = 20; day <= 24; day++) {
  *   Purpose: populate the DDoS class on the dashboard.
  * ===================================================================== */
 {
+  // Spread the 220-packet flood over ~30 minutes with a bell-shaped envelope
+  // (ramp-up, peak, mitigation tail). Reads as a real DDoS incident on the
+  // chart instead of a 1-pixel spike. Reduce volume slightly to 160 events.
   const base = new Date('2026-04-23T19:42:00+07:00').getTime();
+  const FLOOD_SPAN_MS = 30 * 60_000;
+  const FLOOD_COUNT = 160;
   const spoofPool = Array.from({ length: 60 }, () => `${between(11, 223)}.${between(0, 255)}.${between(0, 255)}.${between(1, 254)}`);
-  for (let i = 0; i < 220; i++) {
+  for (let i = 0; i < FLOOD_COUNT; i++) {
+    // Bell envelope (cos²): density highest in the middle of the window.
+    const u = i / (FLOOD_COUNT - 1); // 0 → 1
+    const skew = 0.5 - 0.5 * Math.cos(u * Math.PI); // smooth 0→1
+    const offset = Math.floor(skew * FLOOD_SPAN_MS) + between(-4000, 4000);
+    const ts = new Date(base + offset);
     events.push(
       mk({
-        ts: new Date(base + i * 700),
+        ts,
         src_ip: pick(spoofPool),
         dst_ip: GATEWAY,
         dst_port: 80,
@@ -547,13 +561,14 @@ for (let day = 20; day <= 24; day++) {
         confidence: round2(0.9 + rand() * 0.08),
         source_engine: 'Suricata+Zeek+ML',
         signature_id: 2024897,
-        action_taken: i === 219 ? 'auto_blocked_pfsense_alias' : undefined,
+        action_taken: i === FLOOD_COUNT - 1 ? 'auto_blocked_pfsense_alias' : undefined,
         mitre: { tactic: 'Impact', technique: 'Network Denial of Service', id: 'T1498' },
-        notes: i === 0
-          ? 'SYN flood detected from a wide spoofed source pool — typical low-rate distributed DoS. Unrelated to internal recon actor.'
-          : i === 219
-          ? 'Mitigation triggered: pfSense rate-limit + temporary alias block applied.'
-          : undefined,
+        notes:
+          i === 0
+            ? 'SYN flood detected from a wide spoofed source pool — typical low-rate distributed DoS. Unrelated to internal recon actor.'
+            : i === FLOOD_COUNT - 1
+            ? 'Mitigation triggered: pfSense rate-limit + temporary alias block applied.'
+            : undefined,
       })
     );
   }
