@@ -8,19 +8,37 @@ interface EventsRatePanelProps {
 }
 
 export const EventsRatePanel = ({ events, windowMinutes = 30 }: EventsRatePanelProps) => {
-  const { data, total, peak, alerts } = useMemo(() => {
-    const now = Date.now();
-    const bucketMs = 60 * 1000; // 1 minute buckets
+  const { data, total, peak, alerts, effectiveWindow, bucketLabel } = useMemo(() => {
+    if (events.length === 0) {
+      return { data: [], total: 0, peak: 0, alerts: 0, effectiveWindow: windowMinutes, bucketLabel: 'min' };
+    }
+
+    // Auto-detect span: use whichever is larger between requested window and
+    // actual data span, so historical-only datasets show their real activity.
+    const tsList = events.map((e) => e.timestamp.getTime());
+    const newest = Math.max(...tsList);
+    const oldest = Math.min(...tsList);
+    const spanMin = Math.max(1, Math.ceil((newest - oldest) / 60_000));
+
+    // If data spans far more than the live window, switch to a coarser view
+    // (max ~60 buckets so chart stays readable).
+    const targetBuckets = 60;
+    const useSpan = spanMin > windowMinutes * 2;
+    const totalSpan = useSpan ? spanMin : windowMinutes;
+    const bucketMs = Math.max(60_000, Math.ceil((totalSpan / targetBuckets) * 60_000));
+    const numBuckets = Math.max(1, Math.ceil((totalSpan * 60_000) / bucketMs));
+    const anchor = useSpan ? newest : Date.now();
+
     const buckets: { t: number; total: number; alerts: number }[] = [];
-    for (let i = windowMinutes - 1; i >= 0; i--) {
-      buckets.push({ t: now - i * bucketMs, total: 0, alerts: 0 });
+    for (let i = numBuckets - 1; i >= 0; i--) {
+      buckets.push({ t: anchor - i * bucketMs, total: 0, alerts: 0 });
     }
     let totalCount = 0;
     let alertCount = 0;
     for (const ev of events) {
       const ts = ev.timestamp.getTime();
-      const idx = windowMinutes - 1 - Math.floor((now - ts) / bucketMs);
-      if (idx >= 0 && idx < windowMinutes) {
+      const idx = numBuckets - 1 - Math.floor((anchor - ts) / bucketMs);
+      if (idx >= 0 && idx < numBuckets) {
         buckets[idx].total += 1;
         if (ev.verdict === 'ALERT') buckets[idx].alerts += 1;
         totalCount += 1;
@@ -28,25 +46,34 @@ export const EventsRatePanel = ({ events, windowMinutes = 30 }: EventsRatePanelP
       }
     }
     const peakVal = buckets.reduce((m, b) => Math.max(m, b.total), 0);
-    return { data: buckets, total: totalCount, peak: peakVal, alerts: alertCount };
+    const bucketMin = Math.round(bucketMs / 60_000);
+    return {
+      data: buckets,
+      total: totalCount,
+      peak: peakVal,
+      alerts: alertCount,
+      effectiveWindow: totalSpan,
+      bucketLabel: bucketMin >= 60 ? `${Math.round(bucketMin / 60)}h/bucket` : `${bucketMin}m/bucket`,
+    };
   }, [events, windowMinutes]);
 
-  const avg = (total / windowMinutes).toFixed(1);
+  const avgPerBucket = data.length > 0 ? (total / data.length).toFixed(1) : '0.0';
+  const windowLabel = effectiveWindow >= 1440 ? `${Math.round(effectiveWindow / 1440)}d` : effectiveWindow >= 60 ? `${Math.round(effectiveWindow / 60)}h` : `${effectiveWindow}m`;
 
   return (
     <div className="p-3 border border-border rounded-md bg-card">
       <div className="text-[10px] uppercase tracking-wider mb-2 text-muted-foreground flex items-center justify-between">
         <span>Events Rate</span>
         <span className="text-[8px] font-mono tracking-normal normal-case text-muted-foreground/70">
-          {windowMinutes}m
+          {windowLabel} · {bucketLabel}
         </span>
       </div>
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-2 mb-2">
         <div>
-          <div className="text-[8px] uppercase tracking-wider text-muted-foreground/70">Avg/min</div>
-          <div className="text-[13px] font-mono font-semibold text-foreground tabular-nums">{avg}</div>
+          <div className="text-[8px] uppercase tracking-wider text-muted-foreground/70">Avg/bucket</div>
+          <div className="text-[13px] font-mono font-semibold text-foreground tabular-nums">{avgPerBucket}</div>
         </div>
         <div>
           <div className="text-[8px] uppercase tracking-wider text-muted-foreground/70">Peak</div>
