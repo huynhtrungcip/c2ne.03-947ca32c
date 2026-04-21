@@ -187,15 +187,25 @@ export const useSOCData = (
   // We no longer generate random mock events on a timer — live events come
   // exclusively from the NIDS WebSocket stream (Suricata/Zeek shippers).
 
+  // ----- Time-range anchor -----
+  // Use max(now, newest-event-ts) as the anchor so a dataset whose timestamps
+  // sit in the future (or far in the past) is still bracketed correctly by
+  // "Last 1h / 24h / 7d". Without this, future-dated demo events would be
+  // included in EVERY range because the filter only checks `>= cutoff`.
+  const newestEventTs = events.length > 0
+    ? Math.max(...events.map(e => e.timestamp.getTime()))
+    : Date.now();
+  const anchorMs = Math.max(Date.now(), newestEventTs);
+
   const filteredEvents = (() => {
     const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - range.minutes * 60000);
+    const cutoff = new Date(anchorMs - range.minutes * 60000);
+    const upper = new Date(anchorMs);
 
     let filtered = events;
-    
+
     if (range.minutes !== Infinity) {
-      filtered = filtered.filter(e => e.timestamp >= cutoff);
+      filtered = filtered.filter(e => e.timestamp >= cutoff && e.timestamp <= upper);
     }
 
     if (viewMode === 'alerts') {
@@ -209,15 +219,15 @@ export const useSOCData = (
 
     if (filters.ipFilter.trim()) {
       const pat = filters.ipFilter.trim().toLowerCase();
-      filtered = filtered.filter(e => 
-        e.src_ip.toLowerCase().includes(pat) || 
+      filtered = filtered.filter(e =>
+        e.src_ip.toLowerCase().includes(pat) ||
         e.dst_ip.toLowerCase().includes(pat)
       );
     }
 
     if (filters.sigFilter.trim()) {
       const pat = filters.sigFilter.trim().toLowerCase();
-      filtered = filtered.filter(e => 
+      filtered = filtered.filter(e =>
         e.attack_type.toLowerCase().includes(pat)
       );
     }
@@ -229,16 +239,19 @@ export const useSOCData = (
     return filtered;
   })();
 
-  const metrics: SOCMetrics = (() => {
+  // Helper: bracket events by current range using the anchor.
+  const bracketByRange = (): SOCEvent[] => {
     const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - range.minutes * 60000);
-    
-    let baseEvents = events;
-    if (range.minutes !== Infinity) {
-      baseEvents = baseEvents.filter(e => e.timestamp >= cutoff);
-    }
+    if (range.minutes === Infinity) return events;
+    const cutoff = anchorMs - range.minutes * 60000;
+    return events.filter(e => {
+      const t = e.timestamp.getTime();
+      return t >= cutoff && t <= anchorMs;
+    });
+  };
 
+  const metrics: SOCMetrics = (() => {
+    const baseEvents = bracketByRange();
     const total = baseEvents.length;
     const alerts = baseEvents.filter(e => e.verdict === 'ALERT').length;
     const suspicious = baseEvents.filter(e => e.verdict === 'SUSPICIOUS').length;
@@ -256,15 +269,7 @@ export const useSOCData = (
   })();
 
   const topSources = (() => {
-    const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - range.minutes * 60000);
-    
-    let baseEvents = events;
-    if (range.minutes !== Infinity) {
-      baseEvents = baseEvents.filter(e => e.timestamp >= cutoff);
-    }
-
+    const baseEvents = bracketByRange();
     const counts: Record<string, { count: number; alerts: number; suspicious: number; lastSeen: Date }> = {};
     baseEvents.forEach(e => {
       if (!counts[e.src_ip]) {
@@ -278,8 +283,6 @@ export const useSOCData = (
       }
     });
 
-    // Threat-weighted ranking: ALERT ×5, SUSPICIOUS ×2, BENIGN ×0.05.
-    // Surfaces real attackers above benign-noisy hosts.
     return Object.entries(counts)
       .map(([ip, data]) => ({
         ip,
@@ -292,17 +295,7 @@ export const useSOCData = (
   })();
 
   const attackTypeData = (() => {
-    const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - range.minutes * 60000);
-
-    let baseEvents = events;
-    if (range.minutes !== Infinity) {
-      baseEvents = baseEvents.filter(e => e.timestamp >= cutoff);
-    }
-
-    // Include ALERT + SUSPICIOUS so the donut shows the full threat mix
-    // (not just the 1-2 high-volume ALERT classes). Skip BENIGN noise.
+    const baseEvents = bracketByRange();
     const threatEvents = baseEvents.filter(
       e => e.verdict === 'ALERT' || e.verdict === 'SUSPICIOUS'
     );
@@ -323,38 +316,21 @@ export const useSOCData = (
   })();
 
   const trafficData = (() => {
-    const range = timeRanges.find(r => r.value === timeRange) || timeRanges[1];
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - range.minutes * 60000);
-
-    let baseEvents = events;
-    if (range.minutes !== Infinity) {
-      baseEvents = baseEvents.filter(e => e.timestamp >= cutoff);
-    }
+    const baseEvents = bracketByRange();
     if (baseEvents.length === 0) return [];
 
-    // SMART BUCKETING — pick a bucket size that yields ~60 buckets across
-    // the actual data span. Avoids the "5 days of 1-min bins = mostly empty"
-    // chart. Snaps to standard intervals (1m/5m/15m/1h/6h/1d).
     const tsList = baseEvents.map(e => e.timestamp.getTime());
     const newest = Math.max(...tsList);
     const oldest = Math.min(...tsList);
     const spanMs = Math.max(60_000, newest - oldest);
     const TARGET_BUCKETS = 60;
     const STANDARD_BUCKETS_MS = [
-      60_000,           // 1m
-      5 * 60_000,       // 5m
-      15 * 60_000,      // 15m
-      30 * 60_000,      // 30m
-      60 * 60_000,      // 1h
-      3 * 60 * 60_000,  // 3h
-      6 * 60 * 60_000,  // 6h
-      24 * 60 * 60_000, // 1d
+      60_000, 5 * 60_000, 15 * 60_000, 30 * 60_000,
+      60 * 60_000, 3 * 60 * 60_000, 6 * 60 * 60_000, 24 * 60 * 60_000,
     ];
     const idealBucket = spanMs / TARGET_BUCKETS;
     const bucketMs = STANDARD_BUCKETS_MS.find(b => b >= idealBucket) ?? STANDARD_BUCKETS_MS[STANDARD_BUCKETS_MS.length - 1];
 
-    // Build CONTIGUOUS bucket series (no gaps) so chart shows zero-line not jumps.
     const startBucket = Math.floor(oldest / bucketMs) * bucketMs;
     const endBucket = Math.floor(newest / bucketMs) * bucketMs;
     const numBuckets = Math.min(180, Math.max(1, Math.floor((endBucket - startBucket) / bucketMs) + 1));
