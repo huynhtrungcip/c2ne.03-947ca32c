@@ -82,24 +82,14 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
     return JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
   });
 
-  // Data management state
+  // Data management state — only "Clear day-25 live data" is exposed.
   const [pendingDelete, setPendingDelete] = useState<{ 
     timeRange: string; 
     deletedData: any[] | null; 
     countdown: number;
     intervalId: ReturnType<typeof setTimeout> | null;
   } | null>(null);
-  const [addingMockData, setAddingMockData] = useState(false);
-  
-  // Mock data toggle state - must be before any early returns
-  const [mockDataEnabled, setMockDataEnabled] = useState(() => {
-    return localStorage.getItem('soc-mock-data-enabled') === 'true';
-  });
-
-  // NIDS data toggle state (default: ON)
-  const [nidsDataEnabled, setNidsDataEnabled] = useState(() => {
-    return localStorage.getItem('soc-nids-data-enabled') !== 'false';
-  });
+  const [clearingDay25, setClearingDay25] = useState(false);
 
   // API URL for backend - using state for reactivity
   const [apiUrl, setApiUrl] = useState(() => localStorage.getItem('soc-api-url') || '');
