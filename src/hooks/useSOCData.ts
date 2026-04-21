@@ -71,10 +71,11 @@ export const useSOCData = (
     // Historical baseline (20-24/04/2026) — always loaded, never togglable.
     // v4 = denser diurnal benign baseline + spread-out PortScan/DDoS spikes
     //      so Traffic & Alerts chart has a balanced, professional shape.
-    const STORAGE_KEY = 'soc-mock-events-v4';
+    const STORAGE_KEY = 'soc-mock-events-v5';
     try { localStorage.removeItem('soc-mock-events'); } catch { /* ignore */ }
     try { localStorage.removeItem('soc-mock-events-v2'); } catch { /* ignore */ }
     try { localStorage.removeItem('soc-mock-events-v3'); } catch { /* ignore */ }
+    try { localStorage.removeItem('soc-mock-events-v4'); } catch { /* ignore */ }
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
@@ -161,7 +162,7 @@ export const useSOCData = (
       }
 
       // Reload Mock events from storage (regardless of enabled flag — preserve data when toggled off)
-      const storedMock = localStorage.getItem('soc-mock-events-v4');
+      const storedMock = localStorage.getItem('soc-mock-events-v5');
       if (storedMock) {
         try {
           const parsed = JSON.parse(storedMock);
