@@ -22,16 +22,23 @@ const VerdictText = ({ verdict }: { verdict: SOCEvent['verdict'] }) => {
   return <span className={classes[verdict]}>{verdict}</span>;
 };
 
-const ConfidenceBar = ({ value }: { value: number }) => {
+const ConfidenceBar = ({ value, verdict }: { value: number; verdict: SOCEvent['verdict'] }) => {
+  const colorClass = {
+    ALERT: 'bg-[hsl(var(--soc-alert))]',
+    SUSPICIOUS: 'bg-[hsl(var(--soc-warning))]',
+    BENIGN: 'bg-[hsl(var(--soc-success))]',
+    FALSE_POSITIVE: 'bg-[hsl(var(--soc-success))]',
+  }[verdict];
+
   return (
     <div className="flex items-center gap-2">
-      <div className="w-16 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-        <div 
-          className="h-full bg-blue-500 rounded-full"
+      <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full ${colorClass}`}
           style={{ width: `${value * 100}%` }}
         />
       </div>
-      <span className="text-xs font-mono text-zinc-400">{(value).toFixed(2)}</span>
+      <span className="text-xs font-mono text-muted-foreground">{value.toFixed(2)}</span>
     </div>
   );
 };
@@ -123,7 +130,7 @@ export const EventsTable = ({ events, onEventSelect, selectedEventId, isLive }: 
                   {event.attack_type}
                 </TableCell>
                 <TableCell className="py-2">
-                  <ConfidenceBar value={event.confidence} />
+                  <ConfidenceBar value={event.confidence} verdict={event.verdict} />
                 </TableCell>
               </TableRow>
             ))}
