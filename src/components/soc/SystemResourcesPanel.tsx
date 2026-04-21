@@ -59,58 +59,10 @@ const Gauge = ({ label, percent, sub }: { label: string; percent: number; sub?: 
 export const SystemResourcesPanel = ({ apiUrl }: SystemResourcesPanelProps) => {
   const [data, setData] = useState<ResourceData | null>(null);
   const [error, setError] = useState(false);
-  const [mockEnabled, setMockEnabled] = useState(
-    () => localStorage.getItem('soc-mock-data-enabled') === 'true'
-  );
 
-  // Listen to mock toggle changes
-  useEffect(() => {
-    const handler = () => setMockEnabled(localStorage.getItem('soc-mock-data-enabled') === 'true');
-    window.addEventListener('storage', handler);
-    window.addEventListener('soc-data-updated', handler);
-    const poll = setInterval(handler, 2000);
-    return () => {
-      window.removeEventListener('storage', handler);
-      window.removeEventListener('soc-data-updated', handler);
-      clearInterval(poll);
-    };
-  }, []);
-
-  // Generate realistic mock resource data with smooth drift
-  const generateMockData = (): ResourceData => {
-    const t = Date.now() / 10000;
-    const cpu = 28 + Math.sin(t) * 12 + Math.random() * 8;
-    const mem = 55 + Math.sin(t * 0.7) * 8 + Math.random() * 4;
-    const disk = 42 + Math.sin(t * 0.2) * 2 + Math.random() * 1;
-    return {
-      cpu: { percent: Math.max(5, Math.min(95, cpu)), cores: 8 },
-      memory: {
-        percent: Math.max(20, Math.min(90, mem)),
-        used_gb: +(mem * 0.16).toFixed(1),
-        total_gb: 16,
-      },
-      disk: {
-        percent: Math.max(20, Math.min(95, disk)),
-        used_gb: +(disk * 5).toFixed(0),
-        total_gb: 500,
-      },
-    };
-  };
-
+  // CPU/RAM/Disk are always live data from the AI Engine — no mock fallback.
   useEffect(() => {
     let cancelled = false;
-
-    if (mockEnabled) {
-      setData(generateMockData());
-      setError(false);
-      const id = setInterval(() => {
-        if (!cancelled) setData(generateMockData());
-      }, 3000);
-      return () => {
-        cancelled = true;
-        clearInterval(id);
-      };
-    }
 
     if (!apiUrl) {
       setData(null);
@@ -139,7 +91,7 @@ export const SystemResourcesPanel = ({ apiUrl }: SystemResourcesPanelProps) => {
       cancelled = true;
       clearInterval(id);
     };
-  }, [apiUrl, mockEnabled]);
+  }, [apiUrl]);
 
   return (
     <div className="p-3 border border-border rounded-md bg-card">

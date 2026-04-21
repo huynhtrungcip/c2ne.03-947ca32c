@@ -30,16 +30,26 @@ export const useSOCData = (
   filters: Filters,
   options?: UseSOCDataOptions
 ) => {
-  // Check data source settings
-  const isMockDataEnabled = () => {
-    return localStorage.getItem('soc-mock-data-enabled') === 'true';
-  };
-  
-  const isNIDSDataEnabled = () => {
-    return localStorage.getItem('soc-nids-data-enabled') !== 'false'; // Default: ON
+  // ===== DEMO TIMESTAMP NORMALISATION =====
+  // Any live NIDS event sourced from the demo attacker IP must appear on the
+  // dashboard as if it happened on the live-demo day (2026-04-25), regardless
+  // of when it was actually generated. This keeps the storyline consistent
+  // when the operator practises the demo on, say, 2026-04-21.
+  const DEMO_ATTACKER_IP = '192.168.168.23';
+  const DEMO_DAY_START = new Date('2026-04-25T09:00:00+07:00').getTime();
+  const normalizeDemoTimestamp = (e: SOCEvent): SOCEvent => {
+    if (e.src_ip !== DEMO_ATTACKER_IP) return e;
+    // Already on 2026-04-25? leave it alone.
+    const ts = e.timestamp instanceof Date ? e.timestamp : new Date(e.timestamp);
+    if (ts.toISOString().slice(0, 10) === '2026-04-25') return { ...e, timestamp: ts };
+    // Map current wall-clock time of day onto 2026-04-25 same time-of-day.
+    const now = new Date();
+    const dayMinutes = now.getHours() * 60 + now.getMinutes();
+    const shifted = DEMO_DAY_START + (dayMinutes * 60_000) + (now.getSeconds() * 1000);
+    return { ...e, timestamp: new Date(shifted) };
   };
 
-  // Separate storage for NIDS and Mock data
+  // Separate storage for NIDS (live attack day-25) and historical baseline (20-24/04).
   const [nidsEvents, setNidsEvents] = useState<SOCEvent[]>(() => {
     const stored = localStorage.getItem('soc-nids-events');
     if (stored) {
@@ -58,8 +68,7 @@ export const useSOCData = (
   });
 
   const [mockEventsState, setMockEventsState] = useState<SOCEvent[]>(() => {
-    // Always load persisted mock events — toggling Mock OFF must NOT destroy data.
-    // First load uses the fixed 5-day historical dataset (20-24/04/2026).
+    // Historical baseline (20-24/04/2026) — always loaded, never togglable.
     const stored = localStorage.getItem('soc-mock-events');
     if (stored) {
       try {
@@ -83,25 +92,18 @@ export const useSOCData = (
     return seed;
   });
 
-  // Combined events based on enabled sources
+  // Always combine: historical baseline + live NIDS (no toggles).
   const events = (() => {
-    const combined: SOCEvent[] = [];
-    if (isNIDSDataEnabled()) {
-      combined.push(...nidsEvents);
-    }
-    if (isMockDataEnabled()) {
-      combined.push(...mockEventsState);
-    }
-    // Sort by timestamp descending
-    return combined.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    return [...nidsEvents, ...mockEventsState]
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   })();
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [wsConnected, setWsConnected] = useState(false);
   const [wsEventCount, setWsEventCount] = useState(0);
 
-  // Add new event (from WebSocket/NIDS)
+  // Add new event (from WebSocket/NIDS) — applies demo timestamp normalisation.
   const addEvent = useCallback((event: SOCEvent) => {
-    const eventWithSource = { ...event, source: 'nids' as const };
+    const eventWithSource = normalizeDemoTimestamp({ ...event, source: 'nids' as const });
     setNidsEvents(prev => {
       const newEvents = [eventWithSource, ...prev].slice(0, 2000);
       try {
@@ -127,16 +129,11 @@ export const useSOCData = (
     options?.onWebSocketEvent?.(event);
   }, [options]);
 
-  // Clear NIDS events
+  // Clear NIDS events (= clear day-25 live attack data ONLY).
+  // Historical baseline (20-24/04) lives in mockEventsState and is preserved.
   const clearNidsEvents = useCallback(() => {
     setNidsEvents([]);
     localStorage.removeItem('soc-nids-events');
-  }, []);
-
-  // Clear Mock events
-  const clearMockEvents = useCallback(() => {
-    setMockEventsState([]);
-    localStorage.removeItem('soc-mock-events');
   }, []);
 
   // Listen for custom event to refresh data
@@ -352,9 +349,8 @@ export const useSOCData = (
     setWsConnected,
     wsEventCount,
     addEvent,
-    // Data source controls
+    // Data source controls — only "Clear day-25 live data" is exposed.
     clearNidsEvents,
-    clearMockEvents,
     nidsEventCount: nidsEvents.length,
     mockEventCount: mockEventsState.length,
   };
