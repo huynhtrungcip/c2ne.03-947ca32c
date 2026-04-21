@@ -368,10 +368,7 @@ export const useSOCData = (
     });
     return seq;
   })();
-        ...data
-      }))
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-  })();
+
 
   return {
     events: filteredEvents,
