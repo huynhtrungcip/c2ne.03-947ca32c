@@ -158,7 +158,7 @@ export const useSOCData = (
       }
 
       // Reload Mock events from storage (regardless of enabled flag — preserve data when toggled off)
-      const storedMock = localStorage.getItem('soc-mock-events');
+      const storedMock = localStorage.getItem('soc-mock-events-v2');
       if (storedMock) {
         try {
           const parsed = JSON.parse(storedMock);
