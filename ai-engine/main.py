@@ -3,10 +3,12 @@ AI-SOC Engine - Main FastAPI Application
 Hệ thống AI phân tích log để giảm thiểu False Positive
 Tích hợp MegaLLM cho AI Assistant
 """
+import asyncio
 import logging
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
+import httpx
 import requests
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -443,8 +445,10 @@ class TelegramSendMessageRequest(BaseModel):
 
 @app.post("/telegram/configure")
 async def configure_telegram(req: TelegramConfigRequest):
-    """Configure Telegram bot"""
+    """Configure Telegram bot and (re)start the long-poll worker."""
     configure_bot(req.bot_token, req.chat_id, req.confidence_threshold)
+    # Kick the polling worker so /status, /help, /logs ... actually respond
+    start_telegram_polling()
     return {"success": True, "enabled": telegram_bot_module.telegram_bot.enabled}
 
 
@@ -590,12 +594,87 @@ async def auto_block_ip(ip: str, signature: str, analysis: Dict[str, Any]):
         logger.warning(f"Failed to auto-block IP {ip}: {message}")
 
 
+# ==================== TELEGRAM LONG-POLLING WORKER ====================
+#
+# Webhooks need a public HTTPS URL (which on-prem SOC boxes don't have),
+# so we use getUpdates long-polling instead. This is the ONLY way /status,
+# /logs, /help ... etc. ever reach the bot in this deployment.
+
+_telegram_poll_task: Optional[asyncio.Task] = None
+_telegram_poll_offset: int = 0
+
+
+async def _telegram_poll_loop():
+    """Continuously call getUpdates and dispatch incoming commands."""
+    global _telegram_poll_offset
+    logger.info("📡 Telegram long-poll worker started")
+
+    async def get_blocked():
+        success, ips, _ = get_blocked_ips()
+        return ips if success else []
+
+    while True:
+        bot = telegram_bot_module.telegram_bot
+        if not bot.enabled or not bot.token:
+            # Wait for /telegram/configure to set credentials, then resume
+            await asyncio.sleep(5)
+            continue
+
+        url = f"https://api.telegram.org/bot{bot.token}/getUpdates"
+        params = {
+            "timeout": 50,
+            "offset": _telegram_poll_offset,
+            "allowed_updates": ["message"],
+        }
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.get(url, params=params)
+            if resp.status_code != 200:
+                logger.warning(f"getUpdates HTTP {resp.status_code}: {resp.text[:200]}")
+                await asyncio.sleep(5)
+                continue
+            data = resp.json()
+            if not data.get("ok"):
+                logger.warning(f"getUpdates error: {data}")
+                await asyncio.sleep(5)
+                continue
+            for update in data.get("result", []):
+                _telegram_poll_offset = max(_telegram_poll_offset, update["update_id"] + 1)
+                try:
+                    response_text = await handle_telegram_update(update, get_blocked)
+                    if response_text:
+                        chat_id = update.get("message", {}).get("chat", {}).get("id")
+                        if chat_id:
+                            await bot.send_message(response_text, chat_id=str(chat_id))
+                except Exception as e:
+                    logger.error(f"Error handling Telegram update: {e}")
+        except (httpx.ReadTimeout, httpx.ConnectTimeout):
+            # Long-poll timeout is expected when no messages — just loop
+            continue
+        except asyncio.CancelledError:
+            logger.info("Telegram poll worker cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"Telegram poll loop error: {e}")
+            await asyncio.sleep(5)
+
+
+def start_telegram_polling():
+    """Start the long-poll worker if not already running."""
+    global _telegram_poll_task
+    if _telegram_poll_task and not _telegram_poll_task.done():
+        return
+    loop = asyncio.get_event_loop()
+    _telegram_poll_task = loop.create_task(_telegram_poll_loop())
+    logger.info("✅ Telegram long-poll worker scheduled")
+
+
 # ==================== STARTUP ====================
 
 @app.on_event("startup")
 async def startup_event():
     logger.info("=" * 60)
-    logger.info("🧠 AI-SOC False Positive Reduction Engine v2.2.0")
+    logger.info("🧠 AI-SOC False Positive Reduction Engine v2.3.0")
     logger.info("   With MegaLLM AI Assistant Integration")
     logger.info("=" * 60)
 
@@ -611,7 +690,22 @@ async def startup_event():
 
     logger.info(f"Auto-block: {'ENABLED' if get_auto_block_status() else 'DISABLED'}")
     logger.info(f"Whitelist IPs: {len(WHITELIST_IPS)} entries")
+
+    # Start Telegram long-poll worker (it self-skips if bot not configured yet)
+    start_telegram_polling()
+
     logger.info("=" * 60)
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    global _telegram_poll_task
+    if _telegram_poll_task and not _telegram_poll_task.done():
+        _telegram_poll_task.cancel()
+        try:
+            await _telegram_poll_task
+        except (asyncio.CancelledError, Exception):
+            pass
 
 
 if __name__ == "__main__":
