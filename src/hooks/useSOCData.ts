@@ -101,9 +101,9 @@ export const useSOCData = (
   const [wsConnected, setWsConnected] = useState(false);
   const [wsEventCount, setWsEventCount] = useState(0);
 
-  // Add new event (from WebSocket/NIDS)
+  // Add new event (from WebSocket/NIDS) — applies demo timestamp normalisation.
   const addEvent = useCallback((event: SOCEvent) => {
-    const eventWithSource = { ...event, source: 'nids' as const };
+    const eventWithSource = normalizeDemoTimestamp({ ...event, source: 'nids' as const });
     setNidsEvents(prev => {
       const newEvents = [eventWithSource, ...prev].slice(0, 2000);
       try {
@@ -129,16 +129,11 @@ export const useSOCData = (
     options?.onWebSocketEvent?.(event);
   }, [options]);
 
-  // Clear NIDS events
+  // Clear NIDS events (= clear day-25 live attack data ONLY).
+  // Historical baseline (20-24/04) lives in mockEventsState and is preserved.
   const clearNidsEvents = useCallback(() => {
     setNidsEvents([]);
     localStorage.removeItem('soc-nids-events');
-  }, []);
-
-  // Clear Mock events
-  const clearMockEvents = useCallback(() => {
-    setMockEventsState([]);
-    localStorage.removeItem('soc-mock-events');
   }, []);
 
   // Listen for custom event to refresh data
