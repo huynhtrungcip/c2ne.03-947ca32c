@@ -3,26 +3,36 @@
  * ----------------------------------------------------------------------------
  * Hand-crafted, deterministic dataset designed to be **AI-analyzable**.
  *
- * Design goals:
- *   1. Every event carries a RICH raw_log payload mimicking real production
- *      telemetry: Suricata eve.json + Zeek conn.log + ML feature vector +
- *      MITRE ATT&CK mapping + analyst notes.
- *   2. Events are CAUSALLY LINKED — each escalation references the previous
- *      day's reconnaissance via `correlation.related_events` so the AI can
- *      reconstruct the kill-chain.
- *   3. Network logic respects pfSense NAT: anything from outside the LAN
- *      lands on the gateway 192.168.168.254. Internal LAN ↔ LAN chatter
- *      keeps original dst IPs.
- *   4. Storyline = single APT actor (192.168.168.23) profiling the lab over
- *      5 days, plus one external DDoS burst on day 4 to populate the DDoS
- *      class. Day 5 = silence (classic pre-attack staging).
+ * NETWORK TOPOLOGY (matches lab):
+ *   ─ External WAN  ─────►  pfSense WAN ─────► DMZ + SOC zones
  *
- *   Day 1 (20/04) — Recon: ICMP sweep + first HTTPS look at gateway
- *   Day 2 (21/04) — TCP probing: 22/80/443/8080/3389 — Zeek REJ
- *   Day 3 (22/04) — Targeted PortScan: nmap-like top-100 → Suricata ALERT
- *   Day 4 (23/04) — External DDoS burst (NOT .23) → DDoS class populated
- *   Day 5 (24/04) — Cool-down: 2 SSH probes only — APT staging
- *   Day 6 (25/04) — LIVE DEMO. Real Kali. Backend reshapes traffic.
+ *   DMZ Zone (172.16.16.0/24)
+ *     - 172.16.16.254 : DMZ gateway (pfSense leg)
+ *     - 172.16.16.20  : NIDS sensor (Suricata + Zeek)
+ *     - 172.16.16.30  : Web server (the public-facing service)
+ *
+ *   SOC Zone (10.10.10.0/24)
+ *     - 10.10.10.254  : SOC gateway
+ *     - 10.10.10.20   : AI Server / SOC dashboard
+ *
+ *   Legacy LAN (192.168.168.0/24) — used by external WAN attackers
+ *     - 192.168.168.20-30 : Spoofed/legit external hosts that can reach DMZ
+ *     - 192.168.168.23    : THE attacker (Kali)
+ *     - 192.168.168.254   : pfSense WAN-facing IP
+ *
+ * Source IP rules:
+ *   - For inbound traffic (request): src = external IP (e.g. .23 / spoofed)
+ *   - For response traffic: src = web server 172.16.16.30 → external client
+ *     (so the dashboard naturally shows BOTH directions)
+ *   - For internal lateral: src/dst inside same zone
+ *
+ * Attack class coverage (so all 11 ML classes appear at least lightly):
+ *   - BENIGN, ICMP Recon, Suspicious Connection, PortScan, DDoS,
+ *     SSH-Patator, FTP-Patator, Web Attack, DoS slowloris,
+ *     DoS Slowhttptest, DoS Hulk, DoS GoldenEye, Bot
+ *   Heavy hitters (PortScan day-3, DDoS day-4) come from the original
+ *   storyline. Other classes are seeded as small isolated incidents on
+ *   different days so the donut shows variety (≤5 events each).
  */
 
 import { SOCEvent } from '@/types/soc';
@@ -39,12 +49,22 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 // ---------- Network actors ----------
 export const ATTACKER_IP = '192.168.168.23';
-const GATEWAY = '192.168.168.254';
-const FILE_SERVER = '192.168.168.40';
-const DNS_SERVER = '192.168.168.10';
-const LAB_HOSTS = Array.from({ length: 31 }, (_, i) => `192.168.168.${20 + i}`); // .20 → .50
 
-// External services seen via NAT egress (the FQDN, not the IP)
+// DMZ zone
+const DMZ_GW = '172.16.16.254';
+const NIDS_HOST = '172.16.16.20';
+const WEB_SERVER = '172.16.16.30';
+
+// SOC zone
+const SOC_GW = '10.10.10.254';
+const AI_SERVER = '10.10.10.20';
+
+// External / WAN-side
+const PFSENSE_WAN = '192.168.168.254';
+const EXTERNAL_HOSTS = Array.from({ length: 11 }, (_, i) => `192.168.168.${20 + i}`); // .20 → .30 (incl. attacker .23)
+const EXTERNAL_BENIGN_HOSTS = EXTERNAL_HOSTS.filter((ip) => ip !== ATTACKER_IP);
+
+// External services seen via NAT egress
 const EGRESS_FQDNS = [
   'www.google.com', 'fonts.googleapis.com', 'github.com', 'raw.githubusercontent.com',
   'registry.npmjs.org', 'pypi.org', 'security.ubuntu.com', 'archive.ubuntu.com',
@@ -53,9 +73,9 @@ const EGRESS_FQDNS = [
 const USER_AGENTS = [
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Firefox/124.0',
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) Safari/605.1',
   'curl/8.4.0',
   'apt-http/2.4.10',
-  'pip/24.0',
 ];
 
 // ---------- Helpers ----------
@@ -73,13 +93,15 @@ const communityId = (s: string, sp: number, d: string, dp: number, proto: string
 const flowId = () => Math.floor(rand() * 9_000_000_000_000) + 1_000_000_000_000;
 
 const macFor = (ip: string) => {
-  // Stable fake MAC per IP (last 3 octets derived from IP)
   const parts = ip.split('.').map((n) => parseInt(n, 10));
   const a = (parts[2] || 0).toString(16).padStart(2, '0');
   const b = (parts[3] || 0).toString(16).padStart(2, '0');
   const c = ((parts[3] || 0) ^ 0x5a).toString(16).padStart(2, '0');
   return `52:54:00:${a}:${b}:${c}`;
 };
+
+const isPrivate = (ip: string) =>
+  ip.startsWith('172.16.16.') || ip.startsWith('10.10.10.') || ip.startsWith('192.168.168.');
 
 const zeekConnState = (verdict: string) => {
   if (verdict === 'ALERT') return pick(['S0', 'REJ', 'RSTO', 'RSTR']);
@@ -98,11 +120,9 @@ type PayloadOpts = {
   verdict: string;
   attack_type: string;
   confidence: number;
-  // Optional enrichments
   signature_id?: number;
   mitre?: { tactic: string; technique: string; id: string };
-  related?: string[]; // related event IDs (for kill-chain narrative)
-  payload_summary?: string;
+  related?: string[];
   http?: { method: string; host: string; uri: string; status?: number; ua?: string };
   dns?: { query: string; rcode: string; answers?: string[] };
   ssh?: { client_version?: string; auth_attempt?: boolean };
@@ -113,14 +133,14 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
   const fid = flowId();
   const cid = communityId(o.src_ip, o.src_port, o.dst_ip, o.dst_port, o.proto);
   const ts = o.ts.toISOString();
-  const isExternalSrc = !o.src_ip.startsWith('192.168.168.');
-  const direction = isExternalSrc
+  const srcExternal = !isPrivate(o.src_ip);
+  const dstExternal = !isPrivate(o.dst_ip);
+  const direction = srcExternal
     ? 'inbound'
-    : o.dst_ip === GATEWAY
+    : dstExternal
     ? 'outbound_via_nat'
     : 'lateral';
 
-  // Bytes/packets — make ALERT bursts heavier than benign flows
   const baseBytes = o.verdict === 'ALERT' ? between(120, 1800) : between(280, 4200);
   const orig_pkts = o.verdict === 'ALERT' ? between(1, 4) : between(3, 22);
   const resp_pkts = o.verdict === 'ALERT' ? between(0, 2) : between(2, 18);
@@ -130,21 +150,22 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
 
   const conn_state = zeekConnState(o.verdict);
 
-  // Suricata-like alert block (only when ALERT/SUSPICIOUS)
   const suricata =
     o.verdict === 'ALERT' || o.verdict === 'SUSPICIOUS'
       ? {
           event_type: 'alert',
           alert: {
-            action: o.verdict === 'ALERT' ? 'allowed' : 'allowed',
+            action: 'allowed',
             gid: 1,
             signature_id: o.signature_id ?? between(2000000, 2999999),
             rev: 3,
             signature: `ET ${o.verdict === 'ALERT' ? 'POLICY' : 'INFO'} ${o.attack_type}`,
             category: o.attack_type.toLowerCase().includes('scan')
               ? 'Attempted Information Leak'
-              : o.attack_type.toLowerCase().includes('ddos')
+              : o.attack_type.toLowerCase().includes('ddos') || o.attack_type.toLowerCase().includes('dos')
               ? 'Network Trojan was Detected'
+              : o.attack_type.toLowerCase().includes('web')
+              ? 'Web Application Attack'
               : 'Potentially Bad Traffic',
             severity: o.verdict === 'ALERT' ? 2 : 3,
             metadata: {
@@ -159,7 +180,6 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
         }
       : null;
 
-  // Zeek conn.log style block
   const zeek = {
     ts: o.ts.getTime() / 1000,
     uid: `C${Array.from({ length: 17 }, () => 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(rand() * 62)]).join('')}`,
@@ -168,13 +188,13 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
     'id.resp_h': o.dst_ip,
     'id.resp_p': o.dst_port,
     proto: o.proto.toLowerCase(),
-    service: o.dst_port === 443 ? 'ssl' : o.dst_port === 80 ? 'http' : o.dst_port === 53 ? 'dns' : o.dst_port === 22 ? 'ssh' : '-',
+    service: o.dst_port === 443 ? 'ssl' : o.dst_port === 80 ? 'http' : o.dst_port === 53 ? 'dns' : o.dst_port === 22 ? 'ssh' : o.dst_port === 21 ? 'ftp' : '-',
     duration: duration_s,
     orig_bytes,
     resp_bytes,
     conn_state,
-    local_orig: o.src_ip.startsWith('192.168.168.'),
-    local_resp: o.dst_ip.startsWith('192.168.168.'),
+    local_orig: isPrivate(o.src_ip),
+    local_resp: isPrivate(o.dst_ip),
     missed_bytes: 0,
     history: o.verdict === 'ALERT' ? 'S' : 'ShADadFf',
     orig_pkts,
@@ -183,7 +203,6 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
     resp_ip_bytes: resp_bytes + resp_pkts * 40,
   };
 
-  // ML feature vector — what the AI engine actually uses
   const ml = {
     model: 'cic_ids2017_xgb_v3',
     predicted_class: o.attack_type,
@@ -204,13 +223,12 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
     runner_up_classes:
       o.verdict === 'ALERT'
         ? [
-            { class: 'Normal HTTPS Traffic', prob: round2(1 - o.confidence - 0.02) },
+            { class: 'BENIGN', prob: round2(1 - o.confidence - 0.02) },
             { class: 'BruteForce', prob: round2(rand() * 0.04) },
           ]
         : [],
   };
 
-  // MITRE mapping when attack
   const mitre =
     o.mitre ??
     (o.attack_type === 'PortScan'
@@ -219,6 +237,14 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
       ? { tactic: 'Impact', technique: 'Network Denial of Service', id: 'T1498' }
       : o.attack_type.includes('SSH')
       ? { tactic: 'Credential Access', technique: 'Brute Force', id: 'T1110' }
+      : o.attack_type.includes('FTP')
+      ? { tactic: 'Credential Access', technique: 'Brute Force: Password Guessing', id: 'T1110.001' }
+      : o.attack_type.includes('Web')
+      ? { tactic: 'Initial Access', technique: 'Exploit Public-Facing Application', id: 'T1190' }
+      : o.attack_type.includes('DoS')
+      ? { tactic: 'Impact', technique: 'Endpoint Denial of Service', id: 'T1499' }
+      : o.attack_type === 'Bot'
+      ? { tactic: 'Command and Control', technique: 'Application Layer Protocol', id: 'T1071' }
       : o.attack_type.includes('Suspicious')
       ? { tactic: 'Reconnaissance', technique: 'Network Service Discovery', id: 'T1046' }
       : o.attack_type === 'ICMP Echo Request'
@@ -232,14 +258,14 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
       community_id: cid,
       flow_id: fid,
       direction,
-      src: { ip: o.src_ip, port: o.src_port, mac: macFor(o.src_ip) },
-      dst: { ip: o.dst_ip, port: o.dst_port, mac: macFor(o.dst_ip) },
+      src: { ip: o.src_ip, port: o.src_port, mac: macFor(o.src_ip), zone: srcExternal ? 'external/wan' : o.src_ip.startsWith('172.16.16.') ? 'dmz' : o.src_ip.startsWith('10.10.10.') ? 'soc' : 'wan-edge' },
+      dst: { ip: o.dst_ip, port: o.dst_port, mac: macFor(o.dst_ip), zone: dstExternal ? 'external/wan' : o.dst_ip.startsWith('172.16.16.') ? 'dmz' : o.dst_ip.startsWith('10.10.10.') ? 'soc' : 'wan-edge' },
       network: {
         protocol: o.proto,
         transport: o.proto.toLowerCase(),
         bytes: orig_bytes + resp_bytes,
         packets: orig_pkts + resp_pkts,
-        nat_translated: o.dst_ip === GATEWAY && !o.dst_ip.startsWith('192.168.'),
+        nat_translated: srcExternal && o.dst_ip.startsWith('172.16.16.'),
       },
       verdict: o.verdict,
       attack_type: o.attack_type,
@@ -257,22 +283,26 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
         kill_chain_phase:
           o.attack_type === 'PortScan' || o.attack_type === 'ICMP Echo Request'
             ? 'reconnaissance'
-            : o.attack_type === 'DDoS'
+            : o.attack_type === 'DDoS' || o.attack_type.includes('DoS')
             ? 'actions-on-objectives'
-            : o.attack_type.includes('Suspicious') || o.attack_type.includes('SSH')
+            : o.attack_type.includes('Patator') || o.attack_type.includes('SSH')
             ? 'weaponization'
+            : o.attack_type.includes('Web')
+            ? 'exploitation'
+            : o.attack_type === 'Bot'
+            ? 'command-and-control'
             : 'benign',
       },
       enrichment: {
-        geo: isExternalSrc
+        geo: srcExternal
           ? { country: pick(['US', 'CN', 'RU', 'NL', 'BR', 'IN']), asn: between(1000, 65000) }
-          : { country: 'LAN', asn: 0 },
+          : { country: 'LAB', asn: 0 },
         threat_intel:
-          o.verdict === 'ALERT' && isExternalSrc
+          o.verdict === 'ALERT' && srcExternal
             ? { matched_feeds: ['abuse.ch', 'spamhaus_drop'], reputation: 'malicious' }
             : { matched_feeds: [], reputation: 'unknown' },
       },
-      pipeline: { source: 'zeek+suricata+ml', version: '3.4.1', tap: 'pfSense_LAN_mirror' },
+      pipeline: { source: 'zeek+suricata+ml', version: '3.4.1', tap: 'pfSense_DMZ_mirror', sensor: NIDS_HOST },
     },
     null,
     2
@@ -348,7 +378,6 @@ const mk = (o: EventOpts): SOCEvent => {
 // ---------- Generators ----------
 const events: SOCEvent[] = [];
 
-// Track key event IDs for cross-day correlation
 const keyEventIds: Record<string, string[]> = {
   day1_recon: [],
   day2_probe: [],
@@ -356,65 +385,98 @@ const keyEventIds: Record<string, string[]> = {
 };
 
 /* =====================================================================
- * BENIGN BASELINE — every day 00:00 → 23:59, ~250 events/day with a
- * diurnal sine wave (low overnight, peak around 10:00–16:00). This gives
- * the Traffic & Alerts chart a natural rolling shape so attack spikes
- * read as anomalies, not as the only data on the chart.
+ * BENIGN BASELINE — every day, ~250 events/day with diurnal sine wave.
+ * Three traffic patterns are interleaved so Source IP shows variety:
+ *   (A) Inbound web traffic   : external client .20-.30 → web 172.16.16.30:443/80
+ *   (B) Outbound response     : web 172.16.16.30 → external client (responses)
+ *   (C) Internal lateral      : SOC AI (10.10.10.20) ↔ DMZ NIDS (172.16.16.20)
+ *   (D) Egress browsing       : DMZ web → external CDN/API
  * ===================================================================== */
 for (let day = 20; day <= 24; day++) {
   const dayBase = new Date(`2026-04-${String(day).padStart(2, '0')}T00:00:00+07:00`).getTime();
-  // Walk the whole day in ~5-min steps; accept/reject each step based on
-  // a diurnal probability curve so density follows business hours.
   for (let t = dayBase; t < dayBase + 24 * 3600_000; t += between(180_000, 360_000)) {
     const ts = new Date(t);
     const hour = ts.getHours() + ts.getMinutes() / 60;
-    // Sine-shaped probability: ~0.15 at 03:00, ~0.95 at 13:00.
     const diurnal = 0.55 + 0.45 * Math.sin(((hour - 7) / 24) * Math.PI * 2 - Math.PI / 2);
     if (rand() > diurnal) continue;
 
-    const isEgress = rand() < 0.7;
-    if (isEgress) {
-      const port = pick([443, 443, 443, 443, 443, 80, 80, 53]);
-      const fqdn = pick(EGRESS_FQDNS);
-      const src = pick(LAB_HOSTS.filter((ip) => ip !== ATTACKER_IP));
+    const r = rand();
+    if (r < 0.45) {
+      // (A) Inbound web request: external client → web server
+      const client = pick(EXTERNAL_BENIGN_HOSTS);
+      const port = pick([443, 443, 443, 80]);
       events.push(
         mk({
           ts,
-          src_ip: src,
-          dst_ip: GATEWAY,
+          src_ip: client,
+          dst_ip: WEB_SERVER,
+          src_port: between(30000, 65000),
           dst_port: port,
-          protocol: port === 53 ? 'UDP' : 'TCP',
-          attack_type: port === 53 ? 'Internal DNS Query' : 'Normal HTTPS / Web Browsing',
+          protocol: 'TCP',
+          attack_type: port === 443 ? 'Normal HTTPS / Web Browsing' : 'Normal HTTP / Web Browsing',
           source_engine: 'Zeek',
-          http:
-            port === 80 || port === 443
-              ? {
-                  method: pick(['GET', 'GET', 'GET', 'POST']),
-                  host: fqdn,
-                  uri: pick(['/', '/index.html', '/api/v1/users', '/static/app.js', '/favicon.ico', '/assets/main.css']),
-                  status: pick([200, 200, 200, 200, 304, 301]),
-                }
-              : undefined,
-          dns:
-            port === 53
-              ? { query: fqdn, rcode: 'NOERROR', answers: [`${between(1, 255)}.${between(0, 255)}.${between(0, 255)}.${between(1, 254)}`] }
-              : undefined,
-          notes: 'Routine egress traffic — auto-classified BENIGN by ML model.',
+          http: {
+            method: pick(['GET', 'GET', 'GET', 'GET', 'POST']),
+            host: 'web.lab.local',
+            uri: pick(['/', '/index.html', '/about', '/api/v1/products', '/static/app.js', '/favicon.ico', '/assets/main.css', '/login']),
+            status: pick([200, 200, 200, 200, 304, 301]),
+          },
+          notes: `External client ${client} browsing public web service.`,
+        })
+      );
+    } else if (r < 0.7) {
+      // (B) Web server RESPONSE flow: src = web server, dst = external client.
+      // Zeek logs both directions of a stateful flow, so this naturally appears.
+      const client = pick(EXTERNAL_BENIGN_HOSTS);
+      events.push(
+        mk({
+          ts: new Date(t + between(50, 800)),
+          src_ip: WEB_SERVER,
+          dst_ip: client,
+          src_port: pick([443, 80]),
+          dst_port: between(30000, 65000),
+          protocol: 'TCP',
+          attack_type: 'Web Server Response',
+          source_engine: 'Zeek',
+          notes: `Web server ${WEB_SERVER} returning content to client ${client}.`,
+        })
+      );
+    } else if (r < 0.85) {
+      // (C) Internal lateral: SOC AI ↔ NIDS sensor (log shipping, queries)
+      const aiToNids = rand() < 0.5;
+      events.push(
+        mk({
+          ts,
+          src_ip: aiToNids ? AI_SERVER : NIDS_HOST,
+          dst_ip: aiToNids ? NIDS_HOST : AI_SERVER,
+          dst_port: aiToNids ? 9200 : 5044,
+          protocol: 'TCP',
+          attack_type: aiToNids ? 'Elasticsearch Query' : 'Log Shipper Beat',
+          source_engine: 'Zeek',
+          notes: aiToNids
+            ? 'AI Server querying NIDS Elasticsearch index for recent events.'
+            : 'NIDS shipping enriched logs to AI Server (Filebeat/Logstash protocol).',
         })
       );
     } else {
-      const isDns = rand() < 0.55;
+      // (D) Egress: web server reaching external CDN / API for content
+      const fqdn = pick(EGRESS_FQDNS);
       events.push(
         mk({
           ts,
-          src_ip: pick(LAB_HOSTS.filter((ip) => ip !== ATTACKER_IP && ip !== DNS_SERVER)),
-          dst_ip: isDns ? DNS_SERVER : FILE_SERVER,
-          dst_port: isDns ? 53 : 445,
-          protocol: isDns ? 'UDP' : 'TCP',
-          attack_type: isDns ? 'Internal DNS Query' : 'SMB File Share',
+          src_ip: WEB_SERVER,
+          dst_ip: DMZ_GW,
+          dst_port: pick([443, 443, 80, 53]),
+          protocol: 'TCP',
+          attack_type: 'Outbound CDN/API Call',
           source_engine: 'Zeek',
-          dns: isDns ? { query: pick(['intranet.lab', 'fileserver.lab', 'gw.lab']), rcode: 'NOERROR' } : undefined,
-          notes: isDns ? 'Internal name resolution.' : 'Internal SMB share access.',
+          http: {
+            method: 'GET',
+            host: fqdn,
+            uri: pick(['/api/health', '/v1/status', '/cdn/lib.js', '/']),
+            status: 200,
+          },
+          notes: `Web server fetching dependency from ${fqdn} via NAT egress.`,
         })
       );
     }
@@ -423,14 +485,12 @@ for (let day = 20; day <= 24; day++) {
 
 /* =====================================================================
  * DAY 1 — 2026-04-20  RECONNAISSANCE
- *   Story: attacker host 192.168.168.23 first appears on the LAN.
- *   - 6 ICMP echo-requests sweeping nearby hosts (T1018)
- *   - 1 HTTPS look at gateway web UI
+ *   Attacker .23 first appears: ICMP sweep of DMZ + first HTTPS probe.
  * ===================================================================== */
 {
   const base = new Date('2026-04-20T09:14:00+07:00').getTime();
   for (let i = 0; i < 6; i++) {
-    const target = `192.168.168.${between(20, 50)}`;
+    const target = `172.16.16.${between(20, 50)}`;
     const ev = mk({
       ts: new Date(base + i * 18_000),
       src_ip: ATTACKER_IP,
@@ -443,7 +503,7 @@ for (let day = 20; day <= 24; day++) {
       confidence: 0.12,
       source_engine: 'Zeek',
       mitre: { tactic: 'Reconnaissance', technique: 'Remote System Discovery', id: 'T1018' },
-      notes: `New device ${ATTACKER_IP} pinging neighbour ${target}. By itself benign, but the host has never been seen before — flag for context.`,
+      notes: `New external host ${ATTACKER_IP} pinging DMZ host ${target}. By itself benign, but the host has never been seen before — flag for context.`,
     });
     events.push(ev);
     keyEventIds.day1_recon.push(ev.id);
@@ -451,15 +511,15 @@ for (let day = 20; day <= 24; day++) {
   const ev = mk({
     ts: new Date(base + 600_000),
     src_ip: ATTACKER_IP,
-    dst_ip: GATEWAY,
+    dst_ip: WEB_SERVER,
     dst_port: 443,
     protocol: 'TCP',
     attack_type: 'HTTPS Connection',
     verdict: 'BENIGN',
     confidence: 0.18,
     source_engine: 'Zeek',
-    http: { method: 'GET', host: 'pfsense.lab', uri: '/index.php', status: 200, ua: USER_AGENTS[0] },
-    notes: 'First HTTPS request from the new host to the pfSense management UI — looking but not authenticating.',
+    http: { method: 'GET', host: 'web.lab.local', uri: '/', status: 200, ua: USER_AGENTS[3] },
+    notes: 'First HTTPS request from the new host to the public web service — looking but not authenticating.',
   });
   events.push(ev);
   keyEventIds.day1_recon.push(ev.id);
@@ -468,6 +528,8 @@ for (let day = 20; day <= 24; day++) {
 /* =====================================================================
  * DAY 2 — 2026-04-21  LIGHT TCP PROBING (first SUSPICIOUS verdict)
  *   Late-night connect attempts to common admin ports — Zeek REJ.
+ *   PLUS: 2 isolated FTP-Patator events (different external IP) for
+ *   class coverage.
  * ===================================================================== */
 {
   const base = new Date('2026-04-21T22:47:00+07:00').getTime();
@@ -476,7 +538,7 @@ for (let day = 20; day <= 24; day++) {
     const ev = mk({
       ts: new Date(base + i * 12_000),
       src_ip: ATTACKER_IP,
-      dst_ip: GATEWAY,
+      dst_ip: WEB_SERVER,
       dst_port: port,
       protocol: 'TCP',
       attack_type: 'Suspicious Connection Attempt',
@@ -486,20 +548,40 @@ for (let day = 20; day <= 24; day++) {
       signature_id: 2210045,
       related: keyEventIds.day1_recon.slice(0, 2),
       mitre: { tactic: 'Reconnaissance', technique: 'Network Service Discovery', id: 'T1046' },
-      notes: `Same source ${ATTACKER_IP} that ICMP-swept yesterday is now probing ${port}/tcp — connection rejected (REJ). Pattern matches reconnaissance staging.`,
+      notes: `Same source ${ATTACKER_IP} that ICMP-swept yesterday is now probing ${port}/tcp on the web server — connection rejected (REJ).`,
     });
     events.push(ev);
     keyEventIds.day2_probe.push(ev.id);
   });
+
+  // Class-coverage seed: 3 FTP-Patator events from a different opportunist
+  const ftpAttacker = '192.168.168.27';
+  const ftpBase = new Date('2026-04-21T03:12:00+07:00').getTime();
+  for (let i = 0; i < 3; i++) {
+    events.push(
+      mk({
+        ts: new Date(ftpBase + i * 8_000),
+        src_ip: ftpAttacker,
+        dst_ip: WEB_SERVER,
+        dst_port: 21,
+        protocol: 'TCP',
+        attack_type: 'FTP-Patator',
+        verdict: 'ALERT',
+        confidence: round2(0.81 + rand() * 0.07),
+        source_engine: 'Suricata+Zeek+ML',
+        signature_id: 2002383,
+        notes: 'Brute-force FTP login attempts from opportunistic scanner — unrelated to .23 actor.',
+      })
+    );
+  }
 }
 
 /* =====================================================================
  * DAY 3 — 2026-04-22  TARGETED PORTSCAN (first Suricata ALERT)
- *   80 SYN probes to top ports in 2 minutes → Suricata sig 2010935.
+ *   80 SYN probes to top ports → Suricata sig 2010935.
+ *   PLUS: 3 isolated Web Attack events (SQLi probes) from another IP.
  * ===================================================================== */
 {
-  // Spread the 80-port scan over ~10 minutes so it shows as a recognisable
-  // burst (not a single 1-pixel spike that nukes the chart axis).
   const base = new Date('2026-04-22T02:18:00+07:00').getTime();
   const ports = [21, 22, 23, 25, 53, 80, 110, 139, 143, 443, 445, 993, 995, 1433, 3306, 3389, 5432, 8080, 8443];
   const SCAN_SPAN_MS = 10 * 60_000;
@@ -510,7 +592,7 @@ for (let day = 20; day <= 24; day++) {
     const ev = mk({
       ts,
       src_ip: ATTACKER_IP,
-      dst_ip: GATEWAY,
+      dst_ip: WEB_SERVER,
       dst_port: port,
       protocol: 'TCP',
       attack_type: 'PortScan',
@@ -523,37 +605,61 @@ for (let day = 20; day <= 24; day++) {
       notes:
         i === 16
           ? 'Suricata threshold reached — 16 SYN probes from same source in <30s. Promoting to ALERT.'
-          : 'Part of a horizontal port-scan burst from .23.',
+          : 'Part of horizontal port-scan burst from .23.',
     });
     events.push(ev);
     if (i === 0 || i === 40 || i === 79) keyEventIds.day3_scan.push(ev.id);
   }
+
+  // Class-coverage seed: 4 Web Attack events (SQLi/XSS probes from another IP)
+  const webAttacker = '192.168.168.29';
+  const webBase = new Date('2026-04-22T14:05:00+07:00').getTime();
+  const payloads = [
+    "/?id=1' OR '1'='1",
+    "/search?q=<script>alert(1)</script>",
+    "/page?file=../../etc/passwd",
+    "/admin/login.php?user=admin'--",
+  ];
+  payloads.forEach((uri, i) => {
+    events.push(
+      mk({
+        ts: new Date(webBase + i * 25_000),
+        src_ip: webAttacker,
+        dst_ip: WEB_SERVER,
+        dst_port: 80,
+        protocol: 'TCP',
+        attack_type: 'Web Attack',
+        verdict: 'ALERT',
+        confidence: round2(0.84 + rand() * 0.08),
+        source_engine: 'Suricata+Zeek+ML',
+        signature_id: 2017645,
+        http: { method: 'GET', host: 'web.lab.local', uri, status: 403, ua: USER_AGENTS[3] },
+        notes: 'OWASP Top-10 payload signature match (SQLi / XSS / LFI). Blocked at web layer.',
+      })
+    );
+  });
 }
 
 /* =====================================================================
  * DAY 4 — 2026-04-23  EXTERNAL DDoS BURST (NOT from .23)
- *   Spoofed source pool hammers the gateway briefly. Auto-mitigated.
- *   Purpose: populate the DDoS class on the dashboard.
+ *   Spoofed source pool hammers the DMZ web server briefly.
+ *   PLUS: 2 SSH-Patator events (different IP) + 2 DoS slowloris probes.
  * ===================================================================== */
 {
-  // Spread the 220-packet flood over ~30 minutes with a bell-shaped envelope
-  // (ramp-up, peak, mitigation tail). Reads as a real DDoS incident on the
-  // chart instead of a 1-pixel spike. Reduce volume slightly to 160 events.
   const base = new Date('2026-04-23T19:42:00+07:00').getTime();
   const FLOOD_SPAN_MS = 30 * 60_000;
   const FLOOD_COUNT = 160;
   const spoofPool = Array.from({ length: 60 }, () => `${between(11, 223)}.${between(0, 255)}.${between(0, 255)}.${between(1, 254)}`);
   for (let i = 0; i < FLOOD_COUNT; i++) {
-    // Bell envelope (cos²): density highest in the middle of the window.
-    const u = i / (FLOOD_COUNT - 1); // 0 → 1
-    const skew = 0.5 - 0.5 * Math.cos(u * Math.PI); // smooth 0→1
+    const u = i / (FLOOD_COUNT - 1);
+    const skew = 0.5 - 0.5 * Math.cos(u * Math.PI);
     const offset = Math.floor(skew * FLOOD_SPAN_MS) + between(-4000, 4000);
     const ts = new Date(base + offset);
     events.push(
       mk({
         ts,
         src_ip: pick(spoofPool),
-        dst_ip: GATEWAY,
+        dst_ip: WEB_SERVER,
         dst_port: 80,
         protocol: 'TCP',
         attack_type: 'DDoS',
@@ -565,10 +671,54 @@ for (let day = 20; day <= 24; day++) {
         mitre: { tactic: 'Impact', technique: 'Network Denial of Service', id: 'T1498' },
         notes:
           i === 0
-            ? 'SYN flood detected from a wide spoofed source pool — typical low-rate distributed DoS. Unrelated to internal recon actor.'
+            ? 'SYN flood detected from a wide spoofed source pool — typical low-rate distributed DoS against the DMZ web server.'
             : i === FLOOD_COUNT - 1
             ? 'Mitigation triggered: pfSense rate-limit + temporary alias block applied.'
             : undefined,
+      })
+    );
+  }
+
+  // Class-coverage: SSH-Patator from another opportunist
+  const sshAttacker = '192.168.168.25';
+  const sshBase = new Date('2026-04-23T11:20:00+07:00').getTime();
+  for (let i = 0; i < 3; i++) {
+    events.push(
+      mk({
+        ts: new Date(sshBase + i * 6_000),
+        src_ip: sshAttacker,
+        dst_ip: WEB_SERVER,
+        dst_port: 22,
+        protocol: 'TCP',
+        attack_type: 'SSH-Patator',
+        verdict: 'ALERT',
+        confidence: round2(0.83 + rand() * 0.07),
+        source_engine: 'Suricata+Zeek+ML',
+        signature_id: 2003068,
+        ssh: { client_version: 'SSH-2.0-libssh2_1.10.0', auth_attempt: true },
+        notes: 'Repeated failed SSH password attempts — Patator-style brute force.',
+      })
+    );
+  }
+
+  // Class-coverage: DoS slowloris probes
+  const slowAttacker = '192.168.168.28';
+  const slowBase = new Date('2026-04-23T05:48:00+07:00').getTime();
+  for (let i = 0; i < 3; i++) {
+    events.push(
+      mk({
+        ts: new Date(slowBase + i * 90_000),
+        src_ip: slowAttacker,
+        dst_ip: WEB_SERVER,
+        dst_port: 80,
+        protocol: 'TCP',
+        attack_type: 'DoS slowloris',
+        verdict: 'ALERT',
+        confidence: round2(0.79 + rand() * 0.08),
+        source_engine: 'Suricata+Zeek+ML',
+        signature_id: 2018472,
+        http: { method: 'GET', host: 'web.lab.local', uri: '/', status: 408 },
+        notes: 'Slow HTTP header attack — half-open connections held to exhaust web server pool.',
       })
     );
   }
@@ -576,7 +726,9 @@ for (let day = 20; day <= 24; day++) {
 
 /* =====================================================================
  * DAY 5 — 2026-04-24  COOL-DOWN (.23 silent — only 2 SSH probes)
- *   Classic APT staging: actor goes quiet right before striking.
+ *   Classic APT staging.
+ *   PLUS: 2 isolated DoS Hulk + 2 Bot beacon events (other IPs) for
+ *   class coverage.
  * ===================================================================== */
 {
   const base = new Date('2026-04-24T16:31:00+07:00').getTime();
@@ -585,7 +737,7 @@ for (let day = 20; day <= 24; day++) {
       mk({
         ts: new Date(base + i * 240_000),
         src_ip: ATTACKER_IP,
-        dst_ip: GATEWAY,
+        dst_ip: WEB_SERVER,
         dst_port: 22,
         protocol: 'TCP',
         attack_type: 'SSH Connection Attempt',
@@ -598,6 +750,50 @@ for (let day = 20; day <= 24; day++) {
         mitre: { tactic: 'Credential Access', technique: 'Brute Force', id: 'T1110' },
         notes:
           'Same actor (.23) that ran the port-scan 2 days ago is now testing SSH. Volume is intentionally low — staging behaviour. Expect escalation.',
+      })
+    );
+  }
+
+  // Class-coverage: DoS Hulk burst (different IP)
+  const hulkAttacker = '192.168.168.26';
+  const hulkBase = new Date('2026-04-24T08:14:00+07:00').getTime();
+  for (let i = 0; i < 4; i++) {
+    events.push(
+      mk({
+        ts: new Date(hulkBase + i * 4_000),
+        src_ip: hulkAttacker,
+        dst_ip: WEB_SERVER,
+        dst_port: 80,
+        protocol: 'TCP',
+        attack_type: 'DoS Hulk',
+        verdict: 'ALERT',
+        confidence: round2(0.82 + rand() * 0.08),
+        source_engine: 'Suricata+Zeek+ML',
+        signature_id: 2019825,
+        http: { method: 'GET', host: 'web.lab.local', uri: `/?cb=${between(1000, 9999)}`, status: 200 },
+        notes: 'HTTP cache-buster flood (DoS Hulk pattern).',
+      })
+    );
+  }
+
+  // Class-coverage: Bot C2 beacon (different IP)
+  const botAttacker = '192.168.168.30';
+  const botBase = new Date('2026-04-24T21:05:00+07:00').getTime();
+  for (let i = 0; i < 3; i++) {
+    events.push(
+      mk({
+        ts: new Date(botBase + i * 8_000),
+        src_ip: botAttacker,
+        dst_ip: WEB_SERVER,
+        dst_port: 80,
+        protocol: 'TCP',
+        attack_type: 'Bot',
+        verdict: 'SUSPICIOUS',
+        confidence: round2(0.66 + rand() * 0.06),
+        source_engine: 'Suricata+Zeek+ML',
+        signature_id: 2027865,
+        http: { method: 'GET', host: 'web.lab.local', uri: '/api/heartbeat', status: 404, ua: 'python-requests/2.28.0' },
+        notes: 'Periodic beacon every ~8s with python-requests UA — typical C2 check-in pattern.',
       })
     );
   }
