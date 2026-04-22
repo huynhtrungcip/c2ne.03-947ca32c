@@ -576,7 +576,9 @@ build_and_start() {
     print_success "Build thành công"
     
     print_info "Đang khởi động containers..."
-    docker compose up -d
+    # Safety net: force-remove any stale containers that would conflict by name
+    docker rm -f soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
+    docker compose up -d --remove-orphans
     
     print_info "Đợi services khởi động..."
     sleep 15
