@@ -278,6 +278,24 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
         packets: orig_pkts + resp_pkts,
         nat_translated: srcExternal && o.dst_ip.startsWith('172.16.16.'),
       },
+      // NAT context — pfSense did inbound DNAT (port forward) without SNAT.
+      // The attacker only ever saw 192.168.168.254:<dport>; NIDS sees the
+      // post-DNAT internal IP. We surface BOTH so analysts can correlate
+      // pfSense firewall logs with NIDS alerts.
+      ...(srcExternal && o.dst_ip.startsWith('172.16.16.')
+        ? {
+            nat: {
+              dnat: true,
+              snat: false,
+              pre_dnat_dst_ip: PFSENSE_WAN,
+              pre_dnat_dst_port: o.dst_port,
+              post_dnat_dst_ip: o.dst_ip,
+              post_dnat_dst_port: o.dst_port,
+              pfsense_rule: `WAN→DMZ port-forward ${o.dst_port}/tcp`,
+              note: `Attacker dialled ${PFSENSE_WAN}:${o.dst_port}; pfSense translated to ${o.dst_ip}:${o.dst_port}. Source IP preserved (no SNAT inbound).`,
+            },
+          }
+        : {}),
       verdict: o.verdict,
       attack_type: o.attack_type,
       confidence: o.confidence,
