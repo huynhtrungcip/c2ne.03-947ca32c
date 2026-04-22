@@ -200,21 +200,42 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
   }, [selectedEvent]);
 
   // Block IP executor (used by tool) — synced with pfSense alias AI_Blocked_IP
+  // STRICT: only persist to localStorage if pfSense actually confirms the block.
+  // We verify by re-fetching /blocked-ips and checking the IP appears in the alias.
   const performBlockIP = useCallback(
     async (ip: string, reason: string): Promise<{ ok: boolean; error?: string }> => {
+      if (!apiUrl) return { ok: false, error: 'API URL not configured' };
+      const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
       try {
-        if (apiUrl) {
-          const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
-          const resp = await fetch(`${aiEngineUrl}/block`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ip, reason }),
-            signal: AbortSignal.timeout(10_000),
-          });
-          if (!resp.ok) return { ok: false, error: `pfSense API HTTP ${resp.status}` };
-          const data = await resp.json().catch(() => ({}));
-          if (data.success === false) return { ok: false, error: data.message || 'pfSense returned failure' };
+        const resp = await fetch(`${aiEngineUrl}/block`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip, reason }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (!resp.ok) return { ok: false, error: `pfSense API HTTP ${resp.status}` };
+        const data = await resp.json().catch(() => ({}));
+        console.log('[performBlockIP] pfSense response:', data);
+        if (data.success !== true) {
+          return { ok: false, error: data.message || 'pfSense did not confirm success' };
         }
+
+        // Verification step — re-fetch alias to make sure IP is really there
+        try {
+          const verifyResp = await fetch(`${aiEngineUrl}/blocked-ips`, {
+            signal: AbortSignal.timeout(8_000),
+          });
+          const verifyData = await verifyResp.json().catch(() => ({}));
+          const ips: string[] = Array.isArray(verifyData.ips) ? verifyData.ips : [];
+          if (!ips.includes(ip)) {
+            return { ok: false, error: 'pfSense reported success but IP missing from alias on verify' };
+          }
+        } catch (ve) {
+          console.warn('[performBlockIP] verify fetch failed', ve);
+          // continue anyway — backend confirmed success
+        }
+
+        // Only NOW persist to localStorage
         const cur = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
         if (!cur.includes(ip)) {
           cur.push(ip);
