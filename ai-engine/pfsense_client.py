@@ -310,12 +310,18 @@ def get_blocked_ips() -> Tuple[bool, List[str], Dict[str, Any]]:
         - list of blocked IPs (List[str])
         - debug_info (dict)
     """
-    debug: Dict[str, Any] = {"alias": PFSENSE_ALIAS}
+    debug: Dict[str, Any] = {
+        "alias": PFSENSE_ALIAS,
+        "scheme": PFSENSE_SCHEME,
+        "host": PFSENSE_HOST,
+        "port": PFSENSE_PORT,
+    }
     
     if not PFSENSE_API_KEY:
-        return False, [], {"error": "pfSense API key not configured"}
+        return False, [], {"error": "pfSense API key not configured", **debug}
     
-    base_url = f"http://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    base_url = f"{PFSENSE_SCHEME}://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    debug["target"] = base_url
     headers = {
         "X-API-Key": PFSENSE_API_KEY,
         "Accept": "application/json",
