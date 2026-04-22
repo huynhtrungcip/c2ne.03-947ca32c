@@ -91,7 +91,7 @@ export const useSOCData = (
       next.confidence = Math.min(0.99, 0.88 + Math.random() * 0.08);
     }
     // 3) If confidence is high but verdict still PENDING/SUSPICIOUS, promote.
-    if (next.confidence >= 0.8 && (next.verdict === 'PENDING' || next.verdict === 'SUSPICIOUS')) {
+    if (next.confidence >= 0.8 && next.verdict === 'SUSPICIOUS') {
       next.verdict = 'ALERT';
     }
     return next;
