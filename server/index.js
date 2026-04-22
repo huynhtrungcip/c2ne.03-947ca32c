@@ -1008,7 +1008,8 @@ const zeekHandler = (req, res) => {
     console.error('[ZEEK] Error:', error);
     res.status(500).json({ error: error.message });
   }
-});
+};
+app.post('/api/ingest/zeek', zeekHandler);
 
 // Update event verdict after AI analysis
 app.post('/api/events/:id/verdict', (req, res) => {
