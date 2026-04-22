@@ -71,6 +71,8 @@ services:
       - DB_PATH=/app/data/soc_events.db
       - AI_ENGINE_URL=http://ai-engine:8000
       - TZ=Asia/Ho_Chi_Minh
+      # Demo: any alert from this IP is reshaped to one of the 10 ML classes
+      - DEMO_ATTACKER_IP=${DEMO_ATTACKER_IP:-192.168.168.23}
     volumes:
       - backend-data:/app/data
     depends_on:
