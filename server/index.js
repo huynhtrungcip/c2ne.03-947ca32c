@@ -843,21 +843,41 @@ app.post('/api/ingest', (req, res) => {
     const errors = [];
 
     for (const item of items) {
-      if (!item || !item.source || !item.data) {
-        errors.push('missing source/data fields');
+      if (!item || typeof item !== 'object') {
+        errors.push('invalid item');
         continue;
       }
-      // Re-route internally by mutating req.body and calling the proper handler
-      const fakeReq = Object.assign(Object.create(Object.getPrototypeOf(req)), req, { body: item.data });
+
+      // Detect format:
+      //  A) Wrapped: {source: "suricata"|"zeek"|"zeek_http", data: {...}}
+      //  B) Raw Suricata EVE: has event_type field (alert/flow/dns/http/...)
+      //  C) Raw Zeek: has id.orig_h / id.resp_h fields
+      let source = item.source;
+      let data = item.data;
+
+      if (!source || !data) {
+        // Treat the whole item as raw log payload — auto-detect engine.
+        data = item;
+        if (item.event_type !== undefined || item.alert !== undefined) {
+          source = 'suricata';
+        } else if (item['id.orig_h'] !== undefined || item['id.resp_h'] !== undefined) {
+          source = item.method || item.host || item.uri ? 'zeek_http' : 'zeek';
+        } else {
+          errors.push(`unrecognized payload (keys: ${Object.keys(item).slice(0,5).join(',')})`);
+          continue;
+        }
+      }
+
+      const fakeReq = Object.assign(Object.create(Object.getPrototypeOf(req)), req, { body: data });
       const fakeRes = { json: () => {}, status: () => ({ json: () => {} }) };
-      if (item.source === 'suricata') {
+      if (source === 'suricata') {
         suricataHandler(fakeReq, fakeRes);
         dispatched++;
-      } else if (item.source === 'zeek' || item.source === 'zeek_http') {
+      } else if (source === 'zeek' || source === 'zeek_http') {
         zeekHandler(fakeReq, fakeRes);
         dispatched++;
       } else {
-        errors.push(`unknown source: ${item.source}`);
+        errors.push(`unknown source: ${source}`);
       }
     }
 
