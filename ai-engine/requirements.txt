@@ -30,7 +30,7 @@ openai==1.58.1
 websockets==14.1
 
 # System monitoring
-psutil==6.1.1
+psutil>=5.9.8,<7.0.0
 
 # Async support
 aiofiles==24.1.0
