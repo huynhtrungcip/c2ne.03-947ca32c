@@ -1326,10 +1326,10 @@ Rules:
                 </div>
               ) : analysisResult && (
                 <div className="px-5 py-4 max-h-[360px] overflow-y-auto bg-card">
-                  <div className="prose prose-invert prose-sm max-w-none
+                  <div className="prose prose-invert prose-sm max-w-none [overflow-wrap:anywhere] [word-break:break-word]
                     [&_*]:!text-foreground
-                    [&_p]:text-[12.5px] [&_p]:leading-[1.7] [&_p]:my-2.5 [&_p]:text-foreground/90
-                    [&_ul]:my-2.5 [&_ol]:my-2.5 [&_li]:my-1 [&_li]:text-[12.5px] [&_li]:leading-[1.7] [&_li]:text-foreground/90
+                    [&_p]:text-[12.5px] [&_p]:leading-[1.7] [&_p]:my-2.5 [&_p]:text-foreground/90 [&_p]:[overflow-wrap:anywhere]
+                    [&_ul]:my-2.5 [&_ol]:my-2.5 [&_li]:my-1 [&_li]:text-[12.5px] [&_li]:leading-[1.7] [&_li]:text-foreground/90 [&_li]:[overflow-wrap:anywhere]
                     [&_strong]:text-foreground [&_strong]:font-semibold
                     [&_em]:text-foreground/80
                     [&_h1]:text-[13px] [&_h1]:font-semibold [&_h1]:uppercase [&_h1]:tracking-[0.1em] [&_h1]:text-foreground [&_h1]:mt-5 [&_h1]:mb-2 [&_h1]:pb-1.5 [&_h1]:border-b [&_h1]:border-border
