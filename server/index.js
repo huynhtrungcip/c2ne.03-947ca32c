@@ -1003,11 +1003,16 @@ app.post('/api/ingest', (req, res) => {
     let payloadStr = '';
     try { payloadStr = JSON.stringify(payload); } catch { payloadStr = String(payload); }
     if (payloadStr.includes(DEMO_ATTACKER_IP)) {
-      const ev = fabricateDemoEvent();
+      // Try to extract a destination port from common payload shapes so
+      // the fabricator can map nmap→PortScan, hydra ssh→SSH-Patator, etc.
+      const first = Array.isArray(payload) ? payload[0] : payload;
+      const d = first?.data || first || {};
+      const hintPort = d.dest_port ?? d.dst_port ?? d['id.resp_p'] ?? null;
+      const ev = fabricateDemoEvent(payloadStr, hintPort);
       persistAndBroadcast(ev);
       fabricated++;
       console.log(`[INGEST] Fabricated demo ALERT (${ev.attack_type}) for ${DEMO_ATTACKER_IP} from ${req.ip}`);
-      return res.json({ success: true, dispatched: 0, fabricated, errors: [] });
+      return res.json({ success: true, dispatched: 0, fabricated, attack_type: ev.attack_type, errors: [] });
     }
 
     for (const item of items) {
