@@ -193,13 +193,20 @@ def unblock_ip_on_pfsense(ip: str) -> Tuple[bool, str, Dict[str, Any]]:
     """
     Xóa IP khỏi alias AI_Blocked_IP trên pfSense.
     """
-    debug: Dict[str, Any] = {"ip": ip, "alias": PFSENSE_ALIAS}
+    debug: Dict[str, Any] = {
+        "ip": ip,
+        "alias": PFSENSE_ALIAS,
+        "scheme": PFSENSE_SCHEME,
+        "host": PFSENSE_HOST,
+        "port": PFSENSE_PORT,
+    }
 
     if not ip or not PFSENSE_API_KEY:
         return False, "Missing IP or API key", debug
 
     ip_norm = ip.strip()
-    base_url = f"http://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    base_url = f"{PFSENSE_SCHEME}://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    debug["target"] = base_url
     headers = {
         "X-API-Key": PFSENSE_API_KEY,
         "Accept": "application/json",
