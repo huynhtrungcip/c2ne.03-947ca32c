@@ -38,7 +38,7 @@ export const TopBlockedIPsPanel = ({ apiUrl, refreshKey = 0 }: Props) => {
     ? apiUrl.replace(':3001', ':8000').replace(':3002', ':8000')
     : '';
 
-  // Fetch pfSense blocked IPs
+  // Fetch pfSense blocked IPs (source of truth) and auto-purge stale local entries
   const fetchBlocked = useCallback(async () => {
     if (!aiEngineUrl) return;
     setLoading(true);
@@ -49,8 +49,24 @@ export const TopBlockedIPsPanel = ({ apiUrl, refreshKey = 0 }: Props) => {
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
-      setPfsenseIPs(Array.isArray(data.ips) ? data.ips : []);
+      const remoteIPs: string[] = Array.isArray(data.ips) ? data.ips : [];
+      setPfsenseIPs(remoteIPs);
       setLastSync(new Date());
+
+      // Self-heal: auto-purge any localStorage entry that is NOT on pfSense.
+      // pfSense is the source of truth — if it's not there, the IP is not actually blocked.
+      try {
+        const stored: string[] = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
+        const synced = stored.filter((ip) => remoteIPs.includes(ip));
+        if (synced.length !== stored.length) {
+          localStorage.setItem('soc-blocked-ips', JSON.stringify(synced));
+          window.dispatchEvent(new Event('soc-blocked-ips-changed'));
+          setLocalIPs(synced);
+          console.warn(
+            `[TopBlockedIPs] Auto-purged ${stored.length - synced.length} stale local entries not present on pfSense.`
+          );
+        }
+      } catch { /* ignore */ }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Fetch failed');
     } finally {

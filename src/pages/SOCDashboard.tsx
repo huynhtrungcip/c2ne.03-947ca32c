@@ -200,21 +200,42 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
   }, [selectedEvent]);
 
   // Block IP executor (used by tool) — synced with pfSense alias AI_Blocked_IP
+  // STRICT: only persist to localStorage if pfSense actually confirms the block.
+  // We verify by re-fetching /blocked-ips and checking the IP appears in the alias.
   const performBlockIP = useCallback(
     async (ip: string, reason: string): Promise<{ ok: boolean; error?: string }> => {
+      if (!apiUrl) return { ok: false, error: 'API URL not configured' };
+      const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
       try {
-        if (apiUrl) {
-          const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
-          const resp = await fetch(`${aiEngineUrl}/block`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ip, reason }),
-            signal: AbortSignal.timeout(10_000),
-          });
-          if (!resp.ok) return { ok: false, error: `pfSense API HTTP ${resp.status}` };
-          const data = await resp.json().catch(() => ({}));
-          if (data.success === false) return { ok: false, error: data.message || 'pfSense returned failure' };
+        const resp = await fetch(`${aiEngineUrl}/block`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip, reason }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (!resp.ok) return { ok: false, error: `pfSense API HTTP ${resp.status}` };
+        const data = await resp.json().catch(() => ({}));
+        console.log('[performBlockIP] pfSense response:', data);
+        if (data.success !== true) {
+          return { ok: false, error: data.message || 'pfSense did not confirm success' };
         }
+
+        // Verification step — re-fetch alias to make sure IP is really there
+        try {
+          const verifyResp = await fetch(`${aiEngineUrl}/blocked-ips`, {
+            signal: AbortSignal.timeout(8_000),
+          });
+          const verifyData = await verifyResp.json().catch(() => ({}));
+          const ips: string[] = Array.isArray(verifyData.ips) ? verifyData.ips : [];
+          if (!ips.includes(ip)) {
+            return { ok: false, error: 'pfSense reported success but IP missing from alias on verify' };
+          }
+        } catch (ve) {
+          console.warn('[performBlockIP] verify fetch failed', ve);
+          // continue anyway — backend confirmed success
+        }
+
+        // Only NOW persist to localStorage
         const cur = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
         if (!cur.includes(ip)) {
           cur.push(ip);
@@ -1098,40 +1119,71 @@ Rules:
       if (!selectedEvent?.src_ip) return;
       setBlockingIP(true);
       setBlockResult(null);
-      
+      const ip = selectedEvent.src_ip;
+
       try {
-        // Try to call AI-Engine API if available (đồng bộ pfSense alias AI_Blocked_IP)
-        if (apiUrl) {
-          const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
-          const response = await fetch(`${aiEngineUrl}/block`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ip: selectedEvent.src_ip }),
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            setBlockResult({ success: data.success, message: data.message || 'IP đã được block thành công!' });
-          } else {
-            throw new Error('API không phản hồi');
-          }
-        } else {
-          // Simulate blocking for demo
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          setBlockResult({ success: true, message: `IP ${selectedEvent.src_ip} đã được thêm vào danh sách block!` });
+        if (!apiUrl) {
+          setBlockResult({ success: false, message: 'API URL chưa cấu hình - không thể block trên pfSense.' });
+          return;
         }
-        
-        // Save to local storage and notify
+
+        const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
+        const response = await fetch(`${aiEngineUrl}/block`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`pfSense API HTTP ${response.status}`);
+        }
+
+        const data = await response.json().catch(() => ({}));
+        console.log('[performBlockIP/inspector] pfSense response:', data);
+
+        // STRICT: only treat as success if backend explicitly confirms
+        if (data.success !== true) {
+          setBlockResult({
+            success: false,
+            message: data.message || 'pfSense không xác nhận thành công.',
+          });
+          return;
+        }
+
+        // Verify by re-fetching alias
+        let verified = false;
+        try {
+          const v = await fetch(`${aiEngineUrl}/blocked-ips`, {
+            signal: AbortSignal.timeout(8_000),
+          });
+          const vd = await v.json().catch(() => ({}));
+          const ips: string[] = Array.isArray(vd.ips) ? vd.ips : [];
+          verified = ips.includes(ip);
+        } catch {
+          /* ignore */
+        }
+
+        if (!verified) {
+          setBlockResult({
+            success: false,
+            message: 'pfSense báo OK nhưng IP không xuất hiện trong alias khi verify. Kiểm tra Diagnostics → Tables.',
+          });
+          return;
+        }
+
+        setBlockResult({ success: true, message: data.message || `IP ${ip} đã block trên pfSense.` });
+
+        // Only persist after verification
         const currentBlocked = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
-        if (!currentBlocked.includes(selectedEvent.src_ip)) {
-          currentBlocked.push(selectedEvent.src_ip);
+        if (!currentBlocked.includes(ip)) {
+          currentBlocked.push(ip);
           localStorage.setItem('soc-blocked-ips', JSON.stringify(currentBlocked));
           window.dispatchEvent(new Event('soc-blocked-ips-changed'));
         }
       } catch (error) {
-        setBlockResult({ 
-          success: false, 
-          message: `Lỗi: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        setBlockResult({
+          success: false,
+          message: `Lỗi: ${error instanceof Error ? error.message : 'Unknown error'}`,
         });
       } finally {
         setBlockingIP(false);
