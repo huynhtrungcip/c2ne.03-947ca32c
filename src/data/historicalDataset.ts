@@ -4,21 +4,32 @@
  * Hand-crafted, deterministic dataset designed to be **AI-analyzable**.
  *
  * NETWORK TOPOLOGY (matches lab):
- *   ─ External WAN  ─────►  pfSense WAN ─────► DMZ + SOC zones
  *
- *   DMZ Zone (172.16.16.0/24)
- *     - 172.16.16.254 : DMZ gateway (pfSense leg)
- *     - 172.16.16.20  : NIDS sensor (Suricata + Zeek)
- *     - 172.16.16.30  : Web server (the public-facing service)
+ *     ATTACKER (192.168.168.23)                   DMZ (172.16.16.0/24)
+ *           │                                     ┌─ NIDS  172.16.16.20
+ *           │  hits 192.168.168.254:80           │  (Suricata + Zeek tap)
+ *           ▼                                     │
+ *     ┌──────────────┐  DNAT 80→172.16.16.30:80  │
+ *     │   pfSense    │ ────────────────────────►  └─ WEB  172.16.16.30
+ *     │ WAN .254     │                            (real web server)
+ *     │ DMZ .254     │
+ *     │ SOC .254     │ ──► SOC (10.10.10.0/24) ─► AI Server 10.10.10.20
+ *     └──────────────┘
  *
- *   SOC Zone (10.10.10.0/24)
- *     - 10.10.10.254  : SOC gateway
- *     - 10.10.10.20   : AI Server / SOC dashboard
+ * KEY NAT FACT (this drives the schema below):
+ *   The Kali attacker only "sees" 192.168.168.254:80. pfSense performs
+ *   inbound DNAT (port-forward) to 172.16.16.30:80 WITHOUT SNAT, so the
+ *   client source IP is preserved.
  *
- *   Legacy LAN (192.168.168.0/24) — used by external WAN attackers
- *     - 192.168.168.20-30 : Spoofed/legit external hosts that can reach DMZ
- *     - 192.168.168.23    : THE attacker (Kali)
- *     - 192.168.168.254   : pfSense WAN-facing IP
+ *   The NIDS sensor sits on the DMZ tap (post-DNAT), so every alert it
+ *   produces shows:
+ *       src_ip  = 192.168.168.23   (attacker, preserved by pfSense)
+ *       dst_ip  = 172.16.16.30     (translated DMZ IP, after DNAT)
+ *
+ *   To stay faithful to the auditor's mental model we ALSO embed the
+ *   pre-DNAT destination ("the IP the attacker actually typed") inside
+ *   each raw_log under `nat.pre_dnat_dst_ip` = 192.168.168.254. The
+ *   Event Inspector renders it next to the Destination field.
  *
  * Source IP rules:
  *   - For inbound traffic (request): src = external IP (e.g. .23 / spoofed)
