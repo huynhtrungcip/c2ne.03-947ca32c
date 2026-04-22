@@ -879,29 +879,147 @@ const SOCDashboard = () => {
       setAnalysisModel(provider.model);
 
       try {
-        const eventData = analyzeAll
-          ? { ip: selectedEvent.src_ip, events: events.filter(e => e.src_ip === selectedEvent.src_ip).slice(0, 50) }
-          : { event: selectedEvent };
+        // ===== Build the payload =====
+        // analyzeAll → build a STRUCTURED IP profile (same shape as analyze_ip tool)
+        // single    → send the single event with a few correlated flows from the same src_ip
+        let payloadLabel: string;
+        let payloadJson: string;
 
-        const prompt = analyzeAll
-          ? `Phân tích TẤT CẢ flows từ IP ${selectedEvent.src_ip}. Dữ liệu:\n${JSON.stringify(eventData, null, 2)}`
-          : `Phân tích flow đơn lẻ này:\n${JSON.stringify(eventData, null, 2)}`;
+        if (analyzeAll) {
+          const ip = selectedEvent.src_ip;
+          const list = events.filter((e) => e.src_ip === ip || e.dst_ip === ip);
+          const asSrc = list.filter((e) => e.src_ip === ip).length;
+          const asDst = list.filter((e) => e.dst_ip === ip).length;
+          const byVerdict: Record<string, number> = {};
+          const byProto: Record<string, number> = {};
+          const portMap: Record<number, number> = {};
+          const dstMap: Record<string, number> = {};
+          const attackMap: Record<string, number> = {};
+          const engineMap: Record<string, number> = {};
+          let firstTs = Infinity;
+          let lastTs = 0;
+          for (const e of list) {
+            byVerdict[e.verdict] = (byVerdict[e.verdict] || 0) + 1;
+            if (e.protocol) byProto[e.protocol] = (byProto[e.protocol] || 0) + 1;
+            if (e.dst_port) portMap[e.dst_port] = (portMap[e.dst_port] || 0) + 1;
+            if (e.src_ip === ip && e.dst_ip) dstMap[e.dst_ip] = (dstMap[e.dst_ip] || 0) + 1;
+            if (e.attack_type) attackMap[e.attack_type] = (attackMap[e.attack_type] || 0) + 1;
+            if (e.source_engine) engineMap[e.source_engine] = (engineMap[e.source_engine] || 0) + 1;
+            const ts = e.timestamp.getTime();
+            if (ts < firstTs) firstTs = ts;
+            if (ts > lastTs) lastTs = ts;
+          }
+          const topPorts = Object.entries(portMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([p, c]) => ({ port: Number(p), count: c }));
+          const topDsts = Object.entries(dstMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([d, c]) => ({ dst: d, count: c }));
+          const topAttacks = Object.entries(attackMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([type, count]) => ({ type, count }));
+          const sampleAlerts = list
+            .filter((e) => e.verdict === 'ALERT')
+            .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
+            .slice(0, 8)
+            .map((e) => ({
+              time: e.timestamp.toISOString(),
+              src: e.src_ip,
+              dst: e.dst_ip,
+              port: e.dst_port,
+              proto: e.protocol,
+              sig: e.attack_type,
+              conf: Number(e.confidence?.toFixed?.(2) ?? e.confidence),
+              engine: e.source_engine,
+            }));
+          const profile = {
+            ip,
+            window: 'all loaded events',
+            first_seen: list.length ? new Date(firstTs).toISOString() : null,
+            last_seen: list.length ? new Date(lastTs).toISOString() : null,
+            total_events: list.length,
+            role: { as_source: asSrc, as_destination: asDst },
+            by_verdict: byVerdict,
+            by_protocol: byProto,
+            by_engine: engineMap,
+            top_targeted_ports: topPorts,
+            top_destinations: topDsts,
+            top_attack_types: topAttacks,
+            sample_alerts: sampleAlerts,
+          };
+          payloadLabel = `IP behavioral profile for ${ip}`;
+          payloadJson = JSON.stringify(profile, null, 2);
+        } else {
+          const correlated = events
+            .filter((e) => e.src_ip === selectedEvent.src_ip && e.id !== selectedEvent.id)
+            .slice(0, 10)
+            .map((e) => ({
+              time: e.timestamp.toISOString(),
+              dst: e.dst_ip,
+              port: e.dst_port,
+              proto: e.protocol,
+              sig: e.attack_type,
+              verdict: e.verdict,
+              conf: e.confidence,
+            }));
+          payloadLabel = 'Single flow + correlated context';
+          payloadJson = JSON.stringify({ event: selectedEvent, correlated_from_same_src: correlated }, null, 2);
+        }
 
-        const systemPrompt = `You are an AI SOC analyst (Tier 2). Analyze the provided network flow data and produce a CONCISE markdown report.
+        const systemPrompt = analyzeAll
+          ? `You are a SENIOR SOC Tier-2 analyst with offensive security background (red-team / hacker mindset). You receive a STRUCTURED behavioral profile of one IP (counts, top ports, top destinations, attack types, sample alerts) — NOT raw logs.
 
-Use this EXACT structure (GitHub-flavored markdown, valid tables):
+Reason like an attacker reconstructing their own kill-chain, then explain it as a defender.
 
-## Risk Level
-**[Critical | High | Medium | Low]** — one short sentence why.
+Output STRICT GitHub-flavored markdown in this EXACT structure:
+
+## Verdict
+**[CRITICAL | HIGH | MEDIUM | LOW]** — 1 sentence: actor intent + confidence.
+
+## Attacker Profile
+- **Role observed:** source / destination / both (with counts)
+- **Active window:** first_seen → last_seen
+- **Likely actor type:** automated scanner | botnet node | targeted human operator | benign noise — justify briefly
+
+## Kill Chain Reconstruction
+Map observed activity to MITRE ATT&CK phases. Only include phases backed by data.
+
+| Phase | Technique (ID) | Evidence from profile |
+|-------|----------------|------------------------|
+| Recon | T1595 ... | top_targeted_ports shows ... |
+| Initial Access / Exec | Txxxx | ... |
+| Impact | Txxxx | ... |
+
+## Indicators of Compromise (IoC)
+- **Targeted ports:** list top 3
+- **Targeted hosts:** list top 3 destinations
+- **Top signatures:** list top 3 attack_types with counts
+- **Engine consensus:** which engines (suricata/zeek) flagged it
+
+## Hacker-Grade Hypothesis
+2–4 short bullets describing what the attacker is MOST LIKELY trying to achieve next, based on the pattern (e.g. "ports 22+3389 hammered → credential brute force pivoting", "low-rate ICMP + SYN to /24 → stealth recon before targeted exploit").
+
+## Recommended Actions
+
+| Priority | Action | Reason |
+|----------|--------|--------|
+| P0 | Block on pfSense alias AI_Blocked_IP | ... |
+| P1 | Hunt for ... in Zeek conn.log | ... |
+| P2 | Tune Suricata rule sid=... | ... |
+
+STRICT RULES:
+- Tables ≤4 columns, ≤5 rows, NO multi-line cells, NO blank rows.
+- Vietnamese prose, English technical terms (ATT&CK IDs, port numbers, signatures).
+- NEVER invent ports/IPs/signatures not present in the JSON. If a phase has no evidence, OMIT the row.
+- Be decisive. No hedging like "có thể có thể".`
+          : `You are a SENIOR SOC Tier-2 analyst with red-team background. Analyze ONE flow plus its correlated context from the same source IP.
+
+Output STRICT GitHub-flavored markdown:
+
+## Verdict
+**[CRITICAL | HIGH | MEDIUM | LOW]** — 1 sentence why.
 
 ## Attack Classification
-- **Attack Type:** ...
-- **MITRE ATT&CK:** Txxxx — name (if applicable)
+- **Type:** ...
+- **MITRE ATT&CK:** Txxxx — name
+- **Confidence basis:** signature + correlation + engine
 
 ## Key Indicators
-- bullet 1
-- bullet 2
-- bullet 3
+- 3 short bullets, each tied to a field in the JSON.
 
 ## Recommended Actions
 
@@ -911,9 +1029,11 @@ Use this EXACT structure (GitHub-flavored markdown, valid tables):
 | 2 | ... | ... |
 
 Rules:
-- Keep tables SHORT (≤4 columns, ≤4 rows). Never wrap multi-line content inside a single cell.
-- Answer in Vietnamese, keep technical terms in English.
-- Do not invent fields that are not present in the input.`;
+- Tables ≤4 columns, ≤4 rows, no multi-line cells.
+- Vietnamese prose, English technical terms.
+- Never invent fields. If correlated_from_same_src is empty, say so explicitly.`;
+
+        const prompt = `${payloadLabel}:\n\n\`\`\`json\n${payloadJson}\n\`\`\``;
 
         // Stream via the same multi-provider client used by the Assistant.
         let acc = '';
