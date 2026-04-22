@@ -854,38 +854,38 @@ const DEMO_PLAYBOOK = [
     signature: 'ET SCAN Potential SSH Brute Force (hydra/patator)',
     keywords: ['ssh://', 'hydra', 'patator', 'brute'],
     ports: [22] },
-  // 3. FTP-Patator — hydra ftp
-  { phase: 3, attack_type: 'FTP-Patator',      dst_port: 21,   protocol: 'TCP',
+  // 2. FTP-Patator — hydra ftp
+  { phase: 2, attack_type: 'FTP-Patator',      dst_port: 21,   protocol: 'TCP',
     signature: 'ET SCAN FTP Brute Force Login Attempt',
     keywords: ['ftp://', 'ftp brute'],
     ports: [21] },
-  // 4. Web Attack — nikto + SQLi/XSS/LFI
-  { phase: 4, attack_type: 'Web Attack',       dst_port: 80,   protocol: 'HTTP',
+  // 3. Web Attack — nikto + SQLi/XSS/LFI
+  { phase: 3, attack_type: 'Web Attack',       dst_port: 80,   protocol: 'HTTP',
     signature: 'ET WEB_SPECIFIC_APPS SQL Injection / XSS / LFI Attempt',
     keywords: ['nikto', 'union select', 'or 1=1', '<script>', '../../', 'etc/passwd', 'sqli', 'xss', 'lfi', 'web attack'],
     ports: [80, 443, 8080] },
-  // 5. DoS slowloris
-  { phase: 5, attack_type: 'DoS slowloris',    dst_port: 80,   protocol: 'HTTP',
+  // 4. DoS slowloris
+  { phase: 4, attack_type: 'DoS slowloris',    dst_port: 80,   protocol: 'HTTP',
     signature: 'ET DOS Slowloris HTTP Denial of Service',
     keywords: ['slowloris'],
     ports: [80] },
-  // 6. DoS Slowhttptest (slow POST)
-  { phase: 6, attack_type: 'DoS Slowhttptest', dst_port: 80,   protocol: 'HTTP',
+  // 5. DoS Slowhttptest (slow POST)
+  { phase: 5, attack_type: 'DoS Slowhttptest', dst_port: 80,   protocol: 'HTTP',
     signature: 'ET DOS Slowhttptest Slow POST Denial of Service',
     keywords: ['slowhttptest', 'slow post', 'slow-post'],
     ports: [80] },
-  // 7. DoS Hulk
-  { phase: 7, attack_type: 'DoS Hulk',         dst_port: 80,   protocol: 'HTTP',
+  // 6. DoS Hulk
+  { phase: 6, attack_type: 'DoS Hulk',         dst_port: 80,   protocol: 'HTTP',
     signature: 'ET DOS HULK HTTP Flood Detected',
     keywords: ['hulk', 'cache-buster', 'cache buster', 'cb='],
     ports: [80] },
-  // 8. DoS GoldenEye
-  { phase: 8, attack_type: 'DoS GoldenEye',    dst_port: 80,   protocol: 'HTTP',
+  // 7. DoS GoldenEye
+  { phase: 7, attack_type: 'DoS GoldenEye',    dst_port: 80,   protocol: 'HTTP',
     signature: 'ET DOS GoldenEye HTTP Denial of Service',
     keywords: ['goldeneye', 'golden eye', '?ge='],
     ports: [80] },
-  // 9. Bot / C2 beacon
-  { phase: 9, attack_type: 'Bot',              dst_port: 80,   protocol: 'HTTP',
+  // 8. Bot / C2 beacon
+  { phase: 8, attack_type: 'Bot',              dst_port: 80,   protocol: 'HTTP',
     signature: 'ET TROJAN python-requests UA Beacon (possible C2)',
     keywords: ['python-requests', 'x-beacon', 'heartbeat', '/api/heartbeat', 'beacon'],
     ports: [80, 443, 8080] },
