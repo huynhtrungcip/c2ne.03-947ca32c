@@ -8,6 +8,7 @@ import { Settings, Wifi, WifiOff, Brain, Loader2, Sliders, Square, AlertTriangle
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import SettingsModal from '@/components/soc/SettingsModal';
+import AnalysisMarkdown from '@/components/soc/AnalysisMarkdown';
 import VirtualizedEventTable from '@/components/soc/VirtualizedEventTable';
 import { SystemResourcesPanel } from '@/components/soc/SystemResourcesPanel';
 import { EventsRatePanel } from '@/components/soc/EventsRatePanel';
