@@ -245,7 +245,14 @@ const VirtualizedEventTable = ({
                           className="h-full rounded" 
                           style={{ 
                             width: `${event.confidence * 100}%`,
-                            background: event.confidence > 0.7 ? '#22c55e' : event.confidence > 0.4 ? '#f59e0b' : '#ef4444'
+                            // Color follows VERDICT semantics, not raw confidence value:
+                            // ALERT  → red  (high-confidence threat = MORE dangerous)
+                            // SUSPICIOUS → amber
+                            // BENIGN / FALSE_POSITIVE → green (safe)
+                            background:
+                              event.verdict === 'ALERT' ? '#ef4444' :
+                              event.verdict === 'SUSPICIOUS' ? '#f59e0b' :
+                              '#22c55e'
                           }} 
                         />
                       </div>
