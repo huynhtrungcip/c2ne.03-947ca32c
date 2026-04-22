@@ -357,12 +357,14 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
             : 'benign',
       },
       enrichment: {
-        geo: srcExternal
-          ? { country: pick(['US', 'CN', 'RU', 'NL', 'BR', 'IN']), asn: between(1000, 65000) }
-          : { country: 'LAB', asn: 0 },
+        geo: isPrivate(o.src_ip)
+          ? { country: 'LAB', asn: 0, network: o.src_ip.startsWith('192.168.168.') ? 'wan-segment-lab' : 'internal-lab' }
+          : { country: pick(['US', 'CN', 'RU', 'NL', 'BR', 'IN']), asn: between(1000, 65000), network: 'public-internet' },
         threat_intel:
-          o.verdict === 'ALERT' && srcExternal
+          o.verdict === 'ALERT' && !isPrivate(o.src_ip)
             ? { matched_feeds: ['abuse.ch', 'spamhaus_drop'], reputation: 'malicious' }
+            : o.verdict === 'ALERT' && o.src_ip === '192.168.168.23'
+            ? { matched_feeds: ['internal_blocklist_demo'], reputation: 'suspicious-actor' }
             : { matched_feeds: [], reputation: 'unknown' },
       },
       pipeline: { source: 'zeek+suricata+ml', version: '3.4.1', tap: 'pfSense_DMZ_mirror', sensor: NIDS_HOST },
