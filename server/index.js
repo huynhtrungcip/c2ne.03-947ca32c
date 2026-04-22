@@ -844,13 +844,13 @@ function reshapeForDemo(event, log) {
 // Each entry corresponds to ONE phase of the live attack. Order matters when
 // the fabricator falls back to round-robin (e.g. Phase 1 PortScan first).
 const DEMO_PLAYBOOK = [
-  // 1. PortScan — nmap -sS top ports
-  { phase: 1, attack_type: 'PortScan',         dst_port: null, protocol: 'TCP',
-    signature: 'ET SCAN Nmap SYN Scan against pfSense WAN',
-    keywords: ['nmap', 'portscan', 'port scan', 'syn scan', '-ss '],
-    ports: [21, 22, 23, 25, 53, 110, 139, 445, 3306, 3389, 8080] },
-  // 2. SSH-Patator — hydra ssh
-  { phase: 2, attack_type: 'SSH-Patator',      dst_port: 22,   protocol: 'TCP',
+  // NOTE: Day-6 deliberately has NO PortScan phase. Reconnaissance is
+  // already represented by the historical dataset (days 1-5). Adding
+  // another wave of PortScan on day 6 would dilute the analyse.source
+  // story ("recon → quiet → strike") with redundant recon noise.
+  //
+  // 1. SSH-Patator — hydra ssh
+  { phase: 1, attack_type: 'SSH-Patator',      dst_port: 22,   protocol: 'TCP',
     signature: 'ET SCAN Potential SSH Brute Force (hydra/patator)',
     keywords: ['ssh://', 'hydra', 'patator', 'brute'],
     ports: [22] },
