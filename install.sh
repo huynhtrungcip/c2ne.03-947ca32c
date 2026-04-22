@@ -353,8 +353,10 @@ uninstall_files_only() {
     fi
     
     # Dừng containers bằng tên (phòng trường hợp không có docker-compose.yml)
-    docker stop soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
-    docker rm soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
+    docker rm -f soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
+    docker ps -a --format '{{.Names}}' 2>/dev/null \
+        | grep -E '^(soc-frontend|soc-backend|soc-ai-engine|ai-engine)$' \
+        | xargs -r docker rm -f 2>/dev/null || true
     print_success "Đã dừng containers"
     
     # 2. Xóa Docker images
