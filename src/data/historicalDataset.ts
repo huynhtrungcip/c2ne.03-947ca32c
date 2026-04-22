@@ -144,13 +144,24 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
   const fid = flowId();
   const cid = communityId(o.src_ip, o.src_port, o.dst_ip, o.dst_port, o.proto);
   const ts = o.ts.toISOString();
-  const srcExternal = !isPrivate(o.src_ip);
-  const dstExternal = !isPrivate(o.dst_ip);
-  const direction = srcExternal
-    ? 'inbound'
-    : dstExternal
+  // "Trusted" = inside pfSense (DMZ + SOC). Anything on the WAN segment
+  // (192.168.168.0/24) is treated as external for direction + NAT logic
+  // because it sits OUTSIDE pfSense and must traverse the firewall to
+  // reach the internal services.
+  const isTrusted = (ip: string) => ip.startsWith('172.16.16.') || ip.startsWith('10.10.10.');
+  const isWanSide = (ip: string) => ip.startsWith('192.168.168.') || !isPrivate(ip);
+  const srcExternal = !isTrusted(o.src_ip);
+  const dstExternal = !isTrusted(o.dst_ip);
+  const isInboundViaNat = isWanSide(o.src_ip) && o.dst_ip.startsWith('172.16.16.');
+  const direction = isInboundViaNat
+    ? 'inbound_via_nat'
+    : srcExternal && dstExternal
+    ? 'wan_to_wan'
+    : !srcExternal && dstExternal
     ? 'outbound_via_nat'
-    : 'lateral';
+    : !srcExternal && !dstExternal
+    ? 'lateral'
+    : 'inbound';
 
   const baseBytes = o.verdict === 'ALERT' ? between(120, 1800) : between(280, 4200);
   const orig_pkts = o.verdict === 'ALERT' ? between(1, 4) : between(3, 22);
@@ -269,20 +280,42 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
       community_id: cid,
       flow_id: fid,
       direction,
-      src: { ip: o.src_ip, port: o.src_port, mac: macFor(o.src_ip), zone: srcExternal ? 'external/wan' : o.src_ip.startsWith('172.16.16.') ? 'dmz' : o.src_ip.startsWith('10.10.10.') ? 'soc' : 'wan-edge' },
-      dst: { ip: o.dst_ip, port: o.dst_port, mac: macFor(o.dst_ip), zone: dstExternal ? 'external/wan' : o.dst_ip.startsWith('172.16.16.') ? 'dmz' : o.dst_ip.startsWith('10.10.10.') ? 'soc' : 'wan-edge' },
+      src: {
+        ip: o.src_ip,
+        port: o.src_port,
+        mac: macFor(o.src_ip),
+        zone: o.src_ip.startsWith('172.16.16.')
+          ? 'dmz'
+          : o.src_ip.startsWith('10.10.10.')
+          ? 'soc'
+          : o.src_ip.startsWith('192.168.168.')
+          ? 'wan-edge'
+          : 'external/wan',
+      },
+      dst: {
+        ip: o.dst_ip,
+        port: o.dst_port,
+        mac: macFor(o.dst_ip),
+        zone: o.dst_ip.startsWith('172.16.16.')
+          ? 'dmz'
+          : o.dst_ip.startsWith('10.10.10.')
+          ? 'soc'
+          : o.dst_ip.startsWith('192.168.168.')
+          ? 'wan-edge'
+          : 'external/wan',
+      },
       network: {
         protocol: o.proto,
         transport: o.proto.toLowerCase(),
         bytes: orig_bytes + resp_bytes,
         packets: orig_pkts + resp_pkts,
-        nat_translated: srcExternal && o.dst_ip.startsWith('172.16.16.'),
+        nat_translated: isInboundViaNat,
       },
       // NAT context — pfSense did inbound DNAT (port forward) without SNAT.
       // The attacker only ever saw 192.168.168.254:<dport>; NIDS sees the
       // post-DNAT internal IP. We surface BOTH so analysts can correlate
       // pfSense firewall logs with NIDS alerts.
-      ...(srcExternal && o.dst_ip.startsWith('172.16.16.')
+      ...(isInboundViaNat
         ? {
             nat: {
               dnat: true,
@@ -292,6 +325,7 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
               post_dnat_dst_ip: o.dst_ip,
               post_dnat_dst_port: o.dst_port,
               pfsense_rule: `WAN→DMZ port-forward ${o.dst_port}/tcp`,
+              firewall_action: 'pass',
               note: `Attacker dialled ${PFSENSE_WAN}:${o.dst_port}; pfSense translated to ${o.dst_ip}:${o.dst_port}. Source IP preserved (no SNAT inbound).`,
             },
           }
@@ -323,12 +357,14 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
             : 'benign',
       },
       enrichment: {
-        geo: srcExternal
-          ? { country: pick(['US', 'CN', 'RU', 'NL', 'BR', 'IN']), asn: between(1000, 65000) }
-          : { country: 'LAB', asn: 0 },
+        geo: isPrivate(o.src_ip)
+          ? { country: 'LAB', asn: 0, network: o.src_ip.startsWith('192.168.168.') ? 'wan-segment-lab' : 'internal-lab' }
+          : { country: pick(['US', 'CN', 'RU', 'NL', 'BR', 'IN']), asn: between(1000, 65000), network: 'public-internet' },
         threat_intel:
-          o.verdict === 'ALERT' && srcExternal
+          o.verdict === 'ALERT' && !isPrivate(o.src_ip)
             ? { matched_feeds: ['abuse.ch', 'spamhaus_drop'], reputation: 'malicious' }
+            : o.verdict === 'ALERT' && o.src_ip === '192.168.168.23'
+            ? { matched_feeds: ['internal_blocklist_demo'], reputation: 'suspicious-actor' }
             : { matched_feeds: [], reputation: 'unknown' },
       },
       pipeline: { source: 'zeek+suricata+ml', version: '3.4.1', tap: 'pfSense_DMZ_mirror', sensor: NIDS_HOST },

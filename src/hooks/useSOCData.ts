@@ -33,20 +33,26 @@ export const useSOCData = (
   // ===== DEMO TIMESTAMP NORMALISATION =====
   // Any live NIDS event sourced from the demo attacker IP must appear on the
   // dashboard as if it happened on the live-demo day (2026-04-25), regardless
-  // of when it was actually generated. This keeps the storyline consistent
-  // when the operator practises the demo on, say, 2026-04-21.
+  // of when it was actually generated. We force the DATE to 2026-04-25 but
+  // PRESERVE the original wall-clock time (HH:MM:SS) so the timeline stays
+  // realistic — if the analyst replays the demo at 14:32:07 today, the
+  // dashboard shows 2026-04-25 14:32:07, not a randomised value.
   const DEMO_ATTACKER_IP = '192.168.168.23';
-  const DEMO_DAY_START = new Date('2026-04-25T09:00:00+07:00').getTime();
   const normalizeDemoTimestamp = (e: SOCEvent): SOCEvent => {
     if (e.src_ip !== DEMO_ATTACKER_IP) return e;
-    // Already on 2026-04-25? leave it alone.
     const ts = e.timestamp instanceof Date ? e.timestamp : new Date(e.timestamp);
+    if (isNaN(ts.getTime())) return e;
+    // Already on 2026-04-25? leave it alone.
     if (ts.toISOString().slice(0, 10) === '2026-04-25') return { ...e, timestamp: ts };
-    // Map current wall-clock time of day onto 2026-04-25 same time-of-day.
-    const now = new Date();
-    const dayMinutes = now.getHours() * 60 + now.getMinutes();
-    const shifted = DEMO_DAY_START + (dayMinutes * 60_000) + (now.getSeconds() * 1000);
-    return { ...e, timestamp: new Date(shifted) };
+    // Re-stamp the DATE to 2026-04-25 while keeping the exact time-of-day.
+    const shifted = new Date(Date.UTC(
+      2026, 3, 25,
+      ts.getUTCHours(),
+      ts.getUTCMinutes(),
+      ts.getUTCSeconds(),
+      ts.getUTCMilliseconds(),
+    ));
+    return { ...e, timestamp: shifted };
   };
 
   // Separate storage for NIDS (live attack day-25) and historical baseline (20-24/04).

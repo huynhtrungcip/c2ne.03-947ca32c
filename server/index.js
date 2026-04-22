@@ -804,9 +804,20 @@ function reshapeForDemo(event, log) {
   else if (/hulk|http.?flood/.test(sig)) cls = 'DoS Hulk';
   else if (/bot|c2|beacon|cnc/.test(sig)) cls = 'Bot';
 
-  // Force timestamp onto the live-demo day (2026-04-25) keeping current time-of-day.
-  const now = new Date();
-  const demoTs = new Date(Date.UTC(2026, 3, 25, now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds())).toISOString();
+  // Force the DATE onto the live-demo day (2026-04-25) but PRESERVE the
+  // real wall-clock time of the original event. This keeps the timeline
+  // realistic — when an analyst replays the demo on April 24th they
+  // still see "today's" actual hours/minutes/seconds, just stamped onto
+  // the demo day so the dashboard groups everything under "Day 6".
+  const sourceTs = event.timestamp ? new Date(event.timestamp) : new Date();
+  const ts = isNaN(sourceTs.getTime()) ? new Date() : sourceTs;
+  const demoTs = new Date(Date.UTC(
+    2026, 3, 25,
+    ts.getUTCHours(),
+    ts.getUTCMinutes(),
+    ts.getUTCSeconds(),
+    ts.getUTCMilliseconds()
+  )).toISOString();
 
   if (!cls) {
     return { ...event, timestamp: demoTs };
