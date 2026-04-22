@@ -11,6 +11,22 @@
 # Thresholds are tuned for a SINGLE attacker IP (192.168.168.23) so the
 # dashboard shows a clear, paced storyline — not a flood.
 #
+# ─────────────── NAT / SNIFF POSITION ────────────────────────────────
+# pfSense performs INBOUND DNAT (port-forward) only:
+#     Kali  192.168.168.23  ──► pfSense WAN  192.168.168.254:80
+#                                     │  DNAT (no SNAT inbound)
+#                                     ▼
+#                              Web   172.16.16.30:80
+#
+# The Suricata sensor lives on the DMZ tap (172.16.16.20), so it sees
+# the POST-DNAT packet:
+#     src_ip = 192.168.168.23   (preserved by pfSense)
+#     dst_ip = 172.16.16.30     (translated)
+#
+# That is why every rule below uses $HOME_NET = 172.16.16.0/24 — the
+# real internal destination. The "original" external IP 192.168.168.254
+# only exists in pfSense firewall logs (correlated separately).
+#
 # Activate by appending to suricata.yaml `rule-files:`
 #   - local.rules
 # =====================================================================

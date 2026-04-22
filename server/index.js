@@ -746,7 +746,41 @@ function scoreSignature(signature, fallback) {
   return fallback;
 }
 
+// pfSense NAT topology — used to rewrite WAN-side captures to their
+// post-DNAT internal equivalent so the dashboard always shows the real
+// service IP regardless of where the shipper sniffed the packet.
+const PFSENSE_WAN_IP   = process.env.PFSENSE_WAN_IP   || '192.168.168.254';
+const INTERNAL_WEB_IP  = process.env.INTERNAL_WEB_IP  || '172.16.16.30';
+const PORT_FORWARDS    = new Set([21, 22, 80, 443, 8080]); // ports DNAT'd to web
+
+function applyDnatRewrite(event) {
+  // If the shipper captured the packet on the WAN side, the destination
+  // will be the pfSense WAN IP. Rewrite it to the post-DNAT internal IP
+  // for any port that is port-forwarded.
+  if (event.dst_ip === PFSENSE_WAN_IP && PORT_FORWARDS.has(event.dst_port)) {
+    try {
+      const raw = event.raw_log ? JSON.parse(event.raw_log) : {};
+      raw.nat = {
+        dnat: true,
+        snat: false,
+        pre_dnat_dst_ip: PFSENSE_WAN_IP,
+        pre_dnat_dst_port: event.dst_port,
+        post_dnat_dst_ip: INTERNAL_WEB_IP,
+        post_dnat_dst_port: event.dst_port,
+        pfsense_rule: `WAN→DMZ port-forward ${event.dst_port}/tcp`,
+        rewritten_by: 'soc-backend',
+      };
+      event.raw_log = JSON.stringify(raw);
+    } catch { /* keep raw_log as-is */ }
+    event.dst_ip = INTERNAL_WEB_IP;
+  }
+  return event;
+}
+
 function reshapeForDemo(event, log) {
+  // Always normalise NAT first so dst_ip reflects the real service.
+  event = applyDnatRewrite(event);
+
   // Always score real signatures first so non-demo traffic gets sensible numbers.
   const scored = scoreSignature(event.attack_type, null);
   if (scored !== null && (event.confidence ?? 0) < scored) {
