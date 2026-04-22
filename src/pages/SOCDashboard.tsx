@@ -898,6 +898,9 @@ const SOCDashboard = () => {
           const dstMap: Record<string, number> = {};
           const attackMap: Record<string, number> = {};
           const engineMap: Record<string, number> = {};
+          // Per-day timeline (calendar date YYYY-MM-DD) — critical so the AI
+          // can reconstruct the multi-day APT story (recon → quiet → strike).
+          const dayMap: Record<string, { total: number; alert: number; susp: number; benign: number; attacks: Record<string, number> }> = {};
           let firstTs = Infinity;
           let lastTs = 0;
           for (const e of list) {
@@ -910,10 +913,31 @@ const SOCDashboard = () => {
             const ts = e.timestamp.getTime();
             if (ts < firstTs) firstTs = ts;
             if (ts > lastTs) lastTs = ts;
+            const dayKey = e.timestamp.toISOString().slice(0, 10);
+            if (!dayMap[dayKey]) dayMap[dayKey] = { total: 0, alert: 0, susp: 0, benign: 0, attacks: {} };
+            const d = dayMap[dayKey];
+            d.total++;
+            if (e.verdict === 'ALERT') d.alert++;
+            else if (e.verdict === 'SUSPICIOUS') d.susp++;
+            else if (e.verdict === 'BENIGN' || e.verdict === 'FALSE_POSITIVE') d.benign++;
+            if (e.attack_type) d.attacks[e.attack_type] = (d.attacks[e.attack_type] || 0) + 1;
           }
           const topPorts = Object.entries(portMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([p, c]) => ({ port: Number(p), count: c }));
           const topDsts = Object.entries(dstMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([d, c]) => ({ dst: d, count: c }));
           const topAttacks = Object.entries(attackMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([type, count]) => ({ type, count }));
+          const dailyTimeline = Object.entries(dayMap)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([day, v]) => {
+              const topAttack = Object.entries(v.attacks).sort((x, y) => y[1] - x[1])[0];
+              return {
+                day,
+                total: v.total,
+                alert: v.alert,
+                suspicious: v.susp,
+                benign: v.benign,
+                dominant_attack: topAttack ? `${topAttack[0]} (${topAttack[1]})` : 'none',
+              };
+            });
           const sampleAlerts = list
             .filter((e) => e.verdict === 'ALERT')
             .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
@@ -941,6 +965,7 @@ const SOCDashboard = () => {
             top_targeted_ports: topPorts,
             top_destinations: topDsts,
             top_attack_types: topAttacks,
+            daily_timeline: dailyTimeline,
             sample_alerts: sampleAlerts,
           };
           payloadLabel = `IP behavioral profile for ${ip}`;
