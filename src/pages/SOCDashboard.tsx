@@ -1148,8 +1148,18 @@ Rules:
       );
     };
     
+    // Auto-grow: when an AI analysis is present (or streaming), the
+    // Inspector breaks out of the standard tab width and expands up to
+    // ~60% of the viewport so the day-by-day timeline and tables are
+    // readable. The Raw Payload section keeps its own internal scroll.
+    const hasAnalysis = !!(analysisLoading || analysisResult);
     return (
-      <div className="mt-4 bg-card border rounded-md shadow-lg" style={{ borderColor: verdictBorderColor }}>
+      <div
+        className={`mt-4 bg-card border rounded-md shadow-lg transition-all duration-300 ${
+          hasAnalysis ? 'w-full max-w-[min(1400px,60vw)] mx-auto' : ''
+        }`}
+        style={{ borderColor: verdictBorderColor }}
+      >
         <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/30 rounded-t-md">
           <div className="flex items-center gap-3">
             <span className="text-[11px] font-semibold text-foreground uppercase tracking-[0.12em]">Event Inspector</span>
