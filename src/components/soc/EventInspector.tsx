@@ -126,21 +126,33 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
         body: JSON.stringify({ ip: event.src_ip }),
       });
       const result = await res.json();
-      
+
+      // Surface pfSense debug info in console for troubleshooting
+      if (result?.debug) {
+        // eslint-disable-next-line no-console
+        console.log('[block_ip] pfSense debug:', result.debug);
+      }
+
       if (result.success) {
-        toast.success(result.message);
-        // Update local blocked IPs list
+        toast.success(result.message || `Blocked ${event.src_ip} on pfSense`);
         const blockedIPs = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]');
         if (!blockedIPs.includes(event.src_ip)) {
           blockedIPs.push(event.src_ip);
           localStorage.setItem('soc-blocked-ips', JSON.stringify(blockedIPs));
+          window.dispatchEvent(new Event('soc-blocked-ips-changed'));
         }
         setIsIPBlocked(true);
       } else {
-        toast.error(result.message);
+        const dbg = result?.debug || {};
+        const detail = dbg.patch_status
+          ? ` (PATCH ${dbg.patch_status})`
+          : dbg.list_status
+            ? ` (GET ${dbg.list_status})`
+            : '';
+        toast.error(`pfSense block failed: ${result.message || 'unknown'}${detail}`);
       }
     } catch (error) {
-      toast.error('Failed to block IP');
+      toast.error(`Failed to block IP: ${error instanceof Error ? error.message : 'network error'}`);
     } finally {
       setBlocking(false);
     }
