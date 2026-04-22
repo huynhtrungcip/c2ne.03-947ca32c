@@ -934,10 +934,11 @@ const suricataHandler = (req, res) => {
     console.error('[SURICATA] Error:', error);
     res.status(500).json({ error: error.message });
   }
-});
+};
+app.post('/api/ingest/suricata', suricataHandler);
 
 // Zeek log ingestion
-app.post('/api/ingest/zeek', (req, res) => {
+const zeekHandler = (req, res) => {
   try {
     const clientIP = req.ip || req.socket.remoteAddress || 'unknown';
     updateConnectedSource(clientIP, 'Zeek', req);
