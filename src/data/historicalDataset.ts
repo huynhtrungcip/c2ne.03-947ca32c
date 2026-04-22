@@ -280,20 +280,42 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
       community_id: cid,
       flow_id: fid,
       direction,
-      src: { ip: o.src_ip, port: o.src_port, mac: macFor(o.src_ip), zone: srcExternal ? 'external/wan' : o.src_ip.startsWith('172.16.16.') ? 'dmz' : o.src_ip.startsWith('10.10.10.') ? 'soc' : 'wan-edge' },
-      dst: { ip: o.dst_ip, port: o.dst_port, mac: macFor(o.dst_ip), zone: dstExternal ? 'external/wan' : o.dst_ip.startsWith('172.16.16.') ? 'dmz' : o.dst_ip.startsWith('10.10.10.') ? 'soc' : 'wan-edge' },
+      src: {
+        ip: o.src_ip,
+        port: o.src_port,
+        mac: macFor(o.src_ip),
+        zone: o.src_ip.startsWith('172.16.16.')
+          ? 'dmz'
+          : o.src_ip.startsWith('10.10.10.')
+          ? 'soc'
+          : o.src_ip.startsWith('192.168.168.')
+          ? 'wan-edge'
+          : 'external/wan',
+      },
+      dst: {
+        ip: o.dst_ip,
+        port: o.dst_port,
+        mac: macFor(o.dst_ip),
+        zone: o.dst_ip.startsWith('172.16.16.')
+          ? 'dmz'
+          : o.dst_ip.startsWith('10.10.10.')
+          ? 'soc'
+          : o.dst_ip.startsWith('192.168.168.')
+          ? 'wan-edge'
+          : 'external/wan',
+      },
       network: {
         protocol: o.proto,
         transport: o.proto.toLowerCase(),
         bytes: orig_bytes + resp_bytes,
         packets: orig_pkts + resp_pkts,
-        nat_translated: srcExternal && o.dst_ip.startsWith('172.16.16.'),
+        nat_translated: isInboundViaNat,
       },
       // NAT context — pfSense did inbound DNAT (port forward) without SNAT.
       // The attacker only ever saw 192.168.168.254:<dport>; NIDS sees the
       // post-DNAT internal IP. We surface BOTH so analysts can correlate
       // pfSense firewall logs with NIDS alerts.
-      ...(srcExternal && o.dst_ip.startsWith('172.16.16.')
+      ...(isInboundViaNat
         ? {
             nat: {
               dnat: true,
@@ -303,6 +325,7 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
               post_dnat_dst_ip: o.dst_ip,
               post_dnat_dst_port: o.dst_port,
               pfsense_rule: `WAN→DMZ port-forward ${o.dst_port}/tcp`,
+              firewall_action: 'pass',
               note: `Attacker dialled ${PFSENSE_WAN}:${o.dst_port}; pfSense translated to ${o.dst_ip}:${o.dst_port}. Source IP preserved (no SNAT inbound).`,
             },
           }
