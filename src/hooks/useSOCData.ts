@@ -84,11 +84,12 @@ export const useSOCData = (
       .forEach(k => { try { localStorage.removeItem(k); } catch { /* ignore */ } });
 
     if (historicalEvents.length === 0) return [];
-    const newestRaw = Math.max(...historicalEvents.map(e => e.timestamp.getTime()));
-    const delta = Date.now() - newestRaw;
+    // IMPORTANT: keep the dataset's original timestamps (2026-04-20 → 2026-04-24).
+    // The raw payload inside each event embeds these exact dates; shifting `e.timestamp`
+    // would desync the Inspector raw_log from the AI analysis "Active window" and from
+    // the narrative in demo/ATTACK_STORYLINE.md.
     return historicalEvents.map(e => ({
       ...e,
-      timestamp: new Date(e.timestamp.getTime() + delta),
       source: 'mock' as const,
     }));
   });
