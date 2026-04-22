@@ -893,15 +893,21 @@ const DEMO_PLAYBOOK = [
 let demoPlaybookIdx = 0;
 
 // Pick the playbook entry that best matches the incoming payload.
-// Strategy: keyword match → port match → round-robin fallback.
+// Strategy: keyword match → most-specific port match → round-robin fallback.
+// "Most-specific" = template whose ports[] list is the SHORTEST among matches,
+// so a single-port template (SSH-Patator [22]) wins over a multi-port one
+// (PortScan [21,22,80,445]) when the caller hints port 22.
 function pickDemoTemplate(payloadStr, hintPort) {
   const hay = (payloadStr || '').toLowerCase();
   for (const tpl of DEMO_PLAYBOOK) {
     if (tpl.keywords.some((kw) => hay.includes(kw))) return tpl;
   }
   if (hintPort) {
-    for (const tpl of DEMO_PLAYBOOK) {
-      if (tpl.ports.includes(Number(hintPort))) return tpl;
+    const port = Number(hintPort);
+    const matches = DEMO_PLAYBOOK.filter((tpl) => tpl.ports.includes(port));
+    if (matches.length > 0) {
+      matches.sort((a, b) => a.ports.length - b.ports.length);
+      return matches[0];
     }
   }
   const tpl = DEMO_PLAYBOOK[demoPlaybookIdx % DEMO_PLAYBOOK.length];
