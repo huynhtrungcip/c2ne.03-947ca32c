@@ -1368,7 +1368,7 @@ Rules:
                   </span>
                 </div>
               ) : analysisResult && (
-                <div className="px-5 py-4 max-h-[360px] overflow-y-auto bg-card">
+                <div className="px-5 py-4 max-h-[min(70vh,720px)] overflow-y-auto bg-card">
                   <div className="prose prose-invert prose-sm max-w-none [overflow-wrap:anywhere] [word-break:break-word]
                     [&_*]:!text-foreground
                     [&_p]:text-[12.5px] [&_p]:leading-[1.75] [&_p]:my-2.5 [&_p]:text-foreground/90 [&_p]:[overflow-wrap:anywhere]
