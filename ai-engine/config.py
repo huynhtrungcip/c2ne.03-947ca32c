@@ -9,6 +9,9 @@ from typing import Set
 # ====== CẤU HÌNH pfSense REST API V2 ======
 PFSENSE_HOST = os.getenv("PFSENSE_HOST", "10.10.10.254")
 PFSENSE_PORT = int(os.getenv("PFSENSE_PORT", "8080"))
+PFSENSE_SCHEME = (os.getenv("PFSENSE_SCHEME", "http") or "http").strip().lower()
+if PFSENSE_SCHEME not in {"http", "https"}:
+    PFSENSE_SCHEME = "http"
 PFSENSE_API_KEY = os.getenv("PFSENSE_API_KEY", "")
 PFSENSE_ALIAS = os.getenv("PFSENSE_ALIAS", "AI_Blocked_IP")
 

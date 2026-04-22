@@ -386,24 +386,29 @@ async def pfsense_status():
     status_code = debug.get("status_code") or debug.get("list_status")
     connected = bool(success)
 
-    # Provide a friendly error message
     if connected:
         return {
             "connected": True,
             "blocked_count": len(ips),
             "alias": debug.get("alias", ""),
+            "target": debug.get("target", ""),
         }
 
     msg = "pfSense not reachable"
     if status_code == 401:
-        msg = "HTTP 401 - API key không hợp lệ hoặc thiếu quyền"
+        msg = "HTTP 401 - API key invalid or missing permission"
     elif isinstance(status_code, int):
         msg = f"HTTP {status_code}"
+    elif debug.get("error"):
+        msg = str(debug["error"])
+    elif debug.get("exception"):
+        msg = str(debug["exception"])
 
     return {
         "connected": False,
         "error": msg,
         "debug": debug,
+        "target": debug.get("target", ""),
     }
 
 

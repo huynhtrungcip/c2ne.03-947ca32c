@@ -11,6 +11,7 @@ from typing import Tuple, Dict, Any, List
 from config import (
     PFSENSE_HOST,
     PFSENSE_PORT,
+    PFSENSE_SCHEME,
     PFSENSE_API_KEY,
     PFSENSE_ALIAS,
     WHITELIST_IPS,
