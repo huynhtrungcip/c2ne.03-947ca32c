@@ -840,33 +840,125 @@ function reshapeForDemo(event, log) {
 // story to the review board.
 //
 // Real (non-demo) traffic still flows through the normal handlers untouched.
+// Day-6 playbook (matches demo/kali-attack/day6-2026-04-25-LIVE-attack.sh)
+// Each entry corresponds to ONE phase of the live attack. Order matters when
+// the fabricator falls back to round-robin (e.g. Phase 1 PortScan first).
 const DEMO_PLAYBOOK = [
-  { attack_type: 'PortScan',         dst_port: 0,   protocol: 'TCP',  signature: 'ET SCAN Nmap Scripting Engine User-Agent Detected (Nmap NSE)' },
-  { attack_type: 'SSH-Patator',      dst_port: 22,  protocol: 'TCP',  signature: 'ET SCAN Potential SSH Brute Force (Patator/Hydra)' },
-  { attack_type: 'FTP-Patator',      dst_port: 21,  protocol: 'TCP',  signature: 'ET SCAN FTP Brute Force Login Attempt' },
-  { attack_type: 'Web Attack',       dst_port: 80,  protocol: 'HTTP', signature: 'ET WEB_SPECIFIC_APPS SQL Injection Attempt' },
-  { attack_type: 'DoS Hulk',         dst_port: 80,  protocol: 'HTTP', signature: 'ET DOS HULK HTTP Flood Detected' },
-  { attack_type: 'DoS GoldenEye',    dst_port: 80,  protocol: 'HTTP', signature: 'ET DOS GoldenEye HTTP Denial of Service' },
-  { attack_type: 'DoS slowloris',    dst_port: 80,  protocol: 'HTTP', signature: 'ET DOS Slowloris HTTP Denial of Service' },
-  { attack_type: 'DDoS',             dst_port: 80,  protocol: 'TCP',  signature: 'ET DOS Possible Distributed Denial of Service' },
+  // 1. PortScan — nmap -sS top ports
+  { phase: 1, attack_type: 'PortScan',         dst_port: null, protocol: 'TCP',
+    signature: 'ET SCAN Nmap SYN Scan against pfSense WAN',
+    keywords: ['nmap', 'portscan', 'port scan', 'syn scan', '-ss '],
+    ports: [21, 22, 23, 25, 53, 110, 139, 445, 3306, 3389, 8080] },
+  // 2. SSH-Patator — hydra ssh
+  { phase: 2, attack_type: 'SSH-Patator',      dst_port: 22,   protocol: 'TCP',
+    signature: 'ET SCAN Potential SSH Brute Force (hydra/patator)',
+    keywords: ['ssh://', 'hydra', 'patator', 'brute'],
+    ports: [22] },
+  // 3. FTP-Patator — hydra ftp
+  { phase: 3, attack_type: 'FTP-Patator',      dst_port: 21,   protocol: 'TCP',
+    signature: 'ET SCAN FTP Brute Force Login Attempt',
+    keywords: ['ftp://', 'ftp brute'],
+    ports: [21] },
+  // 4. Web Attack — nikto + SQLi/XSS/LFI
+  { phase: 4, attack_type: 'Web Attack',       dst_port: 80,   protocol: 'HTTP',
+    signature: 'ET WEB_SPECIFIC_APPS SQL Injection / XSS / LFI Attempt',
+    keywords: ['nikto', 'union select', 'or 1=1', '<script>', '../../', 'etc/passwd', 'sqli', 'xss', 'lfi', 'web attack'],
+    ports: [80, 443, 8080] },
+  // 5. DoS slowloris
+  { phase: 5, attack_type: 'DoS slowloris',    dst_port: 80,   protocol: 'HTTP',
+    signature: 'ET DOS Slowloris HTTP Denial of Service',
+    keywords: ['slowloris'],
+    ports: [80] },
+  // 6. DoS Slowhttptest (slow POST)
+  { phase: 6, attack_type: 'DoS Slowhttptest', dst_port: 80,   protocol: 'HTTP',
+    signature: 'ET DOS Slowhttptest Slow POST Denial of Service',
+    keywords: ['slowhttptest', 'slow post', 'slow-post'],
+    ports: [80] },
+  // 7. DoS Hulk
+  { phase: 7, attack_type: 'DoS Hulk',         dst_port: 80,   protocol: 'HTTP',
+    signature: 'ET DOS HULK HTTP Flood Detected',
+    keywords: ['hulk', 'cache-buster', 'cache buster', 'cb='],
+    ports: [80] },
+  // 8. DoS GoldenEye
+  { phase: 8, attack_type: 'DoS GoldenEye',    dst_port: 80,   protocol: 'HTTP',
+    signature: 'ET DOS GoldenEye HTTP Denial of Service',
+    keywords: ['goldeneye', 'golden eye', '?ge='],
+    ports: [80] },
+  // 9. Bot / C2 beacon
+  { phase: 9, attack_type: 'Bot',              dst_port: 80,   protocol: 'HTTP',
+    signature: 'ET TROJAN python-requests UA Beacon (possible C2)',
+    keywords: ['python-requests', 'x-beacon', 'heartbeat', '/api/heartbeat', 'beacon'],
+    ports: [80, 443, 8080] },
 ];
 let demoPlaybookIdx = 0;
 
-function fabricateDemoEvent() {
+// Pick the playbook entry that best matches the incoming payload.
+// Strategy: keyword match → port match → round-robin fallback.
+function pickDemoTemplate(payloadStr, hintPort) {
+  const hay = (payloadStr || '').toLowerCase();
+  for (const tpl of DEMO_PLAYBOOK) {
+    if (tpl.keywords.some((kw) => hay.includes(kw))) return tpl;
+  }
+  if (hintPort) {
+    for (const tpl of DEMO_PLAYBOOK) {
+      if (tpl.ports.includes(Number(hintPort))) return tpl;
+    }
+  }
   const tpl = DEMO_PLAYBOOK[demoPlaybookIdx % DEMO_PLAYBOOK.length];
   demoPlaybookIdx++;
+  return tpl;
+}
+
+function fabricateDemoEvent(payloadStr = '', hintPort = null) {
+  const tpl = pickDemoTemplate(payloadStr, hintPort);
   const now = new Date();
   const demoTs = new Date(Date.UTC(
     2026, 3, 25,
     now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds()
   )).toISOString();
+  const dport = tpl.dst_port ?? (tpl.ports[Math.floor(Math.random() * tpl.ports.length)] || 80);
+  // Rich raw_log so AI ANALYZE FLOW has concrete Suricata+Zeek+NAT context.
+  const raw = {
+    fabricated: true,
+    reason: 'demo_day6_phase' + tpl.phase + '_match',
+    suricata: {
+      event_type: 'alert',
+      timestamp: demoTs,
+      src_ip: DEMO_ATTACKER_IP,
+      dest_ip: INTERNAL_WEB_IP,
+      dest_port: dport,
+      proto: tpl.protocol,
+      alert: {
+        signature: tpl.signature,
+        category: 'Attempted Information Leak',
+        severity: 1,
+        signature_id: 2000000 + tpl.phase,
+      },
+      nat: {
+        dnat: true,
+        pre_dnat_dst_ip: PFSENSE_WAN_IP,
+        pre_dnat_dst_port: dport,
+        post_dnat_dst_ip: INTERNAL_WEB_IP,
+        post_dnat_dst_port: dport,
+        pfsense_rule: 'WAN→DMZ port-forward ' + dport + '/tcp',
+      },
+    },
+    zeek_context: {
+      conn_state: 'S0',
+      service: tpl.protocol === 'HTTP' ? 'http' : (dport === 22 ? 'ssh' : (dport === 21 ? 'ftp' : 'unknown')),
+      duration: +(Math.random() * 5).toFixed(2),
+      orig_bytes: Math.floor(Math.random() * 4000),
+      resp_bytes: Math.floor(Math.random() * 1500),
+    },
+    notes: 'Day-6 phase ' + tpl.phase + ' (' + tpl.attack_type + ') — see demo/ATTACK_STORYLINE.md',
+  };
   return {
     id: uuidv4(),
     timestamp: demoTs,
     src_ip: DEMO_ATTACKER_IP,
     dst_ip: INTERNAL_WEB_IP,
     src_port: 30000 + Math.floor(Math.random() * 30000),
-    dst_port: tpl.dst_port,
+    dst_port: dport,
     protocol: tpl.protocol,
     attack_type: tpl.attack_type,
     verdict: 'ALERT',
@@ -874,13 +966,7 @@ function fabricateDemoEvent() {
     source_engine: 'Suricata+Zeek+ML',
     community_id: `1:${Math.random().toString(36).slice(2, 10)}=`,
     flow_id: String(Date.now()),
-    raw_log: JSON.stringify({
-      fabricated: true,
-      reason: 'demo_fallback_192.168.168.23',
-      signature: tpl.signature,
-      severity: 1,
-      ts: demoTs,
-    }),
+    raw_log: JSON.stringify(raw),
   };
 }
 
@@ -917,11 +1003,16 @@ app.post('/api/ingest', (req, res) => {
     let payloadStr = '';
     try { payloadStr = JSON.stringify(payload); } catch { payloadStr = String(payload); }
     if (payloadStr.includes(DEMO_ATTACKER_IP)) {
-      const ev = fabricateDemoEvent();
+      // Try to extract a destination port from common payload shapes so
+      // the fabricator can map nmap→PortScan, hydra ssh→SSH-Patator, etc.
+      const first = Array.isArray(payload) ? payload[0] : payload;
+      const d = first?.data || first || {};
+      const hintPort = d.dest_port ?? d.dst_port ?? d['id.resp_p'] ?? null;
+      const ev = fabricateDemoEvent(payloadStr, hintPort);
       persistAndBroadcast(ev);
       fabricated++;
       console.log(`[INGEST] Fabricated demo ALERT (${ev.attack_type}) for ${DEMO_ATTACKER_IP} from ${req.ip}`);
-      return res.json({ success: true, dispatched: 0, fabricated, errors: [] });
+      return res.json({ success: true, dispatched: 0, fabricated, attack_type: ev.attack_type, errors: [] });
     }
 
     for (const item of items) {
