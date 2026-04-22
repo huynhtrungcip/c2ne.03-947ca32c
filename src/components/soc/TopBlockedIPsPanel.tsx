@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Shield, ShieldOff, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
+import { Shield, ShieldOff, RefreshCw, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog, useConfirmDialog } from './ConfirmDialog';
 
