@@ -38,22 +38,66 @@ export const useSOCData = (
   // realistic — if the analyst replays the demo at 14:32:07 today, the
   // dashboard shows 2026-04-25 14:32:07, not a randomised value.
   const DEMO_ATTACKER_IP = '192.168.168.23';
-  const normalizeDemoTimestamp = (e: SOCEvent): SOCEvent => {
-    if (e.src_ip !== DEMO_ATTACKER_IP) return e;
-    const ts = e.timestamp instanceof Date ? e.timestamp : new Date(e.timestamp);
-    if (isNaN(ts.getTime())) return e;
-    // Already on 2026-04-25? leave it alone.
-    if (ts.toISOString().slice(0, 10) === '2026-04-25') return { ...e, timestamp: ts };
-    // Re-stamp the DATE to 2026-04-25 while keeping the exact time-of-day.
-    const shifted = new Date(Date.UTC(
-      2026, 3, 25,
-      ts.getUTCHours(),
-      ts.getUTCMinutes(),
-      ts.getUTCSeconds(),
-      ts.getUTCMilliseconds(),
-    ));
-    return { ...e, timestamp: shifted };
+
+  // Signature → realistic confidence (mirrors backend scoreSignature).
+  // Used to defensively rewrite any demo event whose confidence/verdict
+  // arrived inconsistent (e.g. ALERT @ 33%) — typically because the
+  // backend reshaper was bypassed by a direct WS injection.
+  const HIGH_CONF_PATTERNS: Array<[RegExp, number]> = [
+    [/\b(rce|remote.?code.?exec)\b/i, 0.95],
+    [/\b(trojan|malware|ransomware|c2|cnc|beacon)\b/i, 0.95],
+    [/\b(ddos|http.?flood|hulk|goldeneye)\b/i, 0.92],
+    [/\b(sql.?injection|sqli|command.?injection)\b/i, 0.90],
+    [/\b(exploit|shellcode|metasploit)\b/i, 0.90],
+    [/\b(dos|flood|slowloris|slowhttp)\b/i, 0.88],
+    [/\b(xss|cross.?site|path.?traversal)\b/i, 0.85],
+    [/\b(brute.?force|patator|hydra)\b/i, 0.82],
+    [/\b(port.?scan|portscan|nmap|syn.?scan)\b/i, 0.78],
+    [/\b(recon|enumeration|probe)\b/i, 0.65],
+  ];
+  const scoreSignature = (sig: string): number | null => {
+    if (!sig) return null;
+    for (const [re, c] of HIGH_CONF_PATTERNS) if (re.test(sig)) return c;
+    return null;
   };
+
+  const normalizeDemoEvent = (e: SOCEvent): SOCEvent => {
+    if (e.src_ip !== DEMO_ATTACKER_IP) return e;
+
+    let next: SOCEvent = { ...e };
+
+    // 1) Timestamp: force date = 2026-04-25, keep analyst's REAL wall-clock
+    //    time (HH:MM:SS = now), so events look chronologically realistic.
+    const now = new Date();
+    next.timestamp = new Date(
+      now.getFullYear() === 2026 && now.getMonth() === 3 && now.getDate() === 25
+        ? now.getTime() // already on demo day → use real now
+        : Date.UTC(
+            2026, 3, 25,
+            now.getUTCHours(),
+            now.getUTCMinutes(),
+            now.getUTCSeconds(),
+            now.getUTCMilliseconds(),
+          )
+    );
+
+    // 2) Confidence: never let a demo-attacker ALERT show with weak score.
+    //    Apply signature-based scoring; if verdict is ALERT, floor at 0.85.
+    const scored = scoreSignature(next.attack_type || '');
+    if (scored !== null && next.confidence < scored) {
+      next.confidence = scored;
+    }
+    if (next.verdict === 'ALERT' && next.confidence < 0.85) {
+      next.confidence = Math.min(0.99, 0.88 + Math.random() * 0.08);
+    }
+    // 3) If confidence is high but verdict still PENDING/SUSPICIOUS, promote.
+    if (next.confidence >= 0.8 && (next.verdict === 'PENDING' || next.verdict === 'SUSPICIOUS')) {
+      next.verdict = 'ALERT';
+    }
+    return next;
+  };
+  // Back-compat alias
+  const normalizeDemoTimestamp = normalizeDemoEvent;
 
   // Separate storage for NIDS (live attack day-25) and historical baseline (20-24/04).
   const [nidsEvents, setNidsEvents] = useState<SOCEvent[]>(() => {

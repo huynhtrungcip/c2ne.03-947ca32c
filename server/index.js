@@ -805,18 +805,18 @@ function reshapeForDemo(event, log) {
   else if (/bot|c2|beacon|cnc/.test(sig)) cls = 'Bot';
 
   // Force the DATE onto the live-demo day (2026-04-25) but PRESERVE the
-  // real wall-clock time of the original event. This keeps the timeline
-  // realistic — when an analyst replays the demo on April 24th they
-  // still see "today's" actual hours/minutes/seconds, just stamped onto
-  // the demo day so the dashboard groups everything under "Day 6".
-  const sourceTs = event.timestamp ? new Date(event.timestamp) : new Date();
-  const ts = isNaN(sourceTs.getTime()) ? new Date() : sourceTs;
+  // analyst's REAL wall-clock time at INGEST time (not the timestamp
+  // baked into the Suricata log, which reflects the attacker host's
+  // clock and may drift hours away from the SOC analyst's clock).
+  // This way: when the analyst runs the demo at 14:05 local time, the
+  // dashboard shows "2026-04-25 14:05:xx" — chronologically correct.
+  const now = new Date();
   const demoTs = new Date(Date.UTC(
     2026, 3, 25,
-    ts.getUTCHours(),
-    ts.getUTCMinutes(),
-    ts.getUTCSeconds(),
-    ts.getUTCMilliseconds()
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds(),
+    now.getMilliseconds()
   )).toISOString();
 
   if (!cls) {
