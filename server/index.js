@@ -832,8 +832,45 @@ function reshapeForDemo(event, log) {
   };
 }
 
+// Generic ingest endpoint - dispatches to suricata/zeek based on `source` field
+// Accepts: {source: "suricata"|"zeek"|"zeek_http", data: {...}}
+// This is the format used by the NIDS log shipper.
+app.post('/api/ingest', (req, res) => {
+  try {
+    const payload = req.body;
+    const items = Array.isArray(payload) ? payload : [payload];
+    let dispatched = 0;
+    const errors = [];
+
+    for (const item of items) {
+      if (!item || !item.source || !item.data) {
+        errors.push('missing source/data fields');
+        continue;
+      }
+      // Re-route internally by mutating req.body and calling the proper handler
+      const fakeReq = Object.assign(Object.create(Object.getPrototypeOf(req)), req, { body: item.data });
+      const fakeRes = { json: () => {}, status: () => ({ json: () => {} }) };
+      if (item.source === 'suricata') {
+        suricataHandler(fakeReq, fakeRes);
+        dispatched++;
+      } else if (item.source === 'zeek' || item.source === 'zeek_http') {
+        zeekHandler(fakeReq, fakeRes);
+        dispatched++;
+      } else {
+        errors.push(`unknown source: ${item.source}`);
+      }
+    }
+
+    console.log(`[INGEST] Dispatched ${dispatched} items (${errors.length} errors) from ${req.ip}`);
+    res.json({ success: true, dispatched, errors });
+  } catch (error) {
+    console.error('[INGEST] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Suricata EVE JSON ingestion
-app.post('/api/ingest/suricata', (req, res) => {
+const suricataHandler = (req, res) => {
   try {
     const clientIP = req.ip || req.socket.remoteAddress || 'unknown';
     updateConnectedSource(clientIP, 'Suricata', req);
