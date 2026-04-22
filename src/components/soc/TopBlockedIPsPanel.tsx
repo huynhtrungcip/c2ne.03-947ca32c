@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Shield, ShieldOff, RefreshCw, Loader2, AlertCircle } from 'lucide-react';
+import { Shield, ShieldOff, RefreshCw, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ConfirmDialog, useConfirmDialog } from './ConfirmDialog';
 
@@ -125,6 +125,16 @@ export const TopBlockedIPsPanel = ({ apiUrl, refreshKey = 0 }: Props) => {
       .map<BlockedEntry>((ip) => ({ ip, source: 'local' })),
   ];
 
+  const localOnlyCount = localIPs.filter((ip) => !pfsenseIPs.includes(ip)).length;
+
+  const clearLocalOnly = () => {
+    const synced = localIPs.filter((ip) => pfsenseIPs.includes(ip));
+    localStorage.setItem('soc-blocked-ips', JSON.stringify(synced));
+    window.dispatchEvent(new Event('soc-blocked-ips-changed'));
+    setLocalIPs(synced);
+    toast.success(`Cleared ${localOnlyCount} local-only entr${localOnlyCount === 1 ? 'y' : 'ies'}`);
+  };
+
   return (
     <>
       <div className="border rounded-md p-3 bg-card border-border">
@@ -138,14 +148,25 @@ export const TopBlockedIPsPanel = ({ apiUrl, refreshKey = 0 }: Props) => {
               ({merged.length})
             </span>
           </div>
-          <button
-            onClick={fetchBlocked}
-            disabled={loading || !aiEngineUrl}
-            className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors p-0.5"
-            title="Refresh from pfSense"
-          >
-            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-          </button>
+          <div className="flex items-center gap-1">
+            {localOnlyCount > 0 && (
+              <button
+                onClick={clearLocalOnly}
+                className="text-warning/70 hover:text-warning transition-colors p-0.5"
+                title={`Clear ${localOnlyCount} local-only entr${localOnlyCount === 1 ? 'y' : 'ies'} (not on pfSense)`}
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            )}
+            <button
+              onClick={fetchBlocked}
+              disabled={loading || !aiEngineUrl}
+              className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors p-0.5"
+              title="Refresh from pfSense"
+            >
+              {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            </button>
+          </div>
         </div>
 
         {!apiUrl && (
