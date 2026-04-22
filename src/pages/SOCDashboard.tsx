@@ -21,7 +21,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { ConfirmDialog, useConfirmDialog } from '@/components/soc/ConfirmDialog';
 import { AISettingsModal } from '@/components/soc/AISettingsModal';
 import { AIToolCallCard } from '@/components/soc/AIToolCallCard';
-import { resolveApiUrl, resolveWebSocketUrl } from '@/lib/runtimeEndpoints';
+import { resolveApiUrl, resolveAiUrl, resolveWebSocketUrl } from '@/lib/runtimeEndpoints';
 import {
   streamChat,
   getActiveProvider,
@@ -204,8 +204,7 @@ const AIChatPanel = ({ isOpen, onClose, events = [], selectedEvent = null, apiUr
   // We verify by re-fetching /blocked-ips and checking the IP appears in the alias.
   const performBlockIP = useCallback(
     async (ip: string, reason: string): Promise<{ ok: boolean; error?: string }> => {
-      if (!apiUrl) return { ok: false, error: 'API URL not configured' };
-      const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
+      const aiEngineUrl = resolveAiUrl(apiUrl);
       try {
         const resp = await fetch(`${aiEngineUrl}/block`, {
           method: 'POST',
@@ -885,7 +884,7 @@ const SOCDashboard = () => {
     const verdictBorderColor = selectedEvent.verdict === 'ALERT' ? '#dc2626' : 
                                selectedEvent.verdict === 'SUSPICIOUS' ? '#d97706' : '#16a34a';
     
-    const apiUrl = localStorage.getItem('soc-api-url') || '';
+    const apiUrl = resolveApiUrl();
     
     // Check if IP is already blocked
     const blockedIPs = JSON.parse(localStorage.getItem('soc-blocked-ips') || '[]') as string[];
@@ -1122,12 +1121,7 @@ Rules:
       const ip = selectedEvent.src_ip;
 
       try {
-        if (!apiUrl) {
-          setBlockResult({ success: false, message: 'API URL chưa cấu hình - không thể block trên pfSense.' });
-          return;
-        }
-
-        const aiEngineUrl = apiUrl.replace(':3001', ':8000').replace(':3002', ':8000');
+        const aiEngineUrl = resolveAiUrl(apiUrl);
         const response = await fetch(`${aiEngineUrl}/block`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
