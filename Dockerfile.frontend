@@ -5,8 +5,14 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-# Use npm install (not npm ci) to be tolerant of lockfile drift in local builds
-RUN npm install --no-audit --no-fund
+# Notes:
+#  - Use `npm install` (not `npm ci`) to tolerate lockfile drift in local builds.
+#  - Skip optional deps + scripts to avoid the `ETXTBSY` crash from
+#    lovable-tagger's bundled esbuild postinstall on overlayfs/Docker.
+#  - lovable-tagger is a dev-only Lovable preview helper and is NOT required
+#    for the production Vite build (vite.config.ts loads it conditionally).
+RUN npm install --no-audit --no-fund --no-optional --ignore-scripts \
+    && npm rebuild esbuild --no-audit --no-fund || true
 
 # Copy source code
 COPY . .
