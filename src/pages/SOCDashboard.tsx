@@ -898,6 +898,9 @@ const SOCDashboard = () => {
           const dstMap: Record<string, number> = {};
           const attackMap: Record<string, number> = {};
           const engineMap: Record<string, number> = {};
+          // Per-day timeline (calendar date YYYY-MM-DD) — critical so the AI
+          // can reconstruct the multi-day APT story (recon → quiet → strike).
+          const dayMap: Record<string, { total: number; alert: number; susp: number; benign: number; attacks: Record<string, number> }> = {};
           let firstTs = Infinity;
           let lastTs = 0;
           for (const e of list) {
@@ -910,10 +913,31 @@ const SOCDashboard = () => {
             const ts = e.timestamp.getTime();
             if (ts < firstTs) firstTs = ts;
             if (ts > lastTs) lastTs = ts;
+            const dayKey = e.timestamp.toISOString().slice(0, 10);
+            if (!dayMap[dayKey]) dayMap[dayKey] = { total: 0, alert: 0, susp: 0, benign: 0, attacks: {} };
+            const d = dayMap[dayKey];
+            d.total++;
+            if (e.verdict === 'ALERT') d.alert++;
+            else if (e.verdict === 'SUSPICIOUS') d.susp++;
+            else if (e.verdict === 'BENIGN' || e.verdict === 'FALSE_POSITIVE') d.benign++;
+            if (e.attack_type) d.attacks[e.attack_type] = (d.attacks[e.attack_type] || 0) + 1;
           }
           const topPorts = Object.entries(portMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([p, c]) => ({ port: Number(p), count: c }));
           const topDsts = Object.entries(dstMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([d, c]) => ({ dst: d, count: c }));
           const topAttacks = Object.entries(attackMap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([type, count]) => ({ type, count }));
+          const dailyTimeline = Object.entries(dayMap)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([day, v]) => {
+              const topAttack = Object.entries(v.attacks).sort((x, y) => y[1] - x[1])[0];
+              return {
+                day,
+                total: v.total,
+                alert: v.alert,
+                suspicious: v.susp,
+                benign: v.benign,
+                dominant_attack: topAttack ? `${topAttack[0]} (${topAttack[1]})` : 'none',
+              };
+            });
           const sampleAlerts = list
             .filter((e) => e.verdict === 'ALERT')
             .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
@@ -941,6 +965,7 @@ const SOCDashboard = () => {
             top_targeted_ports: topPorts,
             top_destinations: topDsts,
             top_attack_types: topAttacks,
+            daily_timeline: dailyTimeline,
             sample_alerts: sampleAlerts,
           };
           payloadLabel = `IP behavioral profile for ${ip}`;
@@ -963,9 +988,9 @@ const SOCDashboard = () => {
         }
 
         const systemPrompt = analyzeAll
-          ? `You are a SENIOR SOC Tier-2 analyst with offensive security background (red-team / hacker mindset). You receive a STRUCTURED behavioral profile of one IP (counts, top ports, top destinations, attack types, sample alerts) — NOT raw logs.
+          ? `You are a SENIOR SOC Tier-2 analyst with offensive security background (red-team / hacker mindset). You receive a STRUCTURED behavioral profile of one IP — including a per-day timeline (\`daily_timeline\`) — NOT raw logs.
 
-Reason like an attacker reconstructing their own kill-chain, then explain it as a defender.
+Reason like an attacker reconstructing their own kill-chain DAY BY DAY, then explain it as a defender. The story across the timeline is the most important signal: a low-and-slow ramp followed by a strike day is APT staging; a single bursty day is opportunistic.
 
 Output STRICT GitHub-flavored markdown in this EXACT structure:
 
@@ -974,40 +999,46 @@ Output STRICT GitHub-flavored markdown in this EXACT structure:
 
 ## Attacker Profile
 - **Role observed:** source / destination / both (with counts)
-- **Active window:** first_seen → last_seen
-- **Likely actor type:** automated scanner | botnet node | targeted human operator | benign noise — justify briefly
+- **Active window:** first_seen → last_seen (mention number of distinct days)
+- **Likely actor type:** automated scanner | botnet node | targeted human operator (APT-style) | benign noise — justify briefly
+
+## Day-by-Day Timeline
+Walk through EVERY entry of \`daily_timeline\` in order. For each day write ONE bullet:
+- **YYYY-MM-DD** — total events, dominant_attack, and a 1-clause interpretation ("passive recon", "first SYN scan", "quiet — staging", "multi-vector strike", etc.). Do NOT invent days that are not in the JSON.
+
+End the section with a 1–2 sentence narrative summarising the trajectory (e.g. "Pattern khớp APT staging: trinh sát thầm lặng 3 ngày → im ắng → tấn công đa vector ngày 25.").
 
 ## Kill Chain Reconstruction
 Map observed activity to MITRE ATT&CK phases. Only include phases backed by data.
 
-| Phase | Technique (ID) | Evidence from profile |
-|-------|----------------|------------------------|
-| Recon | T1595 ... | top_targeted_ports shows ... |
-| Initial Access / Exec | Txxxx | ... |
-| Impact | Txxxx | ... |
+| Phase | Technique (ID) | Evidence (cite day + counts) |
+|-------|----------------|------------------------------|
+| Recon | T1595.001 | 2026-04-22 PortScan ×80 on top ports |
+| Credential Access | T1110 | 2026-04-25 SSH-Patator + FTP-Patator bursts |
+| Impact | T1499 | 2026-04-25 DoS slowloris + Hulk + GoldenEye |
 
 ## Indicators of Compromise (IoC)
-- **Targeted ports:** list top 3
-- **Targeted hosts:** list top 3 destinations
+- **Targeted ports:** list top 3 with counts
+- **Targeted hosts:** list top 3 destinations with counts
 - **Top signatures:** list top 3 attack_types with counts
-- **Engine consensus:** which engines (suricata/zeek) flagged it
+- **Engine consensus:** which engines (suricata/zeek/ml) flagged it
 
 ## Hacker-Grade Hypothesis
-2–4 short bullets describing what the attacker is MOST LIKELY trying to achieve next, based on the pattern (e.g. "ports 22+3389 hammered → credential brute force pivoting", "low-rate ICMP + SYN to /24 → stealth recon before targeted exploit").
+3–5 short bullets describing what the attacker has ALREADY achieved and what they are MOST LIKELY going to do next, grounded in the timeline (e.g. "Recon hoàn tất từ 22/04 → đã biết port 22/80/3389 mở", "Day 25 chuyển sang brute-force + DoS đồng thời → mục tiêu là chiếm credential VÀ làm tê liệt dịch vụ", "Bot beacon cuối ngày 25 → đang cài backdoor sau khi exploit thành công").
 
 ## Recommended Actions
 
 | Priority | Action | Reason |
 |----------|--------|--------|
-| P0 | Block on pfSense alias AI_Blocked_IP | ... |
-| P1 | Hunt for ... in Zeek conn.log | ... |
-| P2 | Tune Suricata rule sid=... | ... |
+| P0 | Block on pfSense alias AI_Blocked_IP | Stop the ongoing multi-vector attack |
+| P1 | Hunt for lateral movement from any host that talked to 192.168.168.23 | The actor may already have a foothold |
+| P2 | Tune Suricata rule sid=… for slowloris | Reduce noise during the next campaign |
 
 STRICT RULES:
-- Tables ≤4 columns, ≤5 rows, NO multi-line cells, NO blank rows.
-- Vietnamese prose, English technical terms (ATT&CK IDs, port numbers, signatures).
-- NEVER invent ports/IPs/signatures not present in the JSON. If a phase has no evidence, OMIT the row.
-- Be decisive. No hedging like "có thể có thể".`
+- Tables ≤4 columns, ≤6 rows, NO multi-line cells, NO blank rows.
+- Vietnamese prose, English technical terms (ATT&CK IDs, port numbers, signatures, day codes like "Day-22").
+- NEVER invent ports/IPs/signatures/days not present in the JSON. If a phase has no evidence, OMIT the row.
+- Be decisive. No hedging like "có thể có thể". Speak like a Tier-2 SOC analyst writing an incident ticket.`
           : `You are a SENIOR SOC Tier-2 analyst with red-team background. Analyze ONE flow plus its correlated context from the same source IP.
 
 Output STRICT GitHub-flavored markdown:
@@ -1117,8 +1148,18 @@ Rules:
       );
     };
     
+    // Auto-grow: when an AI analysis is present (or streaming), the
+    // Inspector breaks out of the standard tab width and expands up to
+    // ~60% of the viewport so the day-by-day timeline and tables are
+    // readable. The Raw Payload section keeps its own internal scroll.
+    const hasAnalysis = !!(analysisLoading || analysisResult);
     return (
-      <div className="mt-4 bg-card border rounded-md shadow-lg" style={{ borderColor: verdictBorderColor }}>
+      <div
+        className={`mt-4 bg-card border rounded-md shadow-lg transition-all duration-300 ${
+          hasAnalysis ? 'w-full max-w-[min(1400px,60vw)] mx-auto' : ''
+        }`}
+        style={{ borderColor: verdictBorderColor }}
+      >
         <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-muted/30 rounded-t-md">
           <div className="flex items-center gap-3">
             <span className="text-[11px] font-semibold text-foreground uppercase tracking-[0.12em]">Event Inspector</span>
@@ -1327,7 +1368,7 @@ Rules:
                   </span>
                 </div>
               ) : analysisResult && (
-                <div className="px-5 py-4 max-h-[360px] overflow-y-auto bg-card">
+                <div className="px-5 py-4 max-h-[min(70vh,720px)] overflow-y-auto bg-card">
                   <div className="prose prose-invert prose-sm max-w-none [overflow-wrap:anywhere] [word-break:break-word]
                     [&_*]:!text-foreground
                     [&_p]:text-[12.5px] [&_p]:leading-[1.75] [&_p]:my-2.5 [&_p]:text-foreground/90 [&_p]:[overflow-wrap:anywhere]

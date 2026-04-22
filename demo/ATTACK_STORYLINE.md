@@ -50,22 +50,24 @@
 - *Side incidents:* `.26` DoS Hulk burst (4 ALERT, 08:14), `.30` Bot/C2 beacon (3 SUSPICIOUS, 21:05).
 
 ### Day 6 — 2026-04-25 09:00+  (★ Live attack ★)
-The same actor IP (`.23`) launches a structured 9-phase campaign:
+The same actor IP (`.23`) launches a structured 8-phase **exploitation +
+impact** campaign. Note: there is **no PortScan phase on day 6** —
+reconnaissance was already completed on days 1-3, and a fresh PortScan
+wave would only dilute the day-by-day APT story shown by `analyze.source`.
 
-1. PortScan (90 s)
-2. SSH-Patator (60 s)
-3. FTP-Patator (45 s)
-4. Web Attack — SQLi + XSS + LFI + nikto (75 s)
-5. DoS slowloris (60 s)
-6. DoS Slowhttptest (60 s)
-7. DoS Hulk (45 s)
-8. DoS GoldenEye (45 s)
-9. Bot / C2 beacon (60 s)
+1. SSH-Patator (60 s)
+2. FTP-Patator (45 s)
+3. Web Attack — SQLi + XSS + LFI + nikto (75 s)
+4. DoS slowloris (60 s)
+5. DoS Slowhttptest (60 s)
+6. DoS Hulk (45 s)
+7. DoS GoldenEye (45 s)
+8. Bot / C2 beacon (60 s)
 
 Suricata signatures fire on the NIDS box. The backend
 `reshapeForDemo()` function normalises every alert into one of the **10
 ML classes** the model was trained on (DDoS excluded by design — see
-day 4). The dashboard ends up showing 10/11 classes with high
+day 4). The dashboard ends up showing 9/11 classes with high
 confidence, all originating from a single IP whose 5-day shadow
 history is already in the database.
 

