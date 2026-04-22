@@ -1329,27 +1329,29 @@ Rules:
                 <div className="px-5 py-4 max-h-[360px] overflow-y-auto bg-card">
                   <div className="prose prose-invert prose-sm max-w-none [overflow-wrap:anywhere] [word-break:break-word]
                     [&_*]:!text-foreground
-                    [&_p]:text-[12.5px] [&_p]:leading-[1.7] [&_p]:my-2.5 [&_p]:text-foreground/90 [&_p]:[overflow-wrap:anywhere]
-                    [&_ul]:my-2.5 [&_ol]:my-2.5 [&_li]:my-1 [&_li]:text-[12.5px] [&_li]:leading-[1.7] [&_li]:text-foreground/90 [&_li]:[overflow-wrap:anywhere]
-                    [&_strong]:text-foreground [&_strong]:font-semibold
-                    [&_em]:text-foreground/80
-                    [&_h1]:text-[13px] [&_h1]:font-semibold [&_h1]:uppercase [&_h1]:tracking-[0.1em] [&_h1]:text-foreground [&_h1]:mt-5 [&_h1]:mb-2 [&_h1]:pb-1.5 [&_h1]:border-b [&_h1]:border-border
-                    [&_h2]:text-[12.5px] [&_h2]:font-semibold [&_h2]:uppercase [&_h2]:tracking-[0.08em] [&_h2]:text-foreground [&_h2]:mt-4 [&_h2]:mb-2
-                    [&_h3]:text-[12px] [&_h3]:font-semibold [&_h3]:text-foreground [&_h3]:mt-3 [&_h3]:mb-1.5
-                    [&_h4]:text-[11.5px] [&_h4]:font-semibold [&_h4]:text-muted-foreground [&_h4]:uppercase [&_h4]:tracking-wider [&_h4]:mt-3 [&_h4]:mb-1
-                    [&_code]:font-mono [&_code]:text-[11px] [&_code]:bg-muted [&_code]:text-foreground [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-sm [&_code]:border [&_code]:border-border
+                    [&_p]:text-[12.5px] [&_p]:leading-[1.75] [&_p]:my-2.5 [&_p]:text-foreground/90 [&_p]:[overflow-wrap:anywhere]
+                    [&_ul]:my-2.5 [&_ol]:my-2.5 [&_ul]:pl-5 [&_ol]:pl-5 [&_li]:my-1 [&_li]:text-[12.5px] [&_li]:leading-[1.75] [&_li]:text-foreground/90 [&_li]:[overflow-wrap:anywhere]
+                    [&_li::marker]:text-primary/70
+                    [&_strong]:text-foreground [&_strong]:font-bold [&_strong]:bg-primary/8 [&_strong]:px-0.5 [&_strong]:rounded-sm
+                    [&_em]:text-foreground/85 [&_em]:not-italic [&_em]:font-medium
+                    [&_h1]:text-[13px] [&_h1]:font-bold [&_h1]:uppercase [&_h1]:tracking-[0.12em] [&_h1]:text-primary [&_h1]:mt-5 [&_h1]:mb-2.5 [&_h1]:pb-1.5 [&_h1]:border-b [&_h1]:border-primary/30
+                    [&_h2]:text-[12px] [&_h2]:font-bold [&_h2]:uppercase [&_h2]:tracking-[0.12em] [&_h2]:text-primary [&_h2]:mt-4 [&_h2]:mb-2 [&_h2]:pl-2 [&_h2]:border-l-2 [&_h2]:border-primary
+                    [&_h3]:text-[11.5px] [&_h3]:font-bold [&_h3]:uppercase [&_h3]:tracking-[0.10em] [&_h3]:text-foreground [&_h3]:mt-3.5 [&_h3]:mb-1.5
+                    [&_h4]:text-[11px] [&_h4]:font-semibold [&_h4]:text-muted-foreground [&_h4]:uppercase [&_h4]:tracking-wider [&_h4]:mt-3 [&_h4]:mb-1
+                    [&_code]:font-mono [&_code]:text-[11px] [&_code]:bg-muted [&_code]:text-primary [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-sm [&_code]:border [&_code]:border-border [&_code]:font-semibold
                     [&_pre]:bg-muted/40 [&_pre]:border [&_pre]:border-border [&_pre]:rounded-sm [&_pre]:p-3 [&_pre]:my-3 [&_pre]:overflow-x-auto
-                    [&_pre_code]:bg-transparent [&_pre_code]:border-0 [&_pre_code]:p-0 [&_pre_code]:text-[11px] [&_pre_code]:leading-[1.6]
-                    [&_blockquote]:border-l-2 [&_blockquote]:border-[hsl(var(--soc-warning))] [&_blockquote]:pl-3 [&_blockquote]:py-0.5 [&_blockquote]:my-3 [&_blockquote]:text-foreground/80 [&_blockquote]:not-italic [&_blockquote]:bg-muted/20
-                    [&_a]:text-foreground [&_a]:underline [&_a]:decoration-muted-foreground hover:[&_a]:decoration-foreground
+                    [&_pre_code]:bg-transparent [&_pre_code]:border-0 [&_pre_code]:p-0 [&_pre_code]:text-[11px] [&_pre_code]:leading-[1.6] [&_pre_code]:text-foreground/90 [&_pre_code]:font-normal
+                    [&_blockquote]:border-l-2 [&_blockquote]:border-[hsl(var(--soc-warning))] [&_blockquote]:pl-3 [&_blockquote]:py-1 [&_blockquote]:my-3 [&_blockquote]:text-foreground/85 [&_blockquote]:not-italic [&_blockquote]:bg-[hsl(var(--soc-warning)/0.06)] [&_blockquote]:rounded-r-sm
+                    [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/40 hover:[&_a]:decoration-primary
                     [&_hr]:border-border [&_hr]:my-4
-                    [&_table]:w-full [&_table]:my-3 [&_table]:border-collapse [&_table]:text-[11.5px] [&_table]:font-mono
-                    [&_thead]:bg-muted/40
-                    [&_th]:border [&_th]:border-border [&_th]:px-2.5 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-semibold [&_th]:text-foreground [&_th]:uppercase [&_th]:text-[10px] [&_th]:tracking-wider
+                    [&_table]:w-full [&_table]:my-3 [&_table]:border-collapse [&_table]:text-[11.5px] [&_table]:font-mono [&_table]:border [&_table]:border-border
+                    [&_thead]:bg-muted/50
+                    [&_th]:border [&_th]:border-border [&_th]:px-2.5 [&_th]:py-1.5 [&_th]:text-left [&_th]:font-bold [&_th]:text-primary [&_th]:uppercase [&_th]:text-[10px] [&_th]:tracking-wider
                     [&_td]:border [&_td]:border-border [&_td]:px-2.5 [&_td]:py-1.5 [&_td]:text-foreground/90 [&_td]:align-top
                     [&_tbody_tr:nth-child(even)]:bg-muted/15
+                    [&_tbody_tr:hover]:bg-primary/5
                   ">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{analysisResult}</ReactMarkdown>
+                    <AnalysisMarkdown source={analysisResult} />
                   </div>
                 </div>
               )}
