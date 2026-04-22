@@ -692,8 +692,8 @@ const SOCDashboard = () => {
   const [minConfidence, setMinConfidence] = useState(0);
 
   // WebSocket configuration
-  const apiUrl = localStorage.getItem('soc-api-url') || '';
-  const wsUrl = apiUrl ? apiUrl.replace('http://', 'ws://').replace(':3001', ':8000') + '/ws' : '';
+  const apiUrl = resolveApiUrl();
+  const wsUrl = resolveWebSocketUrl(apiUrl);
   const [useWsRealtime, setUseWsRealtime] = useState(true);
 
   // NIDS live source is always enabled — there is no longer a user-facing toggle.

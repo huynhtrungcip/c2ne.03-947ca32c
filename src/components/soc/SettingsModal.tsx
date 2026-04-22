@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Settings, Sun, Moon, X, Plus, Trash2, Edit2, HelpCircle, Clock, Shield, List, Users, Globe, Server, Wifi, WifiOff, Ban, RefreshCw, Database, RotateCcw, AlertTriangle, Send, Bell, MessageCircle, CheckCircle, Terminal, FileText, Activity } from 'lucide-react';
 import SystemHealthMonitor from '@/components/soc/SystemHealthMonitor';
 import { ConfirmDialog, useConfirmDialog, ConfirmActionType } from './ConfirmDialog';
+import { normalizeBackendUrl, resolveApiUrl } from '@/lib/runtimeEndpoints';
 
 type Theme = 'light' | 'dark';
 
@@ -92,8 +93,8 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   const [clearingDay25, setClearingDay25] = useState(false);
 
   // API URL for backend - using state for reactivity
-  const [apiUrl, setApiUrl] = useState(() => localStorage.getItem('soc-api-url') || '');
-  const [apiUrlInput, setApiUrlInput] = useState(() => localStorage.getItem('soc-api-url') || '');
+  const [apiUrl, setApiUrl] = useState(() => resolveApiUrl());
+  const [apiUrlInput, setApiUrlInput] = useState(() => resolveApiUrl());
 
   // Telegram settings state
   const [telegramConfig, setTelegramConfig] = useState(() => {
@@ -493,12 +494,13 @@ const SettingsModal = ({ isOpen, onClose, theme, setTheme, isDarkMode }: Setting
   };
 
   const handleSaveApiUrl = () => {
-    const trimmedUrl = apiUrlInput.trim();
-    localStorage.setItem('soc-api-url', trimmedUrl);
-    setApiUrl(trimmedUrl); // Update state for reactivity
+    const normalizedUrl = normalizeBackendUrl(apiUrlInput.trim());
+    localStorage.setItem('soc-api-url', normalizedUrl);
+    setApiUrl(normalizedUrl);
+    setApiUrlInput(normalizedUrl);
     fetchConnectedSources();
   };
-  
+
   const sections = [
     { id: 'general', label: 'General', icon: Settings },
     { id: 'health', label: 'System Health', icon: Activity },
