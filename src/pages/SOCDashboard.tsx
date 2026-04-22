@@ -21,6 +21,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { ConfirmDialog, useConfirmDialog } from '@/components/soc/ConfirmDialog';
 import { AISettingsModal } from '@/components/soc/AISettingsModal';
 import { AIToolCallCard } from '@/components/soc/AIToolCallCard';
+import { resolveApiUrl, resolveWebSocketUrl } from '@/lib/runtimeEndpoints';
 import {
   streamChat,
   getActiveProvider,
