@@ -896,7 +896,7 @@ let demoPlaybookIdx = 0;
 // Strategy: keyword match → most-specific port match → round-robin fallback.
 // "Most-specific" = template whose ports[] list is the SHORTEST among matches,
 // so a single-port template (SSH-Patator [22]) wins over a multi-port one
-// (PortScan [21,22,80,445]) when the caller hints port 22.
+// (Web Attack [80,443,8080]) when the caller hints port 80.
 function pickDemoTemplate(payloadStr, hintPort) {
   const hay = (payloadStr || '').toLowerCase();
   for (const tpl of DEMO_PLAYBOOK) {
