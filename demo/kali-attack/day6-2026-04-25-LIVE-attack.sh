@@ -2,20 +2,40 @@
 # =====================================================================
 # AI-SOC DEMO — DAY 6 (2026-04-25)  ★ LIVE ATTACK ★
 # Phase   : Real attack against the lab from the same actor IP
-# Source  : 192.168.168.23 (Kali, real)
-# Target  : 192.168.168.254 (pfSense WAN)
+# Source  : 192.168.168.23   (Kali — real, on the WAN side of pfSense)
+# Target  : 192.168.168.254  (pfSense WAN IP — the ONLY thing Kali sees)
+#
+# ─────────── NAT TOPOLOGY (very important to understand) ──────────────
+# Kali never reaches 172.16.16.0/24 directly. pfSense exposes the web
+# service via a port-forward (DNAT, no inbound SNAT):
+#
+#   Kali (.23) ─► 192.168.168.254:{21,22,80} ─► 172.16.16.30:{21,22,80}
+#                       │                              │
+#                       │                              └─ Suricata sniff
+#                       │                                 (post-DNAT)
+#                       └─ pfSense firewall log
+#                          (pre-DNAT, original dst)
+#
+# So in the SOC dashboard every alert from this script will appear as:
+#     src_ip = 192.168.168.23     (preserved)
+#     dst_ip = 172.16.16.30       (translated)
+#     nat.pre_dnat_dst_ip = 192.168.168.254
 #
 # This is the ONLY script executed during the live demo.
 #
 # Suricata rules in demo/suricata-rules/local.rules will fire and the
 # backend reshaper (server/index.js → reshapeForDemo) will normalise
 # every alert into one of the 10 ML classes the model was trained on.
+# It will also rewrite dst_ip from 192.168.168.254 → 172.16.16.30 if the
+# log shipper sends WAN-side captures (defensive, since the production
+# tap is on DMZ).
 #
 # Total runtime ≈ 10 minutes. Paced — NOT a flood.
 # REQUIREMENTS on Kali:
 #   apt install -y nmap hydra nikto slowhttptest curl
 # =====================================================================
 set -e
+# All targets MUST be the pfSense WAN IP — Kali cannot route to DMZ.
 TARGET="${TARGET:-192.168.168.254}"
 WEB_TARGET="${WEB_TARGET:-192.168.168.254}"
 LOG="/tmp/ai-soc-demo-$(date +%Y%m%d-%H%M%S).log"

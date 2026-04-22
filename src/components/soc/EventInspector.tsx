@@ -189,6 +189,24 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
           <div>
             <div className="inspector-label">Destination</div>
             <div className="inspector-value">{event.dst_ip}:{event.dst_port || '-'}</div>
+            {(() => {
+              try {
+                const raw = event.raw_log ? JSON.parse(event.raw_log) : null;
+                if (raw?.nat?.dnat && raw.nat.pre_dnat_dst_ip) {
+                  return (
+                    <div className="mt-1 flex items-center gap-1.5 text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold tracking-wide">
+                        NAT/DNAT
+                      </span>
+                      <span className="text-muted-foreground font-mono">
+                        ← orig {raw.nat.pre_dnat_dst_ip}:{raw.nat.pre_dnat_dst_port}
+                      </span>
+                    </div>
+                  );
+                }
+              } catch { /* ignore */ }
+              return null;
+            })()}
           </div>
           <div>
             <div className="inspector-label">Protocol</div>
