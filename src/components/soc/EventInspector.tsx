@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { Loader2, Brain, Shield, ShieldAlert, Ban, CheckCircle } from 'lucide-react';
 import { ConfirmDialog, useConfirmDialog } from './ConfirmDialog';
+import { resolveAiUrl, resolveApiUrl } from '@/lib/runtimeEndpoints';
 
 interface EventInspectorProps {
   event: SOCEvent | null;
@@ -37,8 +38,8 @@ export const EventInspector = ({ event }: EventInspectorProps) => {
 
   if (!event) return null;
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  const AI_URL = import.meta.env.VITE_AI_URL || 'http://localhost:8000';
+  const API_URL = resolveApiUrl();
+  const AI_URL = resolveAiUrl(API_URL);
 
   const verdictColor = {
     ALERT: '#ef4444',
