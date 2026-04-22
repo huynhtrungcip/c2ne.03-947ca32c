@@ -353,8 +353,10 @@ uninstall_files_only() {
     fi
     
     # Dừng containers bằng tên (phòng trường hợp không có docker-compose.yml)
-    docker stop soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
-    docker rm soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
+    docker rm -f soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
+    docker ps -a --format '{{.Names}}' 2>/dev/null \
+        | grep -E '^(soc-frontend|soc-backend|soc-ai-engine|ai-engine)$' \
+        | xargs -r docker rm -f 2>/dev/null || true
     print_success "Đã dừng containers"
     
     # 2. Xóa Docker images
@@ -441,9 +443,14 @@ clean_for_reinstall() {
     if [[ -d "$INSTALL_DIR/$PROJECT_DIR" ]]; then
         cd "$INSTALL_DIR/$PROJECT_DIR" 2>/dev/null || true
         docker compose down --remove-orphans -v 2>/dev/null || true
+        cd - >/dev/null 2>&1 || true
     fi
-    docker stop soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
-    docker rm soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
+    # Force remove ALL containers with SOC-related names (any project, any state)
+    docker ps -a --format '{{.Names}}' 2>/dev/null \
+        | grep -E '^(soc-frontend|soc-backend|soc-ai-engine|ai-engine)$' \
+        | xargs -r docker rm -f 2>/dev/null || true
+    # Belt-and-suspenders: explicit force removal by name
+    docker rm -f soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
     
     # Xóa images
     print_info "Xóa images cũ..."
@@ -571,7 +578,9 @@ build_and_start() {
     print_success "Build thành công"
     
     print_info "Đang khởi động containers..."
-    docker compose up -d
+    # Safety net: force-remove any stale containers that would conflict by name
+    docker rm -f soc-frontend soc-backend ai-engine soc-ai-engine 2>/dev/null || true
+    docker compose up -d --remove-orphans
     
     print_info "Đợi services khởi động..."
     sleep 15
