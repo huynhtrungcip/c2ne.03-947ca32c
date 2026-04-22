@@ -131,18 +131,22 @@ def block_ip_on_pfsense(ip: str) -> Tuple[bool, str, Dict[str, Any]]:
             f"Blocked by AI-SOC at {datetime.now().isoformat(timespec='seconds')}"
         )
 
-        # PATCH to update alias
+        # PATCH to update alias.
+        # IMPORTANT: pfSense REST API v2 expects `apply` as a QUERY PARAMETER,
+        # not inside the JSON body. Without it, the alias row is saved to
+        # config.xml but the in-memory pf table is NOT reloaded, so blocked
+        # IPs never actually appear under Diagnostics → Tables.
         payload = {
             "id": alias_id,
             "name": PFSENSE_ALIAS,
             "type": alias_obj.get("type", "host"),
             "address": current_addresses,
             "detail": current_detail,
-            "apply": True,
         }
 
-        patch_url = f"{base_url}/firewall/alias"
+        patch_url = f"{base_url}/firewall/alias?apply=true"
         debug["patch_url"] = patch_url
+        debug["payload_addresses_count"] = len(current_addresses)
 
         r2 = requests.patch(
             patch_url,
@@ -152,13 +156,28 @@ def block_ip_on_pfsense(ip: str) -> Tuple[bool, str, Dict[str, Any]]:
             verify=False,
         )
         debug["patch_status"] = r2.status_code
+        debug["patch_response"] = r2.text[:500]
 
         if r2.status_code not in (200, 201):
             return (
                 False,
-                f"PATCH alias thất bại (HTTP {r2.status_code}).",
+                f"PATCH alias thất bại (HTTP {r2.status_code}): {r2.text[:200]}",
                 debug,
             )
+
+        # Belt-and-suspenders: explicitly trigger firewall apply so the
+        # pf table is reloaded immediately even if `?apply=true` was ignored.
+        try:
+            apply_resp = requests.post(
+                f"{base_url}/firewall/apply",
+                headers=headers,
+                timeout=8,
+                verify=False,
+            )
+            debug["apply_status"] = apply_resp.status_code
+            debug["apply_response"] = apply_resp.text[:300]
+        except Exception as ae:
+            debug["apply_exception"] = repr(ae)
 
         return True, f"Đã thêm IP {ip_norm} vào alias {PFSENSE_ALIAS} trên pfSense.", debug
 
@@ -231,26 +250,39 @@ def unblock_ip_on_pfsense(ip: str) -> Tuple[bool, str, Dict[str, Any]]:
         if idx < len(current_detail):
             current_detail.pop(idx)
 
-        # PATCH to update
+        # PATCH to update — `apply` must be a query param (see block_ip_on_pfsense)
         payload = {
             "id": alias_obj.get("id"),
             "name": PFSENSE_ALIAS,
             "type": alias_obj.get("type", "host"),
             "address": current_addresses,
             "detail": current_detail,
-            "apply": True,
         }
 
         r2 = requests.patch(
-            f"{base_url}/firewall/alias",
+            f"{base_url}/firewall/alias?apply=true",
             headers=headers,
             data=json.dumps(payload),
             timeout=8,
             verify=False,
         )
+        debug["patch_status"] = r2.status_code
+        debug["patch_response"] = r2.text[:300]
 
         if r2.status_code not in (200, 201):
-            return False, f"PATCH failed ({r2.status_code})", debug
+            return False, f"PATCH failed ({r2.status_code}): {r2.text[:200]}", debug
+
+        # Force firewall apply
+        try:
+            apply_resp = requests.post(
+                f"{base_url}/firewall/apply",
+                headers=headers,
+                timeout=8,
+                verify=False,
+            )
+            debug["apply_status"] = apply_resp.status_code
+        except Exception as ae:
+            debug["apply_exception"] = repr(ae)
 
         return True, f"Đã xóa IP {ip_norm} khỏi alias {PFSENSE_ALIAS}", debug
 
