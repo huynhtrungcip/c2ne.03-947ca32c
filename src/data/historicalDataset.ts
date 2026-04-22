@@ -144,13 +144,24 @@ const buildRawLog = (o: PayloadOpts, evtId: string) => {
   const fid = flowId();
   const cid = communityId(o.src_ip, o.src_port, o.dst_ip, o.dst_port, o.proto);
   const ts = o.ts.toISOString();
-  const srcExternal = !isPrivate(o.src_ip);
-  const dstExternal = !isPrivate(o.dst_ip);
-  const direction = srcExternal
-    ? 'inbound'
-    : dstExternal
+  // "Trusted" = inside pfSense (DMZ + SOC). Anything on the WAN segment
+  // (192.168.168.0/24) is treated as external for direction + NAT logic
+  // because it sits OUTSIDE pfSense and must traverse the firewall to
+  // reach the internal services.
+  const isTrusted = (ip: string) => ip.startsWith('172.16.16.') || ip.startsWith('10.10.10.');
+  const isWanSide = (ip: string) => ip.startsWith('192.168.168.') || !isPrivate(ip);
+  const srcExternal = !isTrusted(o.src_ip);
+  const dstExternal = !isTrusted(o.dst_ip);
+  const isInboundViaNat = isWanSide(o.src_ip) && o.dst_ip.startsWith('172.16.16.');
+  const direction = isInboundViaNat
+    ? 'inbound_via_nat'
+    : srcExternal && dstExternal
+    ? 'wan_to_wan'
+    : !srcExternal && dstExternal
     ? 'outbound_via_nat'
-    : 'lateral';
+    : !srcExternal && !dstExternal
+    ? 'lateral'
+    : 'inbound';
 
   const baseBytes = o.verdict === 'ALERT' ? between(120, 1800) : between(280, 4200);
   const orig_pkts = o.verdict === 'ALERT' ? between(1, 4) : between(3, 22);
