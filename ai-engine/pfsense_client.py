@@ -33,6 +33,7 @@ def block_ip_on_pfsense(ip: str) -> Tuple[bool, str, Dict[str, Any]]:
     debug: Dict[str, Any] = {
         "ip": ip,
         "alias": PFSENSE_ALIAS,
+        "scheme": PFSENSE_SCHEME,
         "host": PFSENSE_HOST,
         "port": PFSENSE_PORT,
     }
@@ -54,7 +55,8 @@ def block_ip_on_pfsense(ip: str) -> Tuple[bool, str, Dict[str, Any]]:
     if not PFSENSE_API_KEY:
         return False, "pfSense API key chưa được cấu hình.", debug
 
-    base_url = f"http://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    base_url = f"{PFSENSE_SCHEME}://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    debug["target"] = base_url
     headers = {
         "X-API-Key": PFSENSE_API_KEY,
         "Accept": "application/json",
