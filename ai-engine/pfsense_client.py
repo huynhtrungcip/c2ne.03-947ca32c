@@ -11,6 +11,7 @@ from typing import Tuple, Dict, Any, List
 from config import (
     PFSENSE_HOST,
     PFSENSE_PORT,
+    PFSENSE_SCHEME,
     PFSENSE_API_KEY,
     PFSENSE_ALIAS,
     WHITELIST_IPS,
@@ -32,6 +33,7 @@ def block_ip_on_pfsense(ip: str) -> Tuple[bool, str, Dict[str, Any]]:
     debug: Dict[str, Any] = {
         "ip": ip,
         "alias": PFSENSE_ALIAS,
+        "scheme": PFSENSE_SCHEME,
         "host": PFSENSE_HOST,
         "port": PFSENSE_PORT,
     }
@@ -53,7 +55,8 @@ def block_ip_on_pfsense(ip: str) -> Tuple[bool, str, Dict[str, Any]]:
     if not PFSENSE_API_KEY:
         return False, "pfSense API key chưa được cấu hình.", debug
 
-    base_url = f"http://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    base_url = f"{PFSENSE_SCHEME}://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    debug["target"] = base_url
     headers = {
         "X-API-Key": PFSENSE_API_KEY,
         "Accept": "application/json",
@@ -190,13 +193,20 @@ def unblock_ip_on_pfsense(ip: str) -> Tuple[bool, str, Dict[str, Any]]:
     """
     Xóa IP khỏi alias AI_Blocked_IP trên pfSense.
     """
-    debug: Dict[str, Any] = {"ip": ip, "alias": PFSENSE_ALIAS}
+    debug: Dict[str, Any] = {
+        "ip": ip,
+        "alias": PFSENSE_ALIAS,
+        "scheme": PFSENSE_SCHEME,
+        "host": PFSENSE_HOST,
+        "port": PFSENSE_PORT,
+    }
 
     if not ip or not PFSENSE_API_KEY:
         return False, "Missing IP or API key", debug
 
     ip_norm = ip.strip()
-    base_url = f"http://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    base_url = f"{PFSENSE_SCHEME}://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    debug["target"] = base_url
     headers = {
         "X-API-Key": PFSENSE_API_KEY,
         "Accept": "application/json",
@@ -300,12 +310,18 @@ def get_blocked_ips() -> Tuple[bool, List[str], Dict[str, Any]]:
         - list of blocked IPs (List[str])
         - debug_info (dict)
     """
-    debug: Dict[str, Any] = {"alias": PFSENSE_ALIAS}
+    debug: Dict[str, Any] = {
+        "alias": PFSENSE_ALIAS,
+        "scheme": PFSENSE_SCHEME,
+        "host": PFSENSE_HOST,
+        "port": PFSENSE_PORT,
+    }
     
     if not PFSENSE_API_KEY:
-        return False, [], {"error": "pfSense API key not configured"}
+        return False, [], {"error": "pfSense API key not configured", **debug}
     
-    base_url = f"http://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    base_url = f"{PFSENSE_SCHEME}://{PFSENSE_HOST}:{PFSENSE_PORT}/api/v2"
+    debug["target"] = base_url
     headers = {
         "X-API-Key": PFSENSE_API_KEY,
         "Accept": "application/json",
